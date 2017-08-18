@@ -12,6 +12,16 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
 
+#include "quickselect.h"
+
+template <typename GlmType, int Dimension>
+struct GlmComparator {
+  GlmComparator() {}
+  bool operator()(const GlmType& a, const GlmType& b) const {
+    return a[Dimension] < b[Dimension];
+  }
+};
+
 struct KdNode {
   KdNode()
       : type(kInternal),
@@ -32,8 +42,6 @@ struct KdNode {
     kLeaf
   };
   Type type;
-  int left;
-  int right;
   int split_dimension;
   float split_value;
   int index;
@@ -60,34 +68,14 @@ class KdTree {
     }
   }
 
-  int Partition(int first, int last, int dim, float value) {
-    float left = first;
-    float right = last; 
-    while (left < right) {
-      if (points_[left][dim] > value) {
-        std::swap(points_[left], points_[right - 1]);
-        --right;
-      }
-      ++left;
-    }
-    return right;
-  }
-
-  void FindMedian(int first, int last, int& median) {
-    int total = last - first + 1;
-    for (int i = 0; i < total; ++i)
-  }
-
   void RecursiveBuild(int first, int last, int dim, glm::vec2& min_values,
       glm::vec2& max_values) {
     KdNode node;
-    if (last - first + 1 > 1) {
+    if (last - first  == 1) {
       node.type = KdNode::kLeaf;
       node.point = first;
     } else {
-      node.split_value = FindSplit(dim);
-      node.split_dimension = dim;
-      int split_index = Partition(first, last, split_dimension, split_value);
+
       if (split_index > first)
         RecursiveBuild(first, split_index, (dim + 1) % 2);
       if (split_index < last) RecursiveBuild(split_index, last, (dim + 1) % 2);
@@ -96,11 +84,6 @@ class KdTree {
 
   void Build() { RecursiveBuild(0, points_.size(), 0); }
   int RecursiveNearestNeighbor(const glm::vec2 query, const KdNode& node) {
-    if (node.type == KdNode::kInternal) {
-    } else if (node.type == KdNode::kLeaf) {
-    }
-
-      
   }
 
  protected:

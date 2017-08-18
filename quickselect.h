@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstdlib>
-#include <vector>
 #include <ostream>
+#include <vector>
 
 namespace quickselect {
 
@@ -17,40 +17,58 @@ template <typename ValueType, typename Comparator>
 int Partition(std::vector<ValueType>& values, int first, int last, int pivot) {
   Comparator comparator;
   ValueType pivot_value = values[pivot];
-  int left = first;
+  int left = first + 1;
   int right = last;
   int count = 0;
-  int i = first;
+  int i = left;
+  std::swap(values[first], values[pivot]);
   while (left < right) {
-    if (comparator(values[i], pivot_value)) {
-      ++left;
+    if (comparator(values[left], pivot_value)) {
       ++count;
-      ++i;
+      ++left;
     } else {
-      std::swap(values[right - 1], values[i]);
+      std::swap(values[right - 1], values[left]);
       --right;
     }
+    //std::cout << "left = " << left << " right = " << right
+              //<< " values = " << values << "\n ";
+    // if (comparator(values[i], pivot_value)) {
+    //++left;
+    //++count;
+    //++i;
+    //} else {
+    // std::swap(values[right - 1], values[i]);
+    //--right;
+    //}
   }
+  std::cout << "(1) values = " << values << "\n";
+  std::swap(values[first], values[left - 1]);
+  std::cout << "(2) values = " << values << "\n";
   return count;
 }
 
 template <typename ValueType, typename Comparator>
 ValueType QuickSelectRecursive(std::vector<ValueType>& values, int first,
                                int last, int rank) {
-  if (first == last - 1) return values[first];
+  if (last - first <= 1) return values[first];
 
   int pivot = std::rand() % (last - first) + first;
   ValueType value = values[pivot];
-  std::cout << "values = " << values << " pivot = " << pivot << " \n";
+  std::vector<char> markers(values.size(), ' ');
+  markers[pivot] = '*';
+  std::cout << "         " << markers << "\n";
+  std::cout << "values = " << values << " pivot = " << pivot
+            << " pivot_value = " << value << "\n";
   int count = Partition<ValueType, Comparator>(values, first, last, pivot);
+  std::cout << "                     " << markers << "\n";
   std::cout << "partitioned values = " << values << "\n";
   std::cout << "rank = " << rank << " first = " << first << " last = " << last
-            << " value = " << value << " count = " << count << "\n";
+            << " count = " << count << "\n";
 
-  if (count < rank)
-    return QuickSelectRecursive<ValueType, Comparator>(values, first + count,
-                                                       last, rank - count);
-  else if (count > rank)
+  if (first + count < rank)
+    return QuickSelectRecursive<ValueType, Comparator>(
+        values, first + count + 1, last, rank);
+  else if (first + count > rank)
     return QuickSelectRecursive<ValueType, Comparator>(values, first,
                                                        first + count, rank);
   return value;

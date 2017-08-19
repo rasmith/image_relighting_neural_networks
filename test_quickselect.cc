@@ -15,8 +15,8 @@ void TestDuplicatesInArray() {
   std::cout << "  TestDuplicatesInArray     " << TestNumber << "\n";
   std::cout << "------------------------------------------------\n";
   std::vector<int> test_values = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3};
-  int result = quickselect::QuickSelect<int, ValueComparator<int>>(test_values,
-                                                                   TestNumber);
+  int result = quickselect::QuickSelect<int, ValueComparator<int>>(
+      &test_values[0], test_values.size(), TestNumber);
   std::cout << "QuickSelect(test, " << TestNumber << ") = " << result << "\n";
   std::cout << "================================================\n";
 }
@@ -27,8 +27,8 @@ void TestDistinctArray() {
   std::cout << "  TestDistinctArray        " << TestNumber << "\n";
   std::cout << "------------------------------------------------\n";
   std::vector<int> test_values = {9, 1, 3, 4, 0, 8, 11, 7, 10, 6, 5, 2};
-  int result = quickselect::QuickSelect<int, ValueComparator<int>>(test_values,
-                                                                   TestNumber);
+  int result = quickselect::QuickSelect<int, ValueComparator<int>>(
+      &test_values[0], test_values.size(), TestNumber);
   std::cout << "QuickSelect(test, " << TestNumber << ") = " << result << "\n";
   std::cout << "================================================\n";
 }
@@ -39,8 +39,8 @@ void TestDistinctArray2() {
   std::cout << "  TestDistinctArray2        " << TestNumber << "\n";
   std::cout << "------------------------------------------------\n";
   std::vector<int> test_values = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
-  int result = quickselect::QuickSelect<int, ValueComparator<int>>(test_values,
-                                                                   TestNumber);
+  int result = quickselect::QuickSelect<int, ValueComparator<int>>(
+      &test_values[0], test_values.size(), TestNumber);
   std::cout << "QuickSelect(test, " << TestNumber << ") = " << result << "\n";
   std::cout << "================================================\n";
 }
@@ -51,8 +51,8 @@ void TestDuplicatesInArray2() {
   std::cout << "  TestDuplicatesInArray2    " << TestNumber << "\n";
   std::cout << "------------------------------------------------\n";
   std::vector<int> test_values = {1, 3, 1, 4, 2, 2, 5, 6, 6, 12, 7, 9};
-  int result = quickselect::QuickSelect<int, ValueComparator<int>>(test_values,
-                                                                   TestNumber);
+  int result = quickselect::QuickSelect<int, ValueComparator<int>>(
+      &test_values[0], test_values.size(), TestNumber);
   std::cout << "QuickSelect(test, " << TestNumber << ") = " << result << "\n";
   std::cout << "================================================\n";
 }

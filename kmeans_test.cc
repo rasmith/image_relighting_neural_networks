@@ -1,3 +1,5 @@
+#include "kdtree.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -12,89 +14,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
 
-#include "quickselect.h"
-
-template <typename GlmType, int Dimension>
-struct GlmComparator {
-  GlmComparator() {}
-  bool operator()(const GlmType& a, const GlmType& b) const {
-    return a[Dimension] < b[Dimension];
-  }
-};
-
-struct KdNode {
-  KdNode()
-      : type(kInternal),
-        left(-1),
-        right(-1),
-        split_dimension(0),
-        split_value(0.0f),
-        index(-1) {}
-  KdNode(const KdNode& node)
-      : type(node.type),
-        left(node.left),
-        right(node.right),
-        split_dimension(node.split_dimension),
-        split_value(node.split_value),
-        index(node.index) {}
-  enum Type {
-    kInternal,
-    kLeaf
-  };
-  Type type;
-  int split_dimension;
-  float split_value;
-  int index;
-};
-
-class KdTree {
- public:
-  KdTree() {}
-  void AddPoints(const std::vector<glm::vec2>& input_points) {
-    points.resize(input_points.size());
-    std::copy(input_points.begin(), input_points.end(), points_.begin());
-  }
-
-  void ComputeBounds() {
-    min_ = glm::vec2(std::numeric_limits<float>::max(),
-                     std::numeric_limits<float>::max());
-    max_ = glm::vec2(-std::numeric_limits<float>::max(),
-                     -std::numeric_limits<float>::max());
-    for (auto& point : points_) {
-      min_.x = std::min(point.x, min_.x);
-      min_.y = std::min(point.y, min_.y);
-      max_.x = std::max(point.x, max_.x);
-      max_.y = std::max(point.y, may_.y);
-    }
-  }
-
-  void RecursiveBuild(int first, int last, int dim, glm::vec2& min_values,
-      glm::vec2& max_values) {
-    KdNode node;
-    if (last - first  == 1) {
-      node.type = KdNode::kLeaf;
-      node.point = first;
-    } else {
-
-      if (split_index > first)
-        RecursiveBuild(first, split_index, (dim + 1) % 2);
-      if (split_index < last) RecursiveBuild(split_index, last, (dim + 1) % 2);
-    }
-  }
-
-  void Build() { RecursiveBuild(0, points_.size(), 0); }
-  int RecursiveNearestNeighbor(const glm::vec2 query, const KdNode& node) {
-  }
-
- protected:
-  glm::vec2 min_;
-  glm::vec2 max_;
-  std::vector<glm::vec2> points_;
-  std::vector<KdNode> nodes_;
-};
-
 std::ostream& operator<<(std::ostream& out, const glm::vec2& c) {
   out << "(" << c.x << "," << c.y << ")";
+  return out;
 }
 
 template <typename T>
@@ -133,7 +55,7 @@ void assign_labels_threaded(int num_threads, int width, int height,
   std::thread threads[num_threads];
   for (int i = 0; i < num_threads; ++i) {
     threads[i] = std::thread(
-        [&num_threads, &width, &height, &centers, &labels ](int tid)->void {
+        [&num_threads, &width, &height, &centers, &labels](int tid) -> void {
           assign_labels_thread(tid, num_threads, width, height, centers,
                                labels);
         },
@@ -172,15 +94,12 @@ void update_centers_threaded(int num_threads, int width, int height,
   for (int i = 0; i < num_threads; ++i) center_arrays.resize(centers.size());
 
   for (int i = 0; i < num_threads; ++i) {
+    std::vector<glm::vec2>& center_array = center_arrays[i];
     threads[i] = std::thread(
-        [&num_threads,
-         &width,
-         &height,
-         &centers_arrays[i],
-         &labels ](int tid)
-                      ->void {
-          update_centers_thread(tid, num_threads, width, height,
-                                center_arrays[i], labels);
+        [&num_threads, &width, &height, &center_array,
+         &labels](int tid) -> void {
+          update_centers_thread(tid, num_threads, width, height, center_array,
+                                labels);
         },
         i);
   }
@@ -239,9 +158,9 @@ void kmeans(int width, int height, std::vector<glm::vec2>& centers,
   labels.resize(width * height);
 
   std::generate(centers.begin(), centers.end(),
-                [&x_distribution, &y_distribution, &gen ](void)->glm::vec2 {
-    return glm::vec2(x_distribution(gen), y_distribution(gen));
-  });
+                [&x_distribution, &y_distribution, &gen](void) -> glm::vec2 {
+                  return glm::vec2(x_distribution(gen), y_distribution(gen));
+                });
 
   std::vector<glm::vec2> old_centers(centers.size());
   bool changed = true;

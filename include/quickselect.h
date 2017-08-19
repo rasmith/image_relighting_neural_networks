@@ -14,7 +14,7 @@ std::ostream& operator<<(std::ostream& out,
 }
 
 template <typename ValueType, typename Comparator>
-int Partition(std::vector<ValueType>& values, int first, int last, int pivot) {
+int Partition(ValueType* values, int first, int last, int pivot) {
   Comparator comparator;
   ValueType pivot_value = values[pivot];
   int left = first + 1;
@@ -35,10 +35,9 @@ int Partition(std::vector<ValueType>& values, int first, int last, int pivot) {
 }
 
 template <typename ValueType, typename Comparator>
-ValueType QuickSelectRecursive(std::vector<ValueType>& values, int first,
-                               int last, int rank) {
-  if (values.size() == 0) return ValueType();
-  if (values.size() == 1 || last - first <= 1) return values[first];
+ValueType QuickSelectRecursive(ValueType* values, int first, int last,
+                               int rank) {
+  if (last - first <= 1) return values[first];
   int pivot = std::rand() % (last - first) + first;
   ValueType value = values[pivot];
   int count = Partition<ValueType, Comparator>(values, first, last, pivot);
@@ -52,9 +51,8 @@ ValueType QuickSelectRecursive(std::vector<ValueType>& values, int first,
 }
 
 template <typename ValueType, typename Comparator>
-ValueType QuickSelect(std::vector<ValueType>& values, int rank) {
-  return QuickSelectRecursive<ValueType, Comparator>(values, 0, values.size(),
-                                                     rank);
+ValueType QuickSelect(ValueType* values, int size, int rank) {
+  return QuickSelectRecursive<ValueType, Comparator>(values, 0, size, rank);
 }
 
 }  // namespace quickselect

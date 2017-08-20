@@ -21,17 +21,26 @@ struct KdNode {
   enum Type { kInternal, kLeaf };
 
   KdNode()
-      : type(kInternal), split_dimension(0), split_value(0.0f), index(-1) {}
+      : type(kInternal),
+        split_dimension(0),
+        split_value(0.0f),
+        index(-1),
+        left(-1),
+        right(-1) {}
 
   KdNode(const KdNode& node)
       : type(node.type),
-	split_dimension(node.split_dimension),
-	split_value(node.split_value),
-	index(node.index) {}
+        split_dimension(node.split_dimension),
+        split_value(node.split_value),
+        index(node.index),
+        left(node.left),
+        right(node.right) {}
   Type type;
   int split_dimension;
   float split_value;
   int index;
+  int left;
+  int right;
 };
 
 class KdTree {
@@ -41,20 +50,17 @@ class KdTree {
 
   KdTree() {}
 
-  void AddPoints(const std::vector<glm::vec2>& input_points);
+  void SetPoints(const std::vector<glm::vec2>& input_points);
   void Build() { RecursiveBuild(0, points_.size(), 0); }
-  int NearestNeighbor(const glm::vec2 query);
-
- protected:
-  void ComputeBounds();
-  glm::vec2 SelectMedian(int first, int last, int dim);
-  void RecursiveBuild(int first, int last, int dim);
-  int RecursiveNearestNeighbor(const glm::vec2 query, const KdNode& node) {
-    return 0;
+  int NearestNeighbor(const glm::vec2 query) {
+    return RecursiveNearestNeighbor(nodes_[0], query);
   }
 
-  glm::vec2 min_;
-  glm::vec2 max_;
+ protected:
+  glm::vec2 SelectMedian(int first, int last, int dim);
+  int RecursiveBuild(int first, int last, int dim);
+  int RecursiveNearestNeighbor(const KdNode& node, const glm::vec2& query);
+
   std::vector<glm::vec2> points_;
   std::vector<KdNode> nodes_;
 };

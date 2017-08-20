@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
-mkdir build
+if [ ! -e build ]
+then
+  mkdir build
+fi
 cd build
 cmake ..
-make
+make -j8

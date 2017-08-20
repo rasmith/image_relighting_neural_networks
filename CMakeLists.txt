@@ -18,8 +18,6 @@ set(CMAKE_CXX_FLAGS
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 											${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
-
-
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # Compile and link render_views executable.

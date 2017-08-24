@@ -18,13 +18,12 @@ struct GlmComparator {
 };
 
 struct KdNode {
-  enum Type { kInternal, kLeaf };
+  enum Type { kInternal = 0, kLeaf = 1 };
 
   KdNode()
       : type(kInternal),
         split_dimension(0),
         split_value(0.0f),
-        index(-1),
         left(-1),
         right(-1) {}
 
@@ -32,16 +31,16 @@ struct KdNode {
       : type(node.type),
         split_dimension(node.split_dimension),
         split_value(node.split_value),
-        index(node.index),
         left(node.left),
         right(node.right) {}
-  Type type;
-  int split_dimension;
-  float split_value;
-  int index;
+  unsigned char type : 1;
+  unsigned char split_dimension : 3;
   int left;
   int right;
+  float split_value;
 };
+
+std::ostream& operator<<(std::ostream& out, const KdNode& node);
 
 class KdTree {
  public:
@@ -50,19 +49,32 @@ class KdTree {
 
   KdTree() {}
 
-  void SetPoints(const std::vector<glm::vec2>& input_points);
-  void Build() { RecursiveBuild(0, points_.size(), 0); }
-  int NearestNeighbor(const glm::vec2 query) {
-    return RecursiveNearestNeighbor(nodes_[0], query);
+  void AssignPoints(const std::vector<glm::vec2>& input_points);
+  const std::vector<glm::vec2>& points() const { return points_; }
+  const std::vector<KdNode>& nodes() const { return nodes_; }
+  void SetMaxDepth(int depth) { max_depth_ = depth; }
+  void SetMaxLeafSize(int size) { max_leaf_size_ = size; }
+
+  void Build() {
+    nodes_.push_back(KdNode());
+    RecursiveBuild(0, 0, points_.size(), 0, 0);
+  }
+  int NearestNeighbor(const glm::vec2 query) const {
+    return RecursiveNearestNeighbor(0, query, 0);
   }
 
  protected:
-  glm::vec2 SelectMedian(int first, int last, int dim);
-  int RecursiveBuild(int first, int last, int dim);
-  int RecursiveNearestNeighbor(const KdNode& node, const glm::vec2& query);
+  glm::vec2 SelectMedian(int first, int last, unsigned char dim);
+  void RecursiveBuild(int id, int first, int last, unsigned char dim,
+                      int depth);
+  int RecursiveNearestNeighbor(int id, const glm::vec2& query, int depth) const;
+  inline int NaiveNearestNeighbor(int first, int last,
+                                  const glm::vec2& query) const;
 
   std::vector<glm::vec2> points_;
   std::vector<KdNode> nodes_;
+  int max_depth_;
+  int max_leaf_size_;
 };
 
 }  // namespace kdtree

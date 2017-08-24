@@ -12,7 +12,7 @@ find_package(Threads REQUIRED)
 
 # Set C++ flags.
 set(CMAKE_CXX_FLAGS 
-  "${CMAKE_CXX_FLAGS} -std=c++11 -g")
+  "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 
 # Set the module path (mainly for FindXXX.cmake files)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
@@ -20,6 +20,14 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-# Compile and link render_views executable.
+# Compile and link kmeans_test executable.
 add_executable(kmeans_test kmeans_test.cc kdtree.cc)
 target_link_libraries (kmeans_test ${CMAKE_THREAD_LIBS_INIT})
+
+# Compile and link kdtree_test executable.
+add_executable(kdtree_test kdtree_test.cc kdtree.cc)
+target_link_libraries (kdtree_test ${CMAKE_THREAD_LIBS_INIT})
+
+# Compile and link quickselect_test executable.
+add_executable(quickselect_test quickselect_test.cc)
+target_link_libraries (quickselect_test ${CMAKE_THREAD_LIBS_INIT})

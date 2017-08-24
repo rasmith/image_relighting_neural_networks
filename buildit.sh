@@ -6,4 +6,4 @@ then
 fi
 cd build
 cmake ..
-make -j8
+make -j8 $1

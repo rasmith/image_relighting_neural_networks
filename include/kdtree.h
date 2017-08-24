@@ -22,22 +22,30 @@ struct KdNode {
 
   KdNode()
       : type(kInternal),
-        split_dimension(0),
-        split_value(0.0f),
-        left(-1),
-        right(-1) {}
+        split_dimension(0)  {}
 
   KdNode(const KdNode& node)
       : type(node.type),
         split_dimension(node.split_dimension),
-        split_value(node.split_value),
-        left(node.left),
-        right(node.right) {}
+        info(node.info) {}
+
   unsigned char type : 1;
   unsigned char split_dimension : 3;
-  int left;
-  int right;
-  float split_value;
+  union NodeInfo {
+    NodeInfo() {}
+    struct InternalInfo {
+      InternalInfo() {}
+      
+      int left;
+      int right;
+      float split_value;
+    } internal;
+    struct LeafInfo {
+      LeafInfo() {}
+      glm::vec2 position;
+      int location;
+    } leaf;
+  } info;
 };
 
 std::ostream& operator<<(std::ostream& out, const KdNode& node);
@@ -60,16 +68,18 @@ class KdTree {
     RecursiveBuild(0, 0, points_.size(), 0, 0);
   }
   int NearestNeighbor(const glm::vec2 query) const {
-    return RecursiveNearestNeighbor(0, query, 0);
+    int best = -1;
+    float best_distance = std::numeric_limits<float>::max();
+    RecursiveNearestNeighbor(0, query, 0, &best, &best_distance);
+    return best;
   }
 
  protected:
   glm::vec2 SelectMedian(int first, int last, unsigned char dim);
   void RecursiveBuild(int id, int first, int last, unsigned char dim,
                       int depth);
-  int RecursiveNearestNeighbor(int id, const glm::vec2& query, int depth) const;
-  inline int NaiveNearestNeighbor(int first, int last,
-                                  const glm::vec2& query) const;
+  void RecursiveNearestNeighbor(int id, const glm::vec2& query, int depth,
+    int* best, float* best_distance) const;
 
   std::vector<glm::vec2> points_;
   std::vector<KdNode> nodes_;

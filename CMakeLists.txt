@@ -21,7 +21,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # Compile and link kmeans_test executable.
-add_executable(kmeans_test kmeans_test.cc kdtree.cc)
+add_executable(kmeans_test kmeans_test.cc kdtree.cc image.cc)
 target_link_libraries (kmeans_test ${CMAKE_THREAD_LIBS_INIT})
 
 # Compile and link kdtree_test executable.

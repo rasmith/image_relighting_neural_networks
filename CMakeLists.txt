@@ -11,8 +11,13 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 find_package(Threads REQUIRED)
 
 # Set C++ flags.
+#set(CMAKE_CXX_FLAGS
+  #"${CMAKE_CXX_FLAGS} -std=c++11 -g -fsanitize=address\
+  #-fno-omit-frame-pointer -Wno-macro-redefined")
 set(CMAKE_CXX_FLAGS 
-  "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
+  "${CMAKE_CXX_FLAGS} -std=c++11 -O3 ")
+#set(CMAKE_CXX_FLAGS 
+  #"${CMAKE_CXX_FLAGS} -std=c++11 -g ")
 
 # Set the module path (mainly for FindXXX.cmake files)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}

@@ -4,6 +4,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
+#include <iostream>
 
 #include "quickselect.h"
 
@@ -65,7 +66,7 @@ class KdTree {
   typedef PointComparator<PointWrapper, 0> XComparator;
   typedef PointComparator<PointWrapper, 1> YComparator;
 
-  KdTree() :debug_(false){}
+  KdTree() : debug_(false) {}
 
   void AssignPoints(const std::vector<glm::vec2>& input_points);
   const std::vector<glm::vec2>& points() const { return points_; }
@@ -82,6 +83,7 @@ class KdTree {
       point_wrappers_[i] = PointWrapper(points_[i], i);
     RecursiveBuild(0, 0, points_.size(), 0, 0);
     nodes_ = new KdNode[build_nodes_.size()];
+    num_nodes_ = build_nodes_.size();
     std::copy(build_nodes_.begin(), build_nodes_.end(), nodes_);
     build_nodes_.clear();
   }
@@ -89,8 +91,7 @@ class KdTree {
                        float* best_distance) const {
     *best = -1;
     *best_distance = std::numeric_limits<float>::max();
-    //IterativeNearestNeighbor(0, query, best, best_distance);
-    RecursiveNearestNeighbor(0, query, 0, best, best_distance);
+     RecursiveNearestNeighbor(0, query, 0, best, best_distance);
   }
 
  protected:
@@ -99,47 +100,12 @@ class KdTree {
                       int depth);
   void RecursiveNearestNeighbor(int id, const glm::vec2& query, int depth,
                                 int* best, float* best_distance) const;
-  inline void IterativeNearestNeighbor(int id, const glm::vec2& query,
-                                       int* best, float* best_distance) const {
-    static int far_nodes[128];
-    static float split_distances[128];
-    int back = 0;
-    far_nodes[back] = id;
-    split_distances[back] = std::numeric_limits<float>::max();
-    while (back >= 0) {
-      assert(back < 128);
-      const KdNode* current = &nodes_[far_nodes[back]];
-      float split_distance = split_distances[back];
-      --back;
-      if (split_distance < *best_distance) {
-        while (current->type != KdNode::kLeaf) {
-          bool is_left = (query[current->split_dimension] <
-                          current->info.internal.split_value);
-          int near = (is_left && current->info.internal.left != -1
-                          ? current->info.internal.left
-                          : current->info.internal.right);
-          int far = (is_left && current->info.internal.left != -1
-                         ? current->info.internal.right
-                         : current->info.internal.left);
-          if (far != -1) {
-            ++back;
-            far_nodes[back] = far;
-            split_distances[back] = fabs(query[current->split_dimension] -
-                                         current->info.internal.split_value);
-          }
-          current = &nodes_[near];
-        }
-        float distance = glm::distance2(query, current->info.leaf.position);
-        if (distance < *best_distance) {
-          *best = current->info.leaf.location;
-          *best_distance = distance;
-        }
-      }
-    }
-  }
+  void IterativeNearestNeighbor(int id, const glm::vec2& query, int* best,
+                                float* best_distance) const;
 
   std::vector<glm::vec2> points_;
   KdNode* nodes_;
+  int num_nodes_;
   std::vector<PointWrapper> point_wrappers_;
   std::vector<KdNode> build_nodes_;
   int max_depth_;

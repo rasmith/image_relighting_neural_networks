@@ -37,26 +37,12 @@ void print_vector(const std::vector<T>& centers) {
   std::cout << "\n";
 }
 
-inline void nearest_neighbor(const std::vector<glm::vec2>& values,
-                             const glm::vec2& query, float* best_distance,
-                             int* best) {
-  *best = -1;
-  *best_distance = std::numeric_limits<float>::max();
-  for (int i = 0; i < values.size(); ++i) {
-    float distance = glm::distance2(values[i], query);
-    if (distance < *best_distance) {
-      *best = i;
-      *best_distance = distance;
-    }
-  }
-}
-
 void init_centers(int num_threads, int num_centers, int width, int height,
                   std::vector<glm::vec2>& centers) {
   centers.clear();
   int num_pixels = width * height;
   int gap = num_pixels / num_centers;
-  for (int i = 0; i < num_pixels; i += gap) {
+  for (int i = 0; i < num_pixels && centers.size() < num_centers; i += gap) {
     int x = i % width;
     int y = i / width;
     glm::vec2 pixel(x, y);
@@ -66,7 +52,6 @@ void init_centers(int num_threads, int num_centers, int width, int height,
 
 void assign_labels_thread(int tid, int num_threads, int width, int height,
                           const kdtree::KdTree& tree,
-                          const std::vector<glm::vec2>& centers,
                           std::vector<int>& labels) {
   int num_pixels = width * height;
   int block_size = num_pixels / num_threads;
@@ -79,33 +64,20 @@ void assign_labels_thread(int tid, int num_threads, int width, int height,
     glm::vec2 pixel(x, y);
     int best = -1;
     float best_distance = std::numeric_limits<float>::max();
-#if 0 
-    nearest_neighbor(centers, pixel, &best_distance, &best);
-#else
     tree.NearestNeighbor(pixel, &best, &best_distance);
-#endif
     distances[j - t_start] = best_distance;
     labels[j] = best;
-    if(!(best >= 0  && best < centers.size()))  {
-      std::cout << "best =  " << best << " best_distance = " << best_distance
-        << " num_centers = " << centers.size() << "\n";
-
-      exit(0);
-    }
   }
 }
 
 void assign_labels_threaded(int num_threads, int width, int height,
                             const kdtree::KdTree& tree,
-                            const std::vector<glm::vec2>& centers,
                             std::vector<int>& labels) {
   std::thread threads[num_threads];
   for (int i = 0; i < num_threads; ++i) {
     threads[i] = std::thread(
-        [&num_threads, &width, &height, &tree, &centers,
-         &labels](int tid) -> void {
-          assign_labels_thread(tid, num_threads, width, height, tree, centers,
-                               labels);
+        [&num_threads, &width, &height, &tree, &labels](int tid) -> void {
+          assign_labels_thread(tid, num_threads, width, height, tree, labels);
         },
         i);
   }
@@ -127,7 +99,6 @@ void update_centers_thread(int tid, int num_threads, int width, int height,
     int x = j % width;
     int y = j / width;
     glm::vec2 pixel(x, y);
-    assert(labels[j] >= 0 && labels[j] < centers.size());
     ++counts[labels[j]];
     centers[labels[j]] += pixel;
   }
@@ -164,38 +135,6 @@ void update_centers_threaded(int num_threads, int width, int height,
   for (int i = 0; i < centers.size(); ++i) centers[i] /= counts[i];
 }
 
-void assign_labels(int width, int height, const std::vector<glm::vec2>& centers,
-                   std::vector<int>& labels, std::vector<float>& distances) {
-  std::fill(distances.begin(), distances.end(),
-            std::numeric_limits<float>::max());
-  for (int x = 0; x < width; ++x) {
-    for (int y = 0; y < height; ++y) {
-      glm::vec2 pixel(x, y);
-      int pixel_index = x + y * width;
-      int best = -1;
-      float best_distance = std::numeric_limits<float>::max();
-      nearest_neighbor(centers, pixel, &best_distance, &best);
-      distances[pixel_index] = best_distance;
-      labels[pixel_index] = best;
-    }
-  }
-}
-
-void update_centers(int width, int height, const std::vector<int>& labels,
-                    std::vector<glm::vec2>& centers) {
-  std::fill(centers.begin(), centers.end(), glm::vec2(0.0f, 0.0f));
-  std::vector<int> counts(centers.size(), 0);
-  for (int x = 0; x < width; ++x) {
-    for (int y = 0; y < height; ++y) {
-      glm::vec2 pixel(x, y);
-      int pixel_index = x + y * width;
-      centers[labels[pixel_index]] += pixel;
-      ++counts[labels[pixel_index]];
-    }
-  }
-  for (int i = 0; i < centers.size(); ++i) centers[i] /= counts[i];
-}
-
 float compute_difference(const std::vector<glm::vec2>& centers1,
                          const std::vector<glm::vec2>& centers2) {
   float diff = 0;
@@ -206,23 +145,12 @@ float compute_difference(const std::vector<glm::vec2>& centers1,
 
 void kmeans(int width, int height, std::vector<glm::vec2>& centers,
             std::vector<int>& labels) {
-  // std::random_device rd;
-  // std::mt19937 gen(rd());
-  // std::uniform_real_distribution<> x_distribution(0, width);
-  // std::uniform_real_distribution<> y_distribution(0, height);
-
   int num_threads = 8;
   labels.resize(width * height);
   auto start = std::chrono::high_resolution_clock::now();
   init_centers(num_threads, centers.size(), width, height, centers);
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = end - start;
-  // std::cout << "init:" << elapsed.count() << "\n";
-
-  // std::generate(centers.begin(), centers.end(),
-  //[&x_distribution, &y_distribution, &gen](void) -> glm::vec2 {
-  // return glm::vec2(x_distribution(gen), y_distribution(gen));
-  //});
 
   std::vector<glm::vec2> old_centers(centers.size());
   float diff = std::numeric_limits<float>::max();
@@ -235,12 +163,12 @@ void kmeans(int width, int height, std::vector<glm::vec2>& centers,
     tree.Build();
     // std::cout << "Assign labels.\n";
     // assign_labels(width, height, centers, labels, distances);
-    assign_labels_threaded(num_threads, width, height, tree, centers, labels);
+    assign_labels_threaded(num_threads, width, height, tree, labels);
     // std::cout << "Update centers.\n";
     // update_centers(width, height, labels, centers);
     update_centers_threaded(num_threads, width, height, labels, centers);
     diff = compute_difference(old_centers, centers);
-    std::cout << "[" << iteration << "] diff = " << diff << "\n";
+    // std::cout << "[" << iteration << "] diff = " << diff << "\n";
     ++iteration;
   }
 }
@@ -259,7 +187,6 @@ void GenerateColorRamp(int num_centers, std::vector<image::Pixel>& colors) {
                              static_cast<uint8_t>(255.0f * rgb[1]),
                              static_cast<uint8_t>(255.0f * rgb[2]));
     h += step;
-    std::cout << "color[" << i << "]=" << colors[i] << "\n";
   }
 }
 
@@ -271,12 +198,6 @@ void WriteKmeansImage(const std::string& filename, int width, int height,
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       int l = labels[y * width + x];
-      if (!(l >= 0 && l < num_centers)) {
-        std::cout << "l = " << l << " num_centers = " << num_centers << "\n";
-        exit(0);
-      }
-      assert(l >= 0 && l < num_centers);
-
       im(x, y) = ramp_look_up_table[l];
     }
   }
@@ -295,25 +216,20 @@ int main(int argc, char** argv) {
   int height = 480;
   std::vector<glm::vec2> centers(num_centers);
   std::vector<int> labels;
-  // for (int i = 2; i <= 12000; i*=2) {
-  num_centers = 8192;
-  centers.resize(num_centers);
-  auto start = std::chrono::high_resolution_clock::now();
-  kmeans(width, height, centers, labels);
-  std::chrono::duration<double> elapsed =
-      std::chrono::high_resolution_clock::now() - start;
-  ++iteration;
-  assert(labels.size() == width * height);
-  for (int i = 0; i < labels.size(); ++i)  {
-      int l = labels[i];
-      assert(l >= 0 && l < num_centers);
+  for (int i = 1; i < 16; ++i) {
+    num_centers = 0x1 << i;
+    centers.resize(num_centers);
+    auto start = std::chrono::high_resolution_clock::now();
+    kmeans(width, height, centers, labels);
+    std::chrono::duration<double> elapsed =
+        std::chrono::high_resolution_clock::now() - start;
+    ++iteration;
+    timings.push_back(elapsed.count());
+    std::cout << iteration << " " << num_centers << " " << elapsed.count()
+              << "\n";
+    WriteKmeansImage("ppm/kmeans" + std::to_string(iteration) + ".ppm", width,
+                     height, num_centers, labels);
   }
-  timings.push_back(elapsed.count());
-  std::cout << iteration << " " << num_centers << " " << elapsed.count()
-            << "\n";
-  WriteKmeansImage("ppm/kmeans" + std::to_string(iteration) + ".ppm", width,
-                   height, num_centers, labels);
-  //}
 
   return 0;
 }

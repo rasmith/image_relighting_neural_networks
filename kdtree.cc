@@ -17,7 +17,8 @@ std::ostream& operator<<(std::ostream& out, const glm::vec2& p) {
 std::ostream& operator<<(std::ostream& out, const KdNode& node) {
   if (node.type == KdNode::kInternal) {
     out << "[I L:" << node.info.internal.left
-        << " R:" << node.info.internal.right << " D:" << (int)node.split_dimension
+        << " R:" << node.info.internal.right
+        << " D:" << (int)node.split_dimension
         << " V:" << node.info.internal.split_value << "]";
   } else {
     out << "[L I:" << node.info.leaf.location
@@ -29,9 +30,7 @@ std::ostream& operator<<(std::ostream& out, const KdNode& node) {
 void KdTree::AssignPoints(const std::vector<glm::vec2>& input_points) {
   points_.resize(input_points.size());
   std::copy(input_points.begin(), input_points.end(), points_.begin());
-
 }
-
 
 void KdTree::RecursiveNearestNeighbor(int id, const glm::vec2& query, int depth,
                                       int* best, float* best_distance) const {
@@ -71,15 +70,10 @@ void KdTree::RecursiveBuild(int node_index, int first, int last,
                             unsigned char dim, int depth) {
   KdNode node;
 
-  // std::cout << "RecursiveBuild: " << depth <<  " dim = " << dim <<"\n";
-  // for (int i = first; i < last; ++i) {
-  // std::cout << points_[i] << "\n";
-  //}
-
   if (last - first == 1) {
     node.type = KdNode::kLeaf;
-    //node.info.leaf.position = points_[first];
-    //node.info.leaf.location = first;
+    // node.info.leaf.position = points_[first];
+    // node.info.leaf.location = first;
     node.info.leaf.position = point_wrappers_[first].position;
     node.info.leaf.location = point_wrappers_[first].location;
   } else {

@@ -72,16 +72,11 @@ void KdTree::RecursiveBuild(int node_index, int first, int last,
 
   if (last - first == 1) {
     node.type = KdNode::kLeaf;
-    // node.info.leaf.position = points_[first];
-    // node.info.leaf.location = first;
     node.info.leaf.position = point_wrappers_[first].position;
     node.info.leaf.location = point_wrappers_[first].location;
   } else {
     int median_index = first + (last - first - 1) / 2;
     PointWrapper median_point = SelectMedian(first, last, dim);
-    // std::cout << "first = " << first << " last = " << last <<
-    //" median_index = " << median_index << "\n";
-    // std::cout << "median = " << median_point << "\n";
     node.type = KdNode::kInternal;
     node.split_dimension = dim;
     node.info.internal.split_value = median_point[dim];

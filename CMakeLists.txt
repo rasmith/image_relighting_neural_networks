@@ -26,7 +26,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # Compile and link kmeans_test executable.
-add_executable(kmeans_test kmeans_test.cc kdtree.cc image.cc)
+add_executable(kmeans_test kmeans_test.cc  kmeans2d.cc kdtree.cc image.cc)
 target_link_libraries (kmeans_test ${CMAKE_THREAD_LIBS_INIT})
 
 # Compile and link kdtree_test executable.
@@ -36,3 +36,16 @@ target_link_libraries (kdtree_test ${CMAKE_THREAD_LIBS_INIT})
 # Compile and link quickselect_test executable.
 add_executable(quickselect_test quickselect_test.cc)
 target_link_libraries (quickselect_test ${CMAKE_THREAD_LIBS_INIT})
+
+find_package(SWIG REQUIRED)
+include(${SWIG_USE_FILE})
+
+find_package(PythonLibs)
+include_directories(${PYTHON_INCLUDE_PATH})
+
+set_source_files_properties(kmeans2d.i PROPERTIES CPLUSPLUS ON)
+set_source_files_properties(kmeans2d.i PROPERTIES SWIG_FLAGS 
+                            "-I${CMAKE_CURRENT_SOURCE_DIR}/include")
+swig_add_module(kmeans2d python kmeans2d.i kmeans2d.cc kdtree.cc)
+swig_link_libraries(kmeans2d ${PYTHON_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+

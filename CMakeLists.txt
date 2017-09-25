@@ -23,7 +23,11 @@ set(CMAKE_CXX_FLAGS
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 											${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
+set(PYTHON_LIBRARY "/usr/lib64/libpython3.6m.so")
+set(PYTHON_INCLUDE_DIR "/usr/include/python3.6m")
+
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/glm")
 
 # Compile and link kmeans_test executable.
 add_executable(kmeans_test kmeans_test.cc  kmeans2d.cc kdtree.cc image.cc)

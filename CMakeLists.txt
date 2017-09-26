@@ -23,8 +23,10 @@ set(CMAKE_CXX_FLAGS
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 											${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
-set(PYTHON_LIBRARY "/usr/lib64/libpython3.6m.so")
-set(PYTHON_INCLUDE_DIR "/usr/include/python3.6m")
+#set(PYTHON_LIBRARY "/usr/lib64/libpython3.6m.so")
+#set(PYTHON_INCLUDE_DIR "/usr/include/python3.6m")
+set(PYTHON_LIBRARY "/Users/randallsmith/anaconda/lib/libpython3.6m.dylib")
+set(PYTHON_INCLUDE_DIR "/Users/randallsmith/anaconda/include/python3.6m")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/glm")

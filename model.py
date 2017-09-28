@@ -30,10 +30,10 @@ class ModelMaker:
                   optimizer='adam',
                   metrics=['accuracy'])
 
-  def train(self):
-    model_checkpoint = ModelCheckpoint(checkpoint_file, monitor='loss')
+  def train(self, train_data, train_labels, batch_size):
+    model_checkpoint = ModelCheckpoint(self.checkpoint_file, monitor='loss')
     model.fit(train_data, train_labels,
-      batch_size=32, epochs=100, callbacks=[model_checkpoint], verbose=1)
+      batch_size=batch_size, callbacks=[model_checkpoint], verbose=1)
 
   def test(self):
     model.load_weights(checkpoint_file)

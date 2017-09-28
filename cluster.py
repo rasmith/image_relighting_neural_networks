@@ -1,51 +1,50 @@
 import numpy as np
 import time
 import colorsys
+from itertools import takewhile, count
 
 import kmeans2d
 
-class PixelCluster:
-  def __init__(self, cluster_id, center, pixels):
-    self.cluster_id = cluster_id
-    self.center = center
-    self.pixels = pixels
-
 class PixelClusters:
-  def __init__(self, max_clusters, extents):
+  def __init__(self, num_levels, max_clusters, extents, timed = False):
     self.max_clusters = max_clusters
     self.levels = []
     self.extents = extents
+    self.counts = list(takewhile(lambda x : x > 0, \
+        map(lambda i: int(max_clusters/(4**i)), count(0, 1))))[0:num_levels]
+    self.max_iteration = len(self.counts)
+    self.iteration = 0
+    self.timed = timed
 
-  def cluster(self):
+  def __iter__(self):
+    return self
+
+  def __reversed__(self):
+    self.counts.reverse()
+    return self
+
+  def __next__(self):
+    return self.next()
+
+  def next(self):
+    if self.iteration >= self.max_iteration:
+      raise StopIteration
     width, height = self.extents
-    pixels = [[x, y] for x in range(0, width) \
-        for y in range(0, height)]
-    pixels = np.array(pixels, dtype= float)
-    num_clusters = self.max_clusters
-    while num_clusters > 0:
+    num_clusters = self.counts[self.iteration]
+    cxx_centroids = kmeans2d.VectorFloat(2 * num_clusters)
+    cxx_labels = kmeans2d.VectorInt(width * height)
+    if self.timed:
       start = time.time()
-      print("level = %d, num_clusters = %d" % (len(self.levels), num_clusters))
-      cxx_centroids = kmeans2d.VectorFloat(2 * num_clusters)
-      cxx_labels = kmeans2d.VectorInt(width * height)
-      kmeans2d.kmeans2d(width, height, cxx_centroids, cxx_labels)
-      centroids = [[cxx_centroids[i], cxx_centroids[i+1]] \
-          for i in range(0, num_clusters)]
-      labels = [cxx_labels[i] for i in range(0, width * height)]
+    kmeans2d.kmeans2d(width, height, cxx_centroids, cxx_labels)
+    if self.timed:
       end = time.time()
-
-      # # plot
-      # palette = generate_palette(num_clusters)
-      # image = render_clusters(width, height, labels, palette)
-      # image = np.array(image)
-      # image = image.reshape((width, height, 3))
-      # plt.figure()
-      # image_plot = plt.imshow(image)
-      # plt.show(image_plot)
-
-      self.levels.append([[centroids], [labels]])
       elapsed = float(int((end - start)*100))/100.0
-      print("elapsed = %s" % str(elapsed))
-      num_clusters = int(num_clusters / 4)
+      print("iteration = %d elapsed = %s" % (self.iteration, str(elapsed)))
+    centroids = [[cxx_centroids[i], cxx_centroids[i+1]] \
+        for i in range(0, num_clusters)]
+    labels = [cxx_labels[i] for i in range(0, width * height)]
+    self.iteration += 1
+    return (centroids, labels)
 
 def pixels_required(num_weights, num_images):
   return 25 * num_images / num_images
@@ -74,24 +73,3 @@ def render_clusters(width, height, labels, palette):
   image = [palette[labels[width * y + x]]  \
       for x in range(0, width) for y in range(0, height)]
   return image
-
-if __name__ == "__main__":
-  import matplotlib.pyplot as plt
-  max_num_clusters =  int(maximum_clusters(640, 480, 10, 1024))
-  print("maximum_clusters = %d" % max_num_clusters)
-  width = 640
-  height = 480
-  channels = 3
-  pc = PixelClusters(max_num_clusters, [width, height])
-  pc.cluster()
-
-  for i in range(0, len(pc.levels)):
-    centers, labels = pc.levels[i]
-    palette = generate_palette(len(centers[0]))
-    print("num_centers = %d" % len(centers[0]))
-    image = render_clusters(width, height, labels[0], palette)
-    image = np.array(image)
-    image = image.reshape((width, height, channels))
-    plt.figure()
-    image_plot = plt.imshow(image)
-    plt.show(image_plot)

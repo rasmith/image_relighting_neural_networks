@@ -30,6 +30,9 @@ class ModelMaker:
                   optimizer='adam',
                   metrics=['accuracy'])
 
+  def reset(self):
+    self.model.reset_states()
+
   def train(self, train_data, train_labels, batch_size):
     model_checkpoint = ModelCheckpoint(self.checkpoint_file, monitor='loss')
     model.fit(train_data, train_labels,

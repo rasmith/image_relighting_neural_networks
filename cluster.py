@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import colorsys
+import math
 from itertools import takewhile, count
 
 import kmeans2d
@@ -11,7 +12,7 @@ class PixelClusters:
     self.levels = []
     self.extents = extents
     self.counts = list(takewhile(lambda x : x > 0, \
-        map(lambda i: int(max_clusters/(4**i)), count(0, 1))))[0:num_levels]
+        map(lambda i: int(max_clusters/(4**i)), count(0, 1))))
     self.max_iteration = len(self.counts)
     self.iteration = 0
     self.timed = timed

@@ -35,7 +35,7 @@ class ModelMaker:
 
   def train(self, train_data, train_labels, batch_size):
     model_checkpoint = ModelCheckpoint(self.checkpoint_file, monitor='loss')
-    model.fit(train_data, train_labels,
+    self.model.fit(train_data, train_labels,
       batch_size=batch_size, callbacks=[model_checkpoint], verbose=1)
 
   def test(self):

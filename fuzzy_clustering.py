@@ -11,42 +11,45 @@ from multiprocessing.dummy import Pool as ThreadPool
 from cluster import *
 from model import *
 
-class PartitionData:
-  def __init__(self, images, num_clusters, cluster_to_pixels, pixel_counts):
+def train_model(args):
+    (level, cluster, train_labels, train_data, batch_size) = args
+    model = ModelMaker(light_dim, num_hidden_nodes)
+    model.set_checkpoint_file('model_'+str(level)+'-'+str(cluster)+'.hdf5')
+    model.compile()
+    model.train(train_data, train_labels, batch_size)
+    
+class ModelDataGenerator:
+  def __init__(self, level, images, num_clusters, cluster_to_pixels, pixel_counts):
     self.images = images
     self.num_clusters = num_clusters
     self.cluster_to_pixels = cluster_to_pixels
     self.pixel_counts = pixel_counts
-    self.iteration = 0
-    self.max_iteration = len(images) * num_clusters;
-    self.cluster = 0;
+    self.cluster = -1;
+    self.level = level;
 
   def __iter__(self):
-    return self
-
-  def __reversed__(self):
-    self.counts.reverse()
     return self
 
   def __next__(self):
     return self.next()
 
   def next(self):
-    if self.iteration >= self.max_iteration:
+    if self.cluster >= self.num_clusters:
       raise StopIteration
+    self.cluster = self.cluster + 1
+    tuples = [tuple(xy) for xy in self.cluster_to_pixels[self.cluster]]
+    batch_size = self.pixel_counts[self.cluster]
+    train_labels = []
+    train_data = []
     for i in range(0, len(self.images)):
       image = self.images[i]
-      tuples = [tuple(xy) for xy in self.cluster_to_pixels[self.cluster]]
-      batch_size = self.pixel_counts[self.cluster]
-      train_labels = []
       for xy in tuples:
           rgb = image[xy]
           train_labels.append([rgb[0], rgb[1], rgb[2]])
-      train_data = []
       for xy in tuples:
           avg = image_avg[xy]
           train_data.append([xy[0], xy[1], i, avg[0], avg[1], avg[2]])
-    return (train_labels, train_data, batch_size)
+    return (self.level, self.cluster, train_labels, train_data, batch_size)
 
 class GatherLabels(threading.Thread):
   def __init__(self, tid, num_threads, image, tuples, labels):
@@ -211,6 +214,7 @@ level = 0
 pixel_clusters = PixelClusters(num_levels, max_clusters, extents, timed)
 model = ModelMaker(light_dim, num_hidden_nodes)
 model.compile()
+
 for centers, labels in reversed(pixel_clusters):
   # get number of clusters
   num_clusters = len(centers)
@@ -228,35 +232,10 @@ for centers, labels in reversed(pixel_clusters):
   # get pixel counts 
   pixel_counts = [len(cluster_to_pixels[k]) for k in cluster_to_pixels.keys()]
 
-  model.reset()
-
   pool = ThreadPool(4);
-  results = pool.map(train_model, model_data);
-
-  # train neural networks at each level
-  for i in range(0, len(images)):
-    image = images[i]
-    start = time.time()
-    for c in range(0, num_clusters):
-      tuples = [tuple(xy) for xy in cluster_to_pixels[c]]
-
-      # print("Train neural network at cluster %d at level %d on %d x %d pixels" \
-          # % (c, level, pixel_counts[c], num_images))
-      batch_size = pixel_counts[c]
-      train_labels = []
-      for xy in tuples:
-          rgb = image[xy]
-          train_labels.append([rgb[0], rgb[1], rgb[2]])
-
-      train_data = []
-      for xy in tuples:
-          avg = image_avg[xy]
-          train_data.append([xy[0], xy[1], i, avg[0], avg[1], avg[2]])
-
-      queue.append([train_data, train_labels, batch_size])
-      #model.train(train_data, train_labels, batch_size)
-    end = time.time()
-    print ("time = %s" % (str(end - start)))
+  model_data_generator = ModelDataGenerator(level, images, num_clusters, \
+      cluster_to_pixels, pixel_counts)
+  results = pool.map(train_model, model_data_generator);
 
   level +=1
 

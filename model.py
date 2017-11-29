@@ -25,6 +25,9 @@ class ModelMaker:
     # output labels r, g, b
     self.model.add(Dense(self.color_dim))
 
+  def set_checkpoint_file(file_name):
+    self.checkpoint_file = file_name
+
   def compile(self):
     self.model.compile(loss='mean_squared_error',
                   optimizer='adam',

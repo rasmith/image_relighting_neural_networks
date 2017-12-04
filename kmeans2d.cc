@@ -1,5 +1,8 @@
+#include "image.h"
 #include "kdtree.h"
+#include "kmeans_training_data.h"
 
+#include <dirent.h>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -50,16 +53,14 @@ void assign_labels_thread(int tid, int num_threads, int width, int height,
 void assign_labels_threaded(int num_threads, int width, int height,
                             const kdtree::KdTree& tree,
                             std::vector<int>& labels) {
-  //std::thread threads[num_threads];
+  // std::thread threads[num_threads];
   std::vector<std::thread> threads(num_threads);
   for (int i = 0; i < num_threads; ++i) {
-    threads[i] =
-        std::thread([&num_threads, &width, &height, &tree, &labels ](int tid)
-                                                                        ->void {
-                      assign_labels_thread(tid, num_threads, width, height,
-                                           tree, labels);
-                    },
-                    i);
+    threads[i] = std::thread(
+        [&num_threads, &width, &height, &tree, &labels](int tid) -> void {
+          assign_labels_thread(tid, num_threads, width, height, tree, labels);
+        },
+        i);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
 }
@@ -87,7 +88,7 @@ void update_centers_thread(int tid, int num_threads, int width, int height,
 void update_centers_threaded(int num_threads, int width, int height,
                              const std::vector<int>& labels,
                              std::vector<glm::vec2>& centers) {
-  //std::thread threads[num_threads];
+  // std::thread threads[num_threads];
   std::vector<std::thread> threads(num_threads);
   std::vector<std::vector<glm::vec2>> center_arrays(num_threads);
   std::vector<std::vector<int>> counts_arrays(num_threads);
@@ -96,20 +97,13 @@ void update_centers_threaded(int num_threads, int width, int height,
   for (int i = 0; i < num_threads; ++i) {
     std::vector<glm::vec2>& center_array = center_arrays[i];
     std::vector<int>& counts_array = counts_arrays[i];
-    threads[i] =
-        std::thread([
-                      &num_threads,
-                      &width,
-                      &height,
-                      &labels,
-                      &center_array,
-                      &counts_array
-                    ](int tid)
-                         ->void {
-                      update_centers_thread(tid, num_threads, width, height,
-                                            labels, center_array, counts_array);
-                    },
-                    i);
+    threads[i] = std::thread(
+        [&num_threads, &width, &height, &labels, &center_array,
+         &counts_array](int tid) -> void {
+          update_centers_thread(tid, num_threads, width, height, labels,
+                                center_array, counts_array);
+        },
+        i);
   }
   std::fill(centers.begin(), centers.end(), glm::vec2(0.0f));
   for (int i = 0; i < num_threads; ++i) threads[i].join();
@@ -157,6 +151,37 @@ void kmeans2d(int width, int height, std::vector<float>& centers,
               std::vector<int>& labels) {
   std::vector<glm::vec2> glm_centers(centers.size() / 2);
   kmeans(width, height, glm_centers, labels);
+  for (int i = 0; i < glm_centers.size(); ++i) {
+    centers[2 * i] = glm_centers[i][0];
+    centers[2 * i + 1] = glm_centers[i][1];
+  }
+}
+
+void kmeans_training_data(const std::string& directory, int num_centers,
+                          int* width, int* height, std::vector<float>& centers,
+                          std::vector<int> labels, std::vector<int> batch_sizes,
+                          float** train_data, int* train_data_dim1,
+                          int* train_data_dim2, float** train_labels,
+                          int* train_labels_dim1, int* train_labels_dim2) {
+  int width_out = -1, height_out = -1;
+  std::vector<glm::vec2> glm_centers(num_centers);
+	std::cout << "kmeans_training_data\n";
+//void KmeansDataAndLabels(const std::string& directory, int num_centers,
+                         //int& width, int& height, float** training_data,
+                         //int* training_data_dim1, int* training_data_dim2,
+                         //float** training_labels, int* training_labels_dim1,
+                         //int* training_labels_dim2,
+                         //std::vector<glm::vec2>& centers,
+                         //std::vector<int>& labels,
+                         //std::vector<int>& batch_sizes);
+  KmeansDataAndLabels(directory, num_centers, width_out, height_out, train_data,
+                      train_data_dim1, train_data_dim2, train_labels,
+                      train_labels_dim1, train_labels_dim2, glm_centers, labels,
+                      batch_sizes);
+	std::cout << "Set output and finish.\n";
+  *width = width_out;
+  *height = height_out;
+  centers.resize(2 * num_centers);
   for (int i = 0; i < glm_centers.size(); ++i) {
     centers[2 * i] = glm_centers[i][0];
     centers[2 * i + 1] = glm_centers[i][1];

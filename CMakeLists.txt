@@ -20,7 +20,7 @@ set(CMAKE_CXX_FLAGS
   #"${CMAKE_CXX_FLAGS} -std=c++11 -g ")
 
 # Set the module path (mainly for FindXXX.cmake files)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
+set(CMAKE_MODULE_PATH ${CMAKE_PATH}
 											${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
 #set(PYTHON_LIBRARY "/usr/lib64/libpython3.6m.so")
@@ -28,11 +28,27 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 set(PYTHON_LIBRARY "/Users/randallsmith/anaconda/lib/libpython3.6m.dylib")
 set(PYTHON_INCLUDE_DIR "/Users/randallsmith/anaconda/include/python3.6m")
 
+find_package(NumPy REQUIRED)
+include_directories(${NUMPY_INCLUDE_DIRS})
+message(STATUS "NUMPY_INCLUDE_DIRS = ${NUMPY_INCLUDE_DIRS}")
+
+set(NUMPY_CORE_INCLUDE
+"/Users/randallsmith/anaconda/lib/python3.6/site-packages/numpy/core/include")
+set(NUMPY_CORE_LIBS
+"/Users/randallsmith/anaconda/lib/python3.6/site-packages/numpy/core/")
+
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
+#include_directories("${NUMPY_CORE_INCLUDE}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/glm")
 
 # Compile and link kmeans_test executable.
-add_executable(kmeans_test kmeans_test.cc  kmeans2d.cc kdtree.cc image.cc)
+add_executable(kmeans_test 
+               kmeans_test.cc  
+               kmeans2d.cc
+               kdtree.cc
+               image.cc 
+               kmeans_training_data.cc 
+               lodepng.cc)
 target_link_libraries (kmeans_test ${CMAKE_THREAD_LIBS_INIT})
 
 # Compile and link kdtree_test executable.
@@ -51,7 +67,18 @@ include_directories(${PYTHON_INCLUDE_PATH})
 
 set_source_files_properties(kmeans2d.i PROPERTIES CPLUSPLUS ON)
 set_source_files_properties(kmeans2d.i PROPERTIES SWIG_FLAGS 
-                            "-I${CMAKE_CURRENT_SOURCE_DIR}/include")
-swig_add_module(kmeans2d python kmeans2d.i kmeans2d.cc kdtree.cc)
-swig_link_libraries(kmeans2d ${PYTHON_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+"-I${CMAKE_CURRENT_SOURCE_DIR}/include -I${NUMPY_CORE_INCLUDE}"
+)
+
+message(STATUS "PYTHON_LIBRARIES = ${PYTHON_LIBRARIES}")
+message(STATUS "SWIG_DIR = ${SWIG_DIR}")
+
+swig_add_module(kmeans2d python kmeans2d.i kmeans2d.cc kdtree.cc
+    image.cc kmeans_training_data.cc lodepng.cc)
+swig_link_libraries(kmeans2d 
+	${PYTHON_LIBRARIES} 
+	${CMAKE_THREAD_LIBS_INIT}
+)
+#target_link_libraries(_kmeans2d 
+	#"${NUMPY_CORE_LIBS}/multiarray.cpython-36m-darwin.so")
 

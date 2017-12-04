@@ -9,6 +9,12 @@ Image::Image(const Image& im) : width_(im.width_), height_(im.height_) {
   std::copy(im.pixels_.begin(), im.pixels_.end(), pixels_.begin());
 }
 
+void Image::SetDimensions(uint32_t width, uint32_t height) {
+  width_ = width;
+  height_ = height;
+  pixels_.resize(width * height);
+}
+
 void Image::ToPpm(std::string& result) const {
   std::string output = "P3\n";
   output += std::to_string(width_) + " " + std::to_string(height_) + "\n";

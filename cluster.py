@@ -7,10 +7,10 @@ from itertools import takewhile, count
 import kmeans2d
 
 class PixelClusters:
-  def __init__(self, num_levels, max_clusters, extents, timed = False):
+  def __init__(self, directory, num_levels, max_clusters, timed = False):
+    self.directory = directory
     self.max_clusters = max_clusters
     self.levels = []
-    self.extents = extents
     self.counts = list(takewhile(lambda x : x > 0, \
         map(lambda i: int(max_clusters/(4**i)), count(0, 1))))
     self.max_iteration = len(self.counts)
@@ -30,13 +30,18 @@ class PixelClusters:
   def next(self):
     if self.iteration >= self.max_iteration:
       raise StopIteration
-    width, height = self.extents
-    num_clusters = self.counts[self.iteration]
-    cxx_centroids = kmeans2d.VectorFloat(2 * num_clusters)
-    cxx_labels = kmeans2d.VectorInt(width * height)
+    width = int(-1)
+    height = int(-1)
+    num_centers = self.counts[self.iteration]
+    cxx_centroids = kmeans2d.VectorFloat()
+    cxx_labels = kmeans2d.VectorInt()
+    cxx_batch_sizes = kmeans2d.VectorInt()
+    cxx_train_data = kmeans2d.VectorFloat()
+    cxx_train_labels = kmeans2d.VectorFloat()
     if self.timed:
       start = time.time()
-    kmeans2d.kmeans2d(width, height, cxx_centroids, cxx_labels)
+    width, height = kmeans2d.kmeans_training_data(self.directory, num_centers, \
+    cxx_centroids, cxx_labels, cxx_batch_sizes, cxx_train_data, cxx_train_labels)
     if self.timed:
       end = time.time()
       elapsed = float(int((end - start)*100))/100.0
@@ -44,8 +49,16 @@ class PixelClusters:
     centroids = [[cxx_centroids[i], cxx_centroids[i+1]] \
         for i in range(0, num_clusters)]
     labels = [cxx_labels[i] for i in range(0, width * height)]
+    batch_sizes = [cxx_batch_sizes[i] for i in range(0, num_clusters)]
+    train_data = [[cxx_train_data[6*i], cxx_train_data[6*i+1],
+      cxx_train_data[6*i+2], cxx_train_data[6*i+3], cxx_train_data[6*i+4],
+      cxx_train_data[6*i+5]] for i in range(0, num_clusters)]
+    train_data.clear()
+    train_labels = [[cxx_train_labels[3*i], cxx_train_labels[3*i+1],
+      cxx_train_labels[3*i+2]] for i in range(0, num_clusters)]
+    train_labels.clear()
     self.iteration += 1
-    return (centroids, labels)
+    return (centroids, labels, train_data, train_labels, batch_sizes)
 
 def pixels_required(num_weights, num_images):
   return 25 * num_images / num_images

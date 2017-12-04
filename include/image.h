@@ -30,6 +30,7 @@ class Image {
   }
   uint32_t width() const { return width_; }
   uint32_t height() const { return height_; }
+  void SetDimensions(uint32_t width, uint32_t height);
   void ToPpm(std::string& output) const;
 
  private:

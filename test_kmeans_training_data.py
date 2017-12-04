@@ -26,9 +26,9 @@ print ("centroids.size = %d, labels.size = %d, batch_sizes.size = %d\n" \
 centroids = [[cxx_centroids[2*i], cxx_centroids[2*i+1]] for i in range(0,
   int(cxx_centroids.size() / 2))]
 labels = [cxx_labels[i] for i in range(0, cxx_labels.size())]
-batch_sizes = [batch_sizes[i] for i in range(0, cxx_batch_sizes.size())]
+batch_sizes = [cxx_batch_sizes[i] for i in range(0, cxx_batch_sizes.size())]
+print("batch_sizes = %s" % str(batch_sizes))
 
-print("Time to marshall: %f\n" % (end -start))
 print ("centroids.size = %d, labels.size = %d, batch_sizes.size = %d\n" \
     % (len(centroids), len(labels), len(batch_sizes)))
 print ("train_data.size = %s, train_labels.size = %s\n" \

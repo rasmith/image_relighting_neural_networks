@@ -109,7 +109,7 @@ void GetTrainingData(const std::vector<image::Image>& images, int num_centers,
                      int* training_data_dim2, float** training_labels,
                      int* training_labels_dim1, int* training_labels_dim2,
                      std::vector<int>& batch_sizes) {
-	std::cout << "GetTrainingData\n";
+	//std::cout << "GetTrainingData\n";
   const uint32_t coord_dim = 2;
   const uint32_t light_dim = 1;
   const uint32_t pixel_dim = 3;
@@ -120,26 +120,26 @@ void GetTrainingData(const std::vector<image::Image>& images, int num_centers,
   *training_data = new float[data_size * images.size() * width * height];
   *training_data_dim1 = images.size() * width * height;
   *training_data_dim2 = data_size;
-	std::cout << "training_data_dim1 = " << *training_data_dim1 << "\n";
-	std::cout << "training_data_dim2 = " << *training_data_dim2 << "\n";
+	//std::cout << "training_data_dim1 = " << *training_data_dim1 << "\n";
+	//std::cout << "training_data_dim2 = " << *training_data_dim2 << "\n";
   *training_labels = new float[label_size * images.size() * width * height];
   *training_labels_dim1 = images.size() * width * height;
   *training_labels_dim2 = label_size;
-	std::cout << "training_labels_dim1 = " << *training_labels_dim1 << "\n";
-	std::cout << "training_labels_dim2 = " << *training_labels_dim2 << "\n";
+	//std::cout << "training_labels_dim1 = " << *training_labels_dim1 << "\n";
+	//std::cout << "training_labels_dim2 = " << *training_labels_dim2 << "\n";
   std::vector<uint32_t> cluster_sizes(num_centers, 0);
   std::vector<uint32_t> cluster_counts(num_centers, 0);
-	std::cout << "Count pixels\n";
+	//std::cout << "Count pixels\n";
   // Count pixels per cluster.
   for (int i = 0; i < labels.size(); ++i) ++cluster_sizes[labels[i]];
+	batch_sizes.clear();
   std::copy(cluster_sizes.begin(), cluster_sizes.end(),
             std::back_inserter(cluster_counts));
-  batch_sizes.resize(cluster_sizes.size());
-	std::cout << "Copy batch sizes\n";
+	//std::cout << "Copy batch sizes\n";
   // Copy out the batch sizes.
   std::copy(cluster_sizes.begin(), cluster_sizes.end(),
             std::back_inserter(batch_sizes));
-	std::cout << "Convert to total counts\n";
+	//std::cout << "Convert to total counts\n";
   // Convert to total counts.
   for (int i = 1; i < cluster_counts.size(); ++i)
     cluster_counts[i] = cluster_counts[i - 1] + cluster_sizes[i - 1];
@@ -176,7 +176,7 @@ void GetTrainingData(const std::vector<image::Image>& images, int num_centers,
         i);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
-	std::cout << "Done!\n";
+	//std::cout << "Done!\n";
 }
 
 void KmeansDataAndLabels(const std::string& directory, int num_centers,
@@ -194,8 +194,6 @@ void KmeansDataAndLabels(const std::string& directory, int num_centers,
   LoadImages(directory, images);
   width = (images.size() > 0 ? images[0].width() : -1);
   height = (images.size() > 0 ? images[0].height() : -1);
-	//std::cout << "width = " << width << "\n";
-	//std::cout << "height= " << height << "\n";
   if (images.size() < 1) return;
   image::Image average;
   // Compute average.

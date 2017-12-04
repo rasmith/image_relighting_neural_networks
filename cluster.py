@@ -36,27 +36,25 @@ class PixelClusters:
     cxx_centroids = kmeans2d.VectorFloat()
     cxx_labels = kmeans2d.VectorInt()
     cxx_batch_sizes = kmeans2d.VectorInt()
-    cxx_train_data = kmeans2d.VectorFloat()
-    cxx_train_labels = kmeans2d.VectorFloat()
     if self.timed:
       start = time.time()
-    width, height = kmeans2d.kmeans_training_data(self.directory, num_centers, \
-    cxx_centroids, cxx_labels, cxx_batch_sizes, cxx_train_data, cxx_train_labels)
+    width, height, train_data, train_labels = \
+      kmeans2d.kmeans_training_data(self.directory, num_centers, \
+                                    cxx_centroids, cxx_labels, cxx_batch_sizes)
+    print("len(cxx_batch_sizes) = %d\n" % cxx_batch_sizes.size())
+    print("len(cxx_centroids) = %d\n" % cxx_centroids.size())
+    print("len(cxx_labels) = %d\n" % cxx_labels.size())
     if self.timed:
       end = time.time()
       elapsed = float(int((end - start)*100))/100.0
       print("iteration = %d elapsed = %s" % (self.iteration, str(elapsed)))
     centroids = [[cxx_centroids[i], cxx_centroids[i+1]] \
-        for i in range(0, num_clusters)]
-    labels = [cxx_labels[i] for i in range(0, width * height)]
-    batch_sizes = [cxx_batch_sizes[i] for i in range(0, num_clusters)]
-    train_data = [[cxx_train_data[6*i], cxx_train_data[6*i+1],
-      cxx_train_data[6*i+2], cxx_train_data[6*i+3], cxx_train_data[6*i+4],
-      cxx_train_data[6*i+5]] for i in range(0, num_clusters)]
-    train_data.clear()
-    train_labels = [[cxx_train_labels[3*i], cxx_train_labels[3*i+1],
-      cxx_train_labels[3*i+2]] for i in range(0, num_clusters)]
-    train_labels.clear()
+        for i in range(0, num_centers)]
+    cxx_centroids.clear()
+    labels = [cxx_labels[i] for i in range(0, cxx_labels.size())]
+    cxx_labels.clear()
+    batch_sizes = [cxx_batch_sizes[i] for i in range(0, cxx_batch_sizes.size())]
+    cxx_batch_sizes.clear()
     self.iteration += 1
     return (centroids, labels, train_data, train_labels, batch_sizes)
 

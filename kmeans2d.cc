@@ -165,20 +165,12 @@ void kmeans_training_data(const std::string& directory, int num_centers,
                           int* train_labels_dim1, int* train_labels_dim2) {
   int width_out = -1, height_out = -1;
   std::vector<glm::vec2> glm_centers(num_centers);
-	std::cout << "kmeans_training_data\n";
-//void KmeansDataAndLabels(const std::string& directory, int num_centers,
-                         //int& width, int& height, float** training_data,
-                         //int* training_data_dim1, int* training_data_dim2,
-                         //float** training_labels, int* training_labels_dim1,
-                         //int* training_labels_dim2,
-                         //std::vector<glm::vec2>& centers,
-                         //std::vector<int>& labels,
-                         //std::vector<int>& batch_sizes);
+	//std::cout << "kmeans_training_data\n";
   KmeansDataAndLabels(directory, num_centers, width_out, height_out, train_data,
                       train_data_dim1, train_data_dim2, train_labels,
                       train_labels_dim1, train_labels_dim2, glm_centers, labels,
                       batch_sizes);
-	std::cout << "Set output and finish.\n";
+	//std::cout << "Set output and finish.\n";
   *width = width_out;
   *height = height_out;
   centers.resize(2 * num_centers);

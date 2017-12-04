@@ -187,24 +187,24 @@ void KmeansDataAndLabels(const std::string& directory, int num_centers,
                          std::vector<glm::vec2>& centers,
                          std::vector<int>& labels,
                          std::vector<int>& batch_sizes) {
-	std::cout << "KmeansDataAndLabels\n";
+	//std::cout << "KmeansDataAndLabels\n";
   std::vector<image::Image> images;
-	std::cout << "directory = " << directory << "\n";
+	//std::cout << "directory = " << directory << "\n";
   // Load images.
   LoadImages(directory, images);
   width = (images.size() > 0 ? images[0].width() : -1);
   height = (images.size() > 0 ? images[0].height() : -1);
-	std::cout << "width = " << width << "\n";
-	std::cout << "height= " << height << "\n";
+	//std::cout << "width = " << width << "\n";
+	//std::cout << "height= " << height << "\n";
   if (images.size() < 1) return;
   image::Image average;
   // Compute average.
-	std::cout << "ComputeAverageImage\n";
+	//std::cout << "ComputeAverageImage\n";
   ComputeAverageImage(images, average);
   // Run kmeans.
   centers.resize(num_centers);
   labels.resize(width * height);
-	std::cout << "Run kmeans\n";
+	//std::cout << "Run kmeans\n";
   kmeans(width, height, centers, labels);
   // Get labels and data.
   GetTrainingData(images, num_centers, labels, average, training_data,

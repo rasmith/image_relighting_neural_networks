@@ -1,5 +1,7 @@
 #pragma once
 
+#include <limits>
+
 #define GLM_ENABLE_EXPERIMENTAL
 
 #include <glm/glm.hpp>
@@ -29,7 +31,10 @@ struct PointWrapper {
 };
 
 struct KdNode {
-  enum Type { kInternal = 0, kLeaf = 1 };
+  enum Type {
+    kInternal = 0,
+    kLeaf = 1
+  };
 
   KdNode() : type(kInternal), split_dimension(0) {}
 
@@ -87,22 +92,25 @@ class KdTree {
     std::copy(build_nodes_.begin(), build_nodes_.end(), nodes_);
     build_nodes_.clear();
   }
-  void NearestNeighbor(const glm::vec2 query, int* best,
+  void NearestNeighbor(const glm::vec2 query, float min_distance, int* best,
                        float* best_distance) const {
     *best = -1;
     *best_distance = std::numeric_limits<float>::max();
-     RecursiveNearestNeighbor(0, query, 0, best, best_distance);
+    RecursiveNearestNeighbor(0, query, min_distance, 0, best, best_distance);
+  }
+  void NearestNeighbor(const glm::vec2 query, int* best,
+                       float* best_distance) const {
+    NearestNeighbor(query, -std::numeric_limits<float>::max(), best,
+                    best_distance);
   }
 
  protected:
   PointWrapper SelectMedian(int first, int last, unsigned char dim);
   void RecursiveBuild(int id, int first, int last, unsigned char dim,
                       int depth);
-  void RecursiveNearestNeighbor(int id, const glm::vec2& query, int depth,
-                                int* best, float* best_distance) const;
-  void IterativeNearestNeighbor(int id, const glm::vec2& query, int* best,
+  void RecursiveNearestNeighbor(int id, const glm::vec2& query,
+                                float min_distance, int depth, int* best,
                                 float* best_distance) const;
-
   std::vector<glm::vec2> points_;
   KdNode* nodes_;
   int num_nodes_;

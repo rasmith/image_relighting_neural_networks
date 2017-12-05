@@ -56,11 +56,13 @@ void assign_labels_threaded(int num_threads, int width, int height,
   // std::thread threads[num_threads];
   std::vector<std::thread> threads(num_threads);
   for (int i = 0; i < num_threads; ++i) {
-    threads[i] = std::thread(
-        [&num_threads, &width, &height, &tree, &labels](int tid) -> void {
-          assign_labels_thread(tid, num_threads, width, height, tree, labels);
-        },
-        i);
+    threads[i] =
+        std::thread([&num_threads, &width, &height, &tree, &labels ](int tid)
+                                                                        ->void {
+                      assign_labels_thread(tid, num_threads, width, height,
+                                           tree, labels);
+                    },
+                    i);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
 }
@@ -97,13 +99,20 @@ void update_centers_threaded(int num_threads, int width, int height,
   for (int i = 0; i < num_threads; ++i) {
     std::vector<glm::vec2>& center_array = center_arrays[i];
     std::vector<int>& counts_array = counts_arrays[i];
-    threads[i] = std::thread(
-        [&num_threads, &width, &height, &labels, &center_array,
-         &counts_array](int tid) -> void {
-          update_centers_thread(tid, num_threads, width, height, labels,
-                                center_array, counts_array);
-        },
-        i);
+    threads[i] =
+        std::thread([
+                      &num_threads,
+                      &width,
+                      &height,
+                      &labels,
+                      &center_array,
+                      &counts_array
+                    ](int tid)
+                         ->void {
+                      update_centers_thread(tid, num_threads, width, height,
+                                            labels, center_array, counts_array);
+                    },
+                    i);
   }
   std::fill(centers.begin(), centers.end(), glm::vec2(0.0f));
   for (int i = 0; i < num_threads; ++i) threads[i].join();
@@ -147,6 +156,54 @@ void kmeans(int width, int height, std::vector<glm::vec2>& centers,
   }
 }
 
+void closest_n(uint32_t width, uint32_t height, int n,
+               std::vector<float>& centers, int** closest, int* dim1, int* dim2,
+               int* dim3) {
+  *dim1 = width;
+  *dim2 = height;
+  *dim3 = n;
+  *closest = new int[(*dim1) * (*dim2) * (*dim3)];
+  std::vector<glm::vec2> glm_centers(centers.size() / 2);
+  for (int i = 0; i < centers.size() / 2; ++i)
+    glm_centers[i] = glm::vec2(centers[2 * i], centers[2 * i + 1]);
+  kdtree::KdTree tree;
+  tree.AssignPoints(glm_centers);
+  tree.Build();
+  uint32_t num_threads = 8;
+  uint32_t num_pixels = width * height;
+  std::vector<std::thread> threads(num_threads);
+  for (int i = 0; i < num_threads; ++i) {
+    threads[i] = std::thread(
+        [&num_threads,
+         &num_pixels,
+         &closest,
+         &tree,
+         &n,
+         &width,
+         &height ](int tid)
+                      ->void {
+          uint32_t block_size = num_pixels / num_threads;
+          uint32_t start = block_size * tid;
+          uint32_t end = std::min(num_pixels, start + block_size);
+          for (uint32_t i = start; i < end; ++i) {
+            uint32_t x = i % width;
+            uint32_t y = i / width;
+            glm::vec2 pixel(x, y);
+            float min_distance = -std::numeric_limits<float>::max();
+            for (int k = 0; i < n; ++k) {
+              // tree.NearestNeighbor(pixel, &best, &best_distance);
+              float best_distance = std::numeric_limits<float>::max();
+              int best = -1;
+              tree.NearestNeighbor(pixel, min_distance, &best, &best_distance);
+              min_distance = best_distance;
+              (*closest)[k + n * (x * height + y)] = best;
+            }
+          }
+        },
+        i);
+  }
+}
+
 void kmeans2d(int width, int height, std::vector<float>& centers,
               std::vector<int>& labels) {
   std::vector<glm::vec2> glm_centers(centers.size() / 2);
@@ -158,19 +215,18 @@ void kmeans2d(int width, int height, std::vector<float>& centers,
 }
 
 void kmeans_training_data(const std::string& directory, int num_centers,
-                          int* width, int* height, std::vector<float>& centers,
-                          std::vector<int>& labels, std::vector<int>& batch_sizes,
-                          float** train_data, int* train_data_dim1,
-                          int* train_data_dim2, float** train_labels,
-                          int* train_labels_dim1, int* train_labels_dim2) {
+                          int* width, int* height, std::vector<int>& indices,
+                          std::vector<float>& centers, std::vector<int>& labels,
+                          std::vector<int>& batch_sizes, float** train_data,
+                          int* train_data_dim1, int* train_data_dim2,
+                          float** train_labels, int* train_labels_dim1,
+                          int* train_labels_dim2) {
   int width_out = -1, height_out = -1;
   std::vector<glm::vec2> glm_centers(num_centers);
-	//std::cout << "kmeans_training_data\n";
   KmeansDataAndLabels(directory, num_centers, width_out, height_out, train_data,
                       train_data_dim1, train_data_dim2, train_labels,
-                      train_labels_dim1, train_labels_dim2, glm_centers, labels,
-                      batch_sizes);
-	//std::cout << "Set output and finish.\n";
+                      train_labels_dim1, train_labels_dim2, indices,
+                      glm_centers, labels, batch_sizes);
   *width = width_out;
   *height = height_out;
   centers.resize(2 * num_centers);

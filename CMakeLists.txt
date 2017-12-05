@@ -15,7 +15,7 @@ find_package(Threads REQUIRED)
   #"${CMAKE_CXX_FLAGS} -std=c++11 -g -fsanitize=address\
   #-fno-omit-frame-pointer -Wno-macro-redefined")
 set(CMAKE_CXX_FLAGS 
-  "${CMAKE_CXX_FLAGS} -std=c++11 -O3 ")
+  "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -Wno-deprecated-register")
 #set(CMAKE_CXX_FLAGS 
   #"${CMAKE_CXX_FLAGS} -std=c++11 -g ")
 
@@ -23,10 +23,10 @@ set(CMAKE_CXX_FLAGS
 set(CMAKE_MODULE_PATH ${CMAKE_PATH}
 											${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
-#set(PYTHON_LIBRARY "/usr/lib64/libpython3.6m.so")
-#set(PYTHON_INCLUDE_DIR "/usr/include/python3.6m")
-set(PYTHON_LIBRARY "/Users/randallsmith/anaconda/lib/libpython3.6m.dylib")
-set(PYTHON_INCLUDE_DIR "/Users/randallsmith/anaconda/include/python3.6m")
+set(PYTHON_LIBRARY "/usr/lib64/libpython3.6m.so")
+set(PYTHON_INCLUDE_DIR "/usr/include/python3.6m")
+#set(PYTHON_LIBRARY "/Users/randallsmith/anaconda/lib/libpython3.6m.dylib")
+#set(PYTHON_INCLUDE_DIR "/Users/randallsmith/anaconda/include/python3.6m")
 
 find_package(NumPy REQUIRED)
 include_directories(${NUMPY_INCLUDE_DIRS})

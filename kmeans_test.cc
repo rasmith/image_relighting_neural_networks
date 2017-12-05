@@ -78,13 +78,14 @@ int main(int argc, char** argv) {
       "/Users/randallsmith/image_relighting_neural_networks/data/bull/rgb";
   int width = 640;
   int height = 480;
-  float *training_data = nullptr;
-  float *training_labels = nullptr;
+  float* training_data = nullptr;
+  float* training_labels = nullptr;
   int training_data_dim1 = 0;
   int training_data_dim2 = 0;
   int training_labels_dim1 = 0;
   int training_labels_dim2 = 0;
   std::vector<glm::vec2> centers;
+  std::vector<int> indices;
   std::vector<int> labels;
   std::vector<int> batch_sizes;
   int iteration = 0;
@@ -92,18 +93,19 @@ int main(int argc, char** argv) {
   for (int i = 1; i < 16; ++i) {
     num_centers = 0x1 << i;
     auto start = std::chrono::high_resolution_clock::now();
-//void KmeansDataAndLabels(const std::string& directory, int num_centers,
-                         //int& width, int& height, float** training_data,
-                         //int* training_data_dim1, int* training_data_dim2,
-                         //float** training_labels, int* training_labels_dim1,
-                         //int* training_labels_dim2,
-                         //std::vector<glm::vec2>& centers,
-                         //std::vector<int>& labels,
-                         //std::vector<int>& batch_sizes);
+    // void KmeansDataAndLabels(const std::string& directory, int num_centers,
+    // int& width, int& height, float** training_data,
+    // int* training_data_dim1, int* training_data_dim2,
+    // float** training_labels, int* training_labels_dim1,
+    // int* training_labels_dim2,
+    // std::vector<glm::vec2>& centers,
+    // std::vector<int>& labels,
+    // std::vector<int>& batch_sizes);
     KmeansDataAndLabels(dirname, num_centers, width, height, &training_data,
                         &training_data_dim1, &training_data_dim2,
                         &training_labels, &training_labels_dim1,
-                        &training_labels_dim2, centers, labels, batch_sizes);
+                        &training_labels_dim2, indices, centers, labels,
+                        batch_sizes);
     std::chrono::duration<double> elapsed =
         std::chrono::high_resolution_clock::now() - start;
     ++iteration;

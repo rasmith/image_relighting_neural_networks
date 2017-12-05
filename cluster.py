@@ -13,9 +13,12 @@ class PixelClusters:
     self.levels = []
     self.counts = list(takewhile(lambda x : x > 0, \
         map(lambda i: int(max_clusters/(4**i)), count(0, 1))))
+    if num_levels != -1:
+      self.counts = self.counts[0:num_levels]
     self.max_iteration = len(self.counts)
     self.iteration = 0
     self.timed = timed
+    self.cxx_indices = kmeans2d.VectorInt()
 
   def __iter__(self):
     return self
@@ -39,8 +42,9 @@ class PixelClusters:
     if self.timed:
       start = time.time()
     width, height, train_data, train_labels = \
-      kmeans2d.kmeans_training_data(self.directory, num_centers, \
+      kmeans2d.kmeans_training_data(self.directory, num_centers, self.cxx_indices,\
                                     cxx_centroids, cxx_labels, cxx_batch_sizes)
+    print("len(cxx_indices) = %d\n" % self.cxx_indices.size())
     print("len(cxx_batch_sizes) = %d\n" % cxx_batch_sizes.size())
     print("len(cxx_centroids) = %d\n" % cxx_centroids.size())
     print("len(cxx_labels) = %d\n" % cxx_labels.size())
@@ -51,12 +55,13 @@ class PixelClusters:
     centroids = [[cxx_centroids[i], cxx_centroids[i+1]] \
         for i in range(0, num_centers)]
     cxx_centroids.clear()
+    indices = [self.cxx_indices[i] for i in range(0, self.cxx_indices.size())]
     labels = [cxx_labels[i] for i in range(0, cxx_labels.size())]
     cxx_labels.clear()
     batch_sizes = [cxx_batch_sizes[i] for i in range(0, cxx_batch_sizes.size())]
     cxx_batch_sizes.clear()
     self.iteration += 1
-    return (centroids, labels, train_data, train_labels, batch_sizes)
+    return (indices, centroids, labels, train_data, train_labels, batch_sizes)
 
 def pixels_required(num_weights, num_images):
   return 25 * num_images / num_images

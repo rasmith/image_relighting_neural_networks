@@ -156,9 +156,8 @@ void kmeans(int width, int height, std::vector<glm::vec2>& centers,
   }
 }
 
-void closest_n(uint32_t width, uint32_t height, int n,
-               std::vector<float>& centers, int** closest, int* dim1, int* dim2,
-               int* dim3) {
+void closest_n(int width, int height, int n, std::vector<float>& centers,
+               int** closest, int* dim1, int* dim2, int* dim3) {
   *dim1 = width;
   *dim2 = height;
   *dim3 = n;
@@ -190,8 +189,7 @@ void closest_n(uint32_t width, uint32_t height, int n,
             uint32_t y = i / width;
             glm::vec2 pixel(x, y);
             float min_distance = -std::numeric_limits<float>::max();
-            for (int k = 0; i < n; ++k) {
-              // tree.NearestNeighbor(pixel, &best, &best_distance);
+            for (int k = 0; k < n; ++k) {
               float best_distance = std::numeric_limits<float>::max();
               int best = -1;
               tree.NearestNeighbor(pixel, min_distance, &best, &best_distance);
@@ -202,6 +200,7 @@ void closest_n(uint32_t width, uint32_t height, int n,
         },
         i);
   }
+  for (int i = 0; i < num_threads; ++i) threads[i].join();
 }
 
 void kmeans2d(int width, int height, std::vector<float>& centers,

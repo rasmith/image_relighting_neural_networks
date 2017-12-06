@@ -12,3 +12,7 @@ void kmeans_training_data(const std::string& directory, int num_centers,
                           int* train_data_dim1, int* train_data_dim2,
                           float** train_labels, int* train_labels_dim1,
                           int* train_labels_dim2);
+
+void closest_n(int width, int height, int n,
+               std::vector<float>& centers, int** closest, int* dim1, int* dim2,
+               int* dim3);

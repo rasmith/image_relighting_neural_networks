@@ -5,7 +5,7 @@ import ctypes
 
 # dirname = "/Users/randallsmith/image_relighting_neural_networks/data/bull/rgb"
 dirname = "/home/agrippa/projects/image_relighting_neural_networks/data/bull/rgb"
-num_centers = int(3)
+num_centers = int(1200)
 width = int(-1)
 height = int(-1)
 cxx_indices=kmeans2d.VectorInt()
@@ -30,9 +30,17 @@ centroids = [[cxx_centroids[2*i], cxx_centroids[2*i+1]] for i in range(0,
 indices = [cxx_indices[i] for i in range(0, cxx_indices.size())]
 labels = [cxx_labels[i] for i in range(0, cxx_labels.size())]
 batch_sizes = [cxx_batch_sizes[i] for i in range(0, cxx_batch_sizes.size())]
-print("batch_sizes = %s" % str(batch_sizes))
+# print("batch_sizes = %s" % str(batch_sizes))
 
 print ("centroids.size = %d, labels.size = %d, batch_sizes.size = %d\n" \
     % (len(centroids), len(labels), len(batch_sizes)))
 print ("train_data.size = %s, train_labels.size = %s\n" \
     % (str(train_data.shape), str(train_labels.shape)))
+
+print("Getting k nearest neighbors.")
+start = time.time()
+k = int(5)
+knns = kmeans2d.closest_n(width, height, k, cxx_centroids)
+end = time.time()
+# print("knns=%s\n" % knns)
+print("Time: %f\n" % (end - start))

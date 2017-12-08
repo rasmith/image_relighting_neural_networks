@@ -1,13 +1,13 @@
 import keras
 import numpy as np
 import sys
+import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D
 from keras.callbacks import ModelCheckpoint
 from keras.utils import np_utils
 from keras import backend as K
-
 
 class ModelMaker:
   def __init__(self, light_dim, num_hidden_nodes):
@@ -36,12 +36,16 @@ class ModelMaker:
   def reset(self):
     self.model.reset_states()
 
-  def train(self, train_data, train_labels, batch_size):
+  def train(self, train_data, train_labels, batch_size, verbose = 1):
     model_checkpoint = ModelCheckpoint(self.checkpoint_file, monitor='loss')
     self.model.fit(train_data, train_labels,
-      batch_size=batch_size, callbacks=[model_checkpoint], epochs = 1, verbose=1)
+      batch_size=batch_size, callbacks=[model_checkpoint], \
+          epochs = 1, verbose=verbose)
 
-  def test(self):
-    model.load_weights(checkpoint_file)
-    score = model.evaluate(test_data, test_labels, verbose=1)
+  def load_weights(self):
+    self.model.load_weights(self.checkpoint_file)
+
+  def test(self, test_data, test_target, batch_size = None):
+    score = self.model.evaluate(test_data, test_target, batch_size = batch_size,\
+        verbose=1)
     return score

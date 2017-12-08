@@ -7,7 +7,8 @@ from itertools import takewhile, count
 import kmeans2d
 
 class PixelClusters:
-  def __init__(self, directory, num_levels, max_clusters, timed = False):
+  def __init__(self, directory, num_levels, max_clusters, ensemble_size, \
+      timed = False):
     self.directory = directory
     self.max_clusters = max_clusters
     self.levels = []
@@ -54,6 +55,8 @@ class PixelClusters:
       print("iteration = %d elapsed = %s" % (self.iteration, str(elapsed)))
     centroids = [[cxx_centroids[i], cxx_centroids[i+1]] \
         for i in range(0, num_centers)]
+    k = 5;
+    closest = kmeans2d.closest_n(width, height, k, cxx_centroids)
     cxx_centroids.clear()
     indices = [self.cxx_indices[i] for i in range(0, self.cxx_indices.size())]
     labels = [cxx_labels[i] for i in range(0, cxx_labels.size())]
@@ -61,7 +64,8 @@ class PixelClusters:
     batch_sizes = [cxx_batch_sizes[i] for i in range(0, cxx_batch_sizes.size())]
     cxx_batch_sizes.clear()
     self.iteration += 1
-    return (indices, centroids, labels, train_data, train_labels, batch_sizes)
+    return (indices, centroids, labels, closest, train_data, train_labels, \
+        batch_sizes)
 
 def pixels_required(num_weights, num_images):
   return 25 * num_images / num_images

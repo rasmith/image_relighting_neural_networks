@@ -28,6 +28,9 @@ void DecodePng(const char* filename, image::Image& img) {
   uint32_t width;
   uint32_t height;
   unsigned error = lodepng::decode(bytes, width, height, filename);
+  assert(error == 0);
+  // std::cout << "loaded:filename = " << filename << " width = " << width <<
+  //" height = " << height << "\n";
 
   img.SetDimensions(width, height);
   for (uint32_t y = 0; y < height; ++y) {
@@ -171,7 +174,25 @@ void GetTrainingData(const std::vector<image::Image>& images,
               uint32_t center = labels[j], x = j % width, y = j / width,
                        count = cluster_counts[center] + pixel_counts[center],
                        k = count * data_size, l = count * label_size;
+
               image::Pixel p = img(x, y), a = average(x, y);
+
+              if (i == start) {
+                //std::cout << "tid = " << tid << " j = " << j << " x = " << x
+                          //<< " y =  " << y << " count = " << count << "\n";
+                //std::cout << " x = " << x / static_cast<float>(width);
+                //std::cout << " y = " << y / static_cast<float>(height);
+                //std::cout << " pos = " << indices[i] /
+                                              //static_cast<float>(images.size());
+                //std::cout << " a.r = " << a.r / static_cast<float>(255.0);
+                //std::cout << " a.b = " << a.g / static_cast<float>(255.0);
+                //std::cout << " a.b = " << a.b / static_cast<float>(255.0);
+                //std::cout << " p.r = " << p.r / static_cast<float>(255.0);
+                //std::cout << " p.g = " << p.g / static_cast<float>(255.0);
+                //std::cout << " p.b = " << p.b / static_cast<float>(255.0);
+                //std::cout << "\n";
+              }
+
               (*train_data)[k] = x / static_cast<float>(width);
               (*train_data)[k + 1] = y / static_cast<float>(height);
               (*train_data)[k + 2] =

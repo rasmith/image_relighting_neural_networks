@@ -5,9 +5,9 @@ import os
 from scipy import misc
 import numpy as np
 from multiprocessing import Pool
-# from model import ModelMaker
-# import tensorflow as tf
-# from keras import backend as K
+from model import ModelMaker
+import tensorflow as tf
+from keras import backend as K
 
 from cluster import *
 
@@ -44,7 +44,8 @@ for indices, centers, labels, closest, train_data, train_labels, batch_sizes\
   num_clusters = len(centers)
   print("num_centers = %d\n" % len(centers))
   print ("len(batch_sizes) = %d\n" % len(batch_sizes))
-  for cluster_id in range(0, len(centers)):
+  cluster_ids = range(0, len(centers))
+  for cluster_id in cluster_ids:
     checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
     # print("[%d] %d/%d checkpoint_file = %s" %
           # (level, cluster_id, len(centers) - 1, checkpoint_file))
@@ -61,6 +62,8 @@ for indices, centers, labels, closest, train_data, train_labels, batch_sizes\
       end = time.time();
       print("[%d] %d/%d time to train %f\n" % \
           (level, cluster_id, len(centers), end - start))
+
+
       # with tf.device('/cpu:0'):
         # print("cluster_id = %d, start = %d, end = %d\n" %\
           # (cluster_id, starts[cluster_id], ends[cluster_id]))

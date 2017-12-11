@@ -1,6 +1,8 @@
 #include "image.h"
 #include "kmeans.h"
 
+#define LODEPNG_COMPILE_DISK
+
 #include "lodepng.h"
 
 #include <algorithm>
@@ -24,18 +26,15 @@
 #include <glm/gtx/norm.hpp>
 
 void DecodePng(const char* filename, image::Image& img) {
-  std::vector<unsigned char> bytes;
+  std::vector<uint8_t> bytes;
   uint32_t width;
   uint32_t height;
   unsigned error = lodepng::decode(bytes, width, height, filename);
-  assert(error == 0);
-  // std::cout << "loaded:filename = " << filename << " width = " << width <<
-  //" height = " << height << "\n";
 
   img.SetDimensions(width, height);
   for (uint32_t y = 0; y < height; ++y) {
     for (uint32_t x = 0; x < width; ++x) {
-      uint32_t i = 4 * y + x;
+      uint32_t i = 4 * (width * y + x);
       img(x, y) = image::Pixel(bytes[i], bytes[i + 1], bytes[i + 2]);
     }
   }
@@ -82,31 +81,39 @@ void LoadImages(const std::string& dirname, std::vector<image::Image>& images) {
 }
 
 void ComputeAverageImage(const std::vector<image::Image>& images,
+                         const std::vector<int> indices,
                          image::Image& average) {
   uint32_t width = images[0].width(), height = images[0].height(),
            num_threads = 8;
-  std::vector<float> sum(width * height * 3);
-  for (int i = 0; i < images.size(); ++i) {
+  std::vector<float> sum(width * height * 3, 0.0f);
+  uint32_t count = 0;
+  for (int i = 0; i < indices.size(); ++i) {
+    const image::Image& img = images[indices[i]];
     for (int y = 0; y < height; ++y) {
       for (int x = 0; x < width; ++x) {
-        image::Pixel p = images[i](x, y);
-        sum[y * width + x] += static_cast<float>(p.r);
-        sum[y * width + x + 1] += static_cast<float>(p.g);
-        sum[y * width + x + 2] += static_cast<float>(p.b);
+        image::Pixel p = img(x, y);
+        int i = 3 * (y * width + x);
+        sum[i] += static_cast<float>(p.r);
+        sum[i + 1] += static_cast<float>(p.g);
+        sum[i + 2] += static_cast<float>(p.b);
       }
     }
+    ++count;
   }
   for (int i = 0; i < width * height * 3; ++i)
-    sum[i] /= static_cast<float>(images.size());
+    sum[i] /= static_cast<float>(count);
   average.SetDimensions(width, height);
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
-      image::Pixel p;
-      p.r = static_cast<uint8_t>(std::round(sum[y * width + x]));
-      p.g = static_cast<uint8_t>(std::round(sum[y * width + x + 1]));
-      p.b = static_cast<uint8_t>(std::round(sum[y * width + x + 2]));
+      int i = 3 * (y * width + x);
+      average(x, y) =
+          image::Pixel(static_cast<uint8_t>(std::round(sum[i])),
+                       static_cast<uint8_t>(std::round(sum[i + 1])),
+                       static_cast<uint8_t>(std::round(sum[i + 2])));
     }
   }
+  lodepng::encode("average.png", average.GetBytes(), width, height,
+                  LodePNGColorType::LCT_RGB, 8);
 }
 
 void GetTrainingData(const std::vector<image::Image>& images,
@@ -136,93 +143,117 @@ void GetTrainingData(const std::vector<image::Image>& images,
   // Count pixels per cluster.
   for (int i = 0; i < labels.size(); ++i) ++cluster_sizes[labels[i]];
   batch_sizes.clear();
-  std::copy(cluster_sizes.begin(), cluster_sizes.end(),
-            std::back_inserter(cluster_counts));
   // Copy out the batch sizes.
   std::copy(cluster_sizes.begin(), cluster_sizes.end(),
             std::back_inserter(batch_sizes));
   // Convert to total counts.
   for (int i = 1; i < cluster_counts.size(); ++i)
     cluster_counts[i] = cluster_counts[i - 1] + cluster_sizes[i - 1];
+
   std::vector<std::thread> threads(num_threads);
   for (int i = 0; i < num_threads; ++i) {
-    threads[i] = std::thread(
-        [
-          &num_threads,
-          &num_centers,
-          &labels,
-          &cluster_counts,
-          &data_size,
-          &label_size,
-          &width,
-          &height,
-          &indices,
-          &images,
-          &average,
-          &train_data,
-          &train_labels
-        ](int tid)
-             ->void {
-          uint32_t block_size = indices.size() / num_threads,
-                   start = tid * block_size,
-                   end = std::min(start + block_size,
-                                  static_cast<uint32_t>(images.size()));
-          for (int i = start; i < end; ++i) {
-            const image::Image& img = images[indices[i]];
-            std::vector<uint32_t> pixel_counts(num_centers, 0);
-            for (int j = 0; j < labels.size(); ++j) {
-              uint32_t center = labels[j], x = j % width, y = j / width,
-                       count = cluster_counts[center] + pixel_counts[center],
-                       k = count * data_size, l = count * label_size;
+    threads[i] =
+        std::thread([
+                      &num_threads,
+                      &num_centers,
+                      &num_pixels,
+                      &labels,
+                      &cluster_counts,
+                      &cluster_sizes,
+                      &data_size,
+                      &label_size,
+                      &width,
+                      &height,
+                      &indices,
+                      &images,
+                      &average,
+                      &train_data,
+                      &train_labels
+                    ](int tid)
+                         ->void {
+                      uint32_t block_size = indices.size() / num_threads,
+                               start = tid * block_size,
+                               end = std::min(
+                                   start + block_size,
+                                   static_cast<uint32_t>(images.size())),
+                               sample_size = indices.size();
+                      std::vector<uint32_t> pixel_counts(num_centers, 0);
+                      for (int i = start; i < end; ++i) {
+                        const image::Image& img = images[indices[i]];
+                        for (int j = 0; j < labels.size(); ++j) {
+                          uint32_t center = labels[j], x = j % width,
+                                   y = j / width,
+                                   count =
+                                       cluster_counts[center] * sample_size +
+                                       cluster_sizes[center] * start +
+                                       pixel_counts[center],
+                                   k = count * data_size,
+                                   l = count * label_size;
 
-              image::Pixel p = img(x, y), a = average(x, y);
+                          image::Pixel p = img(x, y), a = average(x, y);
 
-              if (i == start) {
-                //std::cout << "tid = " << tid << " j = " << j << " x = " << x
-                          //<< " y =  " << y << " count = " << count << "\n";
-                //std::cout << " x = " << x / static_cast<float>(width);
-                //std::cout << " y = " << y / static_cast<float>(height);
-                //std::cout << " pos = " << indices[i] /
-                                              //static_cast<float>(images.size());
-                //std::cout << " a.r = " << a.r / static_cast<float>(255.0);
-                //std::cout << " a.b = " << a.g / static_cast<float>(255.0);
-                //std::cout << " a.b = " << a.b / static_cast<float>(255.0);
-                //std::cout << " p.r = " << p.r / static_cast<float>(255.0);
-                //std::cout << " p.g = " << p.g / static_cast<float>(255.0);
-                //std::cout << " p.b = " << p.b / static_cast<float>(255.0);
-                //std::cout << "\n";
+#if 0
+              if (x == 301 && y == 413 && indices[i] == 7) {
+                std::cout << "num_pixels = " << num_pixels << "\n";
+                std::cout << "center = " << center << "\n";
+                std::cout << "tid = " << tid << " j = " << j << " x = " << x
+                          << " y =  " << y << " count = " << count << "\n";
+                std::cout << " x = " << x / static_cast<float>(width) << "\n";
+                std::cout << " y = " << y / static_cast<float>(height) << "\n";
+                std::cout << " pos = "
+                          << indices[i] / static_cast<float>(images.size())
+                          << "\n";
+                std::cout << " a.r = " << a.r / 255.0f << "\n";
+                std::cout << " a.g = " << a.g / 255.0f << "\n";
+                std::cout << " a.b = " << a.b / 255.0f << "\n";
+                std::cout << " p.r = " << p.r / 255.0f << "\n";
+                std::cout << " p.g = " << p.g / 255.0f << "\n";
+                std::cout << " p.b = " << p.b / 255.0f << "\n";
               }
+#endif
 
-              (*train_data)[k] = x / static_cast<float>(width);
-              (*train_data)[k + 1] = y / static_cast<float>(height);
-              (*train_data)[k + 2] =
-                  indices[i] / static_cast<float>(images.size());
-              (*train_data)[k + 3] = a.r / static_cast<float>(255.0);
-              (*train_data)[k + 4] = a.g / static_cast<float>(255.0);
-              (*train_data)[k + 5] = a.b / static_cast<float>(255.0);
-              (*train_labels)[l] = p.r / static_cast<float>(255.0);
-              (*train_labels)[l + 1] = p.g / static_cast<float>(255.0);
-              (*train_labels)[l + 2] = p.b / static_cast<float>(255.0);
-              ++pixel_counts[center];
-            }
-          }
-        },
-        i);
+                          (*train_data)[k] = x / static_cast<float>(width);
+                          (*train_data)[k + 1] = y / static_cast<float>(height);
+                          (*train_data)[k + 2] =
+                              indices[i] / static_cast<float>(images.size());
+                          (*train_data)[k + 3] = a.r / 255.0f;
+                          (*train_data)[k + 4] = a.g / 255.0f;
+                          (*train_data)[k + 5] = a.b / 255.0f;
+                          (*train_labels)[l] = p.r / 255.0f;
+                          (*train_labels)[l + 1] = p.g / 255.0f;
+                          (*train_labels)[l + 2] = p.b / 255.0f;
+                          ++pixel_counts[center];
+                        }
+                      }
+                    },
+                    i);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
 }
 
 void PickRandomIndices(uint32_t total, uint32_t amount,
                        std::vector<int>& indices) {
+#define TESTING 0
+#ifdef TESTING
+  indices.clear();
+  for (int i = 0; i < 716; ++i) indices.push_back(i);
+#else
   auto cmp = [](std::pair<int, float> left, std::pair<int, float> right) {
     return left.second < right.second;
   };
+#if 1
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<float> dis(0.0f, 1.0f);
-  std::priority_queue<std::pair<int, float>, std::deque<std::pair<int, float>>,
+  std::priority_queue<std::pair<int, float>, std::deque<std::pair<int, float> >,
                       decltype(cmp)> q(cmp);
   for (int i = 0; i < total; ++i) q.push(std::make_pair(i, dis(gen)));
+#else
+  int seed = 123456;
+  srand(seed);
+  for (int i = 0; i < total; ++i)
+    q.push(std::make_pair(i, static_cast<float>(rand()) / RAND_MAX));
+#endif
   indices.clear();
   for (int i = 0; i < amount; ++i) {
     indices.push_back(q.top().first);
@@ -230,17 +261,9 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
   }
   auto cmp2 = [](int a, int b) { return a < b; };
   std::sort(indices.begin(), indices.end(), cmp2);
+#endif
 }
 
-// void KmeansDataAndLabels(const std::string& directory, int num_centers,
-// int& width, int& height, float** training_data,
-// int* training_data_dim1, int* training_data_dim2,
-// float** training_labels, int* training_labels_dim1,
-// int* training_labels_dim2,
-// std::vector<int>& indices,
-// std::vector<glm::vec2>& centers,
-// std::vector<int>& labels,
-// std::vector<int>& batch_sizes);
 void KmeansDataAndLabels(const std::string& directory, int num_centers,
                          int& width, int& height, float** training_data,
                          int* training_data_dim1, int* training_data_dim2,
@@ -256,11 +279,11 @@ void KmeansDataAndLabels(const std::string& directory, int num_centers,
   height = (images.size() > 0 ? images[0].height() : -1);
   if (images.size() < 1) return;
   image::Image average;
-  // Compute average.
-  ComputeAverageImage(images, average);
   // Pick random sample to use for training.
   uint32_t sample_size = static_cast<uint32_t>(0.70 * images.size());
   if (indices.empty()) PickRandomIndices(images.size(), sample_size, indices);
+  // Compute average.
+  ComputeAverageImage(images, indices, average);
   // Run kmeans.
   centers.resize(num_centers);
   labels.resize(width * height);

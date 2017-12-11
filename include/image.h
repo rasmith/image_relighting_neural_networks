@@ -32,6 +32,9 @@ class Image {
   uint32_t height() const { return height_; }
   void SetDimensions(uint32_t width, uint32_t height);
   void ToPpm(std::string& output) const;
+  uint8_t* GetBytes() {
+    return &(pixels_[0].r);
+  }
 
  private:
   std::vector<Pixel> pixels_;

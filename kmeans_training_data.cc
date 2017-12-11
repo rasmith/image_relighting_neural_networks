@@ -191,27 +191,6 @@ void GetTrainingData(const std::vector<image::Image>& images,
                                    l = count * label_size;
 
                           image::Pixel p = img(x, y), a = average(x, y);
-
-#if 0
-              if (x == 301 && y == 413 && indices[i] == 7) {
-                std::cout << "num_pixels = " << num_pixels << "\n";
-                std::cout << "center = " << center << "\n";
-                std::cout << "tid = " << tid << " j = " << j << " x = " << x
-                          << " y =  " << y << " count = " << count << "\n";
-                std::cout << " x = " << x / static_cast<float>(width) << "\n";
-                std::cout << " y = " << y / static_cast<float>(height) << "\n";
-                std::cout << " pos = "
-                          << indices[i] / static_cast<float>(images.size())
-                          << "\n";
-                std::cout << " a.r = " << a.r / 255.0f << "\n";
-                std::cout << " a.g = " << a.g / 255.0f << "\n";
-                std::cout << " a.b = " << a.b / 255.0f << "\n";
-                std::cout << " p.r = " << p.r / 255.0f << "\n";
-                std::cout << " p.g = " << p.g / 255.0f << "\n";
-                std::cout << " p.b = " << p.b / 255.0f << "\n";
-              }
-#endif
-
                           (*train_data)[k] = x / static_cast<float>(width);
                           (*train_data)[k + 1] = y / static_cast<float>(height);
                           (*train_data)[k + 2] =
@@ -233,27 +212,15 @@ void GetTrainingData(const std::vector<image::Image>& images,
 
 void PickRandomIndices(uint32_t total, uint32_t amount,
                        std::vector<int>& indices) {
-#define TESTING 0
-#ifdef TESTING
-  indices.clear();
-  for (int i = 0; i < 716; ++i) indices.push_back(i);
-#else
   auto cmp = [](std::pair<int, float> left, std::pair<int, float> right) {
     return left.second < right.second;
   };
-#if 1
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<float> dis(0.0f, 1.0f);
   std::priority_queue<std::pair<int, float>, std::deque<std::pair<int, float> >,
                       decltype(cmp)> q(cmp);
   for (int i = 0; i < total; ++i) q.push(std::make_pair(i, dis(gen)));
-#else
-  int seed = 123456;
-  srand(seed);
-  for (int i = 0; i < total; ++i)
-    q.push(std::make_pair(i, static_cast<float>(rand()) / RAND_MAX));
-#endif
   indices.clear();
   for (int i = 0; i < amount; ++i) {
     indices.push_back(q.top().first);
@@ -261,7 +228,6 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
   }
   auto cmp2 = [](int a, int b) { return a < b; };
   std::sort(indices.begin(), indices.end(), cmp2);
-#endif
 }
 
 void KmeansDataAndLabels(const std::string& directory, int num_centers,

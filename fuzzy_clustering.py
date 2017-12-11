@@ -49,35 +49,19 @@ for indices, centers, labels, closest, train_data, train_labels, batch_sizes\
     # print("[%d] %d/%d checkpoint_file = %s" %
           # (level, cluster_id, len(centers) - 1, checkpoint_file))
     if not os.path.exists(checkpoint_file):
-      continue
       start = time.time()
+      with tf.device('/cpu:0'):
+        model = ModelMaker(light_dim, num_hidden_nodes)
+        model.set_checkpoint_file(checkpoint_file)
+        model.compile()
+        model.train(train_data[starts[cluster_id]:ends[cluster_id], :], \
+            train_labels[starts[cluster_id]:ends[cluster_id], :], 
+            batch_sizes[cluster_id])
+        K.clear_session()
+      end = time.time();
+      print("[%d] %d/%d time to train %f\n" % \
+          (level, cluster_id, len(centers), end - start))
       # with tf.device('/cpu:0'):
-        # config = tf.ConfigProto(intra_op_parallelism_threads=48,
-                            # inter_op_parallelism_threads=48, 
-                            # allow_soft_placement=True)    
-        # session = tf.Session(config=config)
-        # K.set_session(session)
-        # model = ModelMaker(light_dim, num_hidden_nodes)
-        # model.set_checkpoint_file(checkpoint_file)
-        # model.compile()
-        # model.train(train_data[starts[cluster_id]:ends[cluster_id], :], \
-            # train_labels[starts[cluster_id]:ends[cluster_id], :], 
-            # batch_sizes[cluster_id])
-        # K.clear_session()
-      # end = time.time();
-      # print("[%d] %d/%d time to train %f\n" % \
-          # (level, cluster_id, len(centers), end - start))
-    else:
-      if cluster_id == 742 and level == 1:
-        print ("train_data.shape = %s, train_labels.shape = %s" % \
-          (str(train_data.shape), str(train_labels.shape)))
-        print("sample_data = %s\n" % \
-          train_data[213167799, :])
-        print("sample_labels = %s\n" % \
-          train_labels[213167799, :])
-        exit()
-      # with tf.device('/cpu:0'):
-          
         # print("cluster_id = %d, start = %d, end = %d\n" %\
           # (cluster_id, starts[cluster_id], ends[cluster_id]))
         # model = ModelMaker(light_dim, num_hidden_nodes)

@@ -215,12 +215,20 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
   auto cmp = [](std::pair<int, float> left, std::pair<int, float> right) {
     return left.second < right.second;
   };
+  std::priority_queue<std::pair<int, float>, std::deque<std::pair<int, float> >,
+                      decltype(cmp)> q(cmp);
+#define USE_STD_UNIFORM_RANDOM_DEVICE 0
+#if USE_STD_UNIFORM_RANDOM_DEVICE
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<float> dis(0.0f, 1.0f);
-  std::priority_queue<std::pair<int, float>, std::deque<std::pair<int, float> >,
-                      decltype(cmp)> q(cmp);
   for (int i = 0; i < total; ++i) q.push(std::make_pair(i, dis(gen)));
+#else
+  int seed = 12345;
+  srand(seed);
+  for (int i = 0; i < total; ++i)
+    q.push(std::make_pair(i, static_cast<float>(rand()) / RAND_MAX));
+#endif
   indices.clear();
   for (int i = 0; i < amount; ++i) {
     indices.push_back(q.top().first);

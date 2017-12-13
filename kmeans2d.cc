@@ -156,6 +156,140 @@ void kmeans(int width, int height, std::vector<glm::vec2>& centers,
   }
 }
 
+//test, target = kmeans2d.closest_test_target(k, closest, cluster_id,\
+                                                  //train_data, target_data)
+
+// Array indexing:
+// i = z  + depth * (y + height * x)
+void closest_k_test_target(int k, int cluster_id, float* closest,
+                           int closest_dim1, int closest_dim2, int closest_dim3,
+                           float* train_data, int train_data_dim1,
+                           int train_data_dim2, float* target_data,
+                           int target_data_dim1, int target_data_dim2,
+                           float** test, int* test_dim1, int* test_dim2,
+                           float** target, int* target_dim1, int* target_dim2) {
+  // Train data configuratian.
+  int pixel_dim = 3;
+  int light_dim = 1;
+  int coord_dim = 2;
+
+  // Count how many pixels are k-th closest to this cluster.
+  int count = 0;
+  for (int y = 0; y < closest_dim2; ++y) {
+    for (int x = 0; x < closest_dim1; ++x) {
+      int i = k + closest_dim3 * (y + closest_dim2 * x);
+      if (cluster_id == closest[i]) ++count;
+    }
+  }
+
+  // Set test and target dimensions.
+  *test_dim1 = count;
+  *test_dim2 = pixel_dim + light_dim + coord_dim;
+  *test = new float[(*test_dim1) * (*test_dim2)];
+  *target_dim1 = count;
+  *target_dim2 = pixel_dim;
+  *target = new float[(*target_dim1) * (*target_dim2)];
+
+  const int num_threads = 8;
+  std::vector<std::thread> threads(num_threads);
+  for (int t = 0; t < num_threads; ++t) {
+    threads[t] =
+        std::thread([
+                      &k,
+                      &cluster_id,
+                      &closest,
+                      &closest_dim1,
+                      &closest_dim2,
+                      &closest_dim3,
+                      &train_data,
+                      &train_data_dim1,
+                      &train_data_dim2,
+                      &target_data,
+                      &target_data_dim1,
+                      &target_data_dim2,
+                      &test,
+                      &test_dim1,
+                      &test_dim2,
+                      &target,
+                      &target_dim1,
+                      &target_dim2
+                    ](int tid)
+                         ->void {
+                      // Write out the test and target data.
+                      int pos = 0;
+                      for (int i = 0; i < train_data_dim1; ++i) {
+                        float* train_values = &train_data[train_data_dim2 * i];
+                        float x_value = train_values[0];
+                        float y_value = train_values[1];
+                        int x = round(x_value * closest_dim1);
+                        int y = round(y_value * closest_dim2);
+                        int l = k + closest_dim3 * (y + closest_dim2 * x);
+                        if (cluster_id == closest[l]) {
+                          float* target_values =
+                              &target_data[target_data_dim2 * l];
+                          for (int j = 0; j < train_data_dim2; ++j)
+                            (*test)[(*test_dim2) * pos + j] = train_values[j];
+                          for (int j = 0; j < target_data_dim2; ++j)
+                            (*target)[(*target_dim2) * pos + j] =
+                                target_values[j];
+                          ++pos;
+                        }
+                      }
+                    },
+                    t);
+  }
+}
+
+// kmeans2d.update_errors(test_data, target_data, predictions, errors)
+void update_errors(float* test, int test_dim1, int test_dim2, float* target,
+                   int target_dim1, int target_dim2, float* predictions,
+                   int predictions_dim1, int predictions_dim2, float* errors,
+                   int errors_dim1, int errors_dim2) {
+  const int num_threads = 8;
+  std::vector<std::thread> threads(num_threads);
+  for (int t = 0; t < num_threads; ++t) {
+    threads[t] =
+        std::thread([
+                      &test,
+                      &test_dim1,
+                      &test_dim2,
+                      &target,
+                      &target_dim1,
+                      &target_dim2,
+                      &predictions,
+                      &predictions_dim1,
+                      &predictions_dim2,
+                      &errors,
+                      &errors_dim1,
+                      &errors_dim2,
+                      &num_threads
+                    ](int tid)
+                         ->void {
+                      int block_size = predictions_dim1 / num_threads;
+                      int start = tid * block_size;
+                      int end = std::min(start + block_size, predictions_dim1);
+                      for (int i = start; i < end; ++i) {
+                        float* predicted_values =
+                            &predictions[i * predictions_dim2];
+                        float* target_values = &target[i * target_dim2];
+                        float sum = 0.0f;
+                        for (int j = 0; j < predictions_dim2; ++j) {
+                          float diff = predicted_values[j] - target_values[j];
+                          sum += diff * diff;
+                        }
+                        float* test_values = &test[i * test_dim2];
+                        float x_value = test_values[0];
+                        float y_value = test_values[1];
+                        int x = round(x_value * errors_dim1);
+                        int y = round(y_value * errors_dim2);
+                        errors[errors_dim1 * y + x] += sum;
+                      }
+                    },
+                    t);
+  }
+  for (int i = 0; i < num_threads; ++i) threads[i].join();
+}
+
 void closest_n(int width, int height, int n, std::vector<float>& centers,
                int** closest, int* dim1, int* dim2, int* dim3) {
   *dim1 = width;

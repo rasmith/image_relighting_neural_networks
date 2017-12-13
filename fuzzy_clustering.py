@@ -46,6 +46,7 @@ for indices, centers, labels, closest, train_data, train_labels, batch_sizes\
   print("num_centers = %d\n" % len(centers))
   print ("len(batch_sizes) = %d\n" % len(batch_sizes))
   cluster_ids = range(0, len(centers))
+
   for cluster_id in cluster_ids:
     checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
     print("[%d] %d/%d checkpoint_file = %s" %
@@ -81,7 +82,14 @@ for indices, centers, labels, closest, train_data, train_labels, batch_sizes\
         model.load_weights()
         predictions = model.predict(test_data, batch_size) 
         kmeans2d.update_errors(test_data, target_data, predictions, errors)
+    errors /= ensemble_size
+    del test
+    del target
 
+  del train_data
+  del train_labels
+  del closest
+  
   level = level + 1
 
 print ("Estimate = %f\n" % (total_estimate))

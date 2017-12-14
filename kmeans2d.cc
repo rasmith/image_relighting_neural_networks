@@ -252,6 +252,7 @@ void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
   for (int t = 0; t < num_threads; ++t) {
     threads[t] = std::thread(
         [
+          &order,
           &test,
           &test_dim1,
           &test_dim2,
@@ -262,6 +263,7 @@ void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
           &predicted_images_dim1,
           &predicted_images_dim2,
           &predicted_images_dim3,
+          &predicted_images_dim4,
           &num_threads
         ](int tid)
              ->void {
@@ -285,10 +287,10 @@ void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
             //     + c
             int x = round(x_value * predicted_images_dim3);
             int y = round(y_value * predicted_images_dim2);
-            int i = round(i_value * predicted_images_dim1);
+            int n  = round(i_value * predicted_images_dim1);
             for (int c = 0; c < channels; ++c)
               predicted_images
-                  [channels * (width * (height * order[i] + y) + x) + c] = +=
+                  [channels * (width * (height * order[n] + y) + x) + c]  +=
                   predicted_values[c];
           }
         },
@@ -356,7 +358,8 @@ void kmeans2d(int width, int height, std::vector<float>& centers,
 
 void kmeans_training_data(const std::string& directory, int num_centers,
                           int* width, int* height, std::vector<int>& indices,
-                          std::vector<float>& centers, std::vector<int>& labels,
+                          std::vector<int>& order, std::vector<float>& centers,
+                          std::vector<int>& labels,
                           std::vector<int>& batch_sizes, float** train_data,
                           int* train_data_dim1, int* train_data_dim2,
                           float** train_labels, int* train_labels_dim1,
@@ -365,7 +368,7 @@ void kmeans_training_data(const std::string& directory, int num_centers,
   std::vector<glm::vec2> glm_centers(num_centers);
   KmeansDataAndLabels(directory, num_centers, width_out, height_out, train_data,
                       train_data_dim1, train_data_dim2, train_labels,
-                      train_labels_dim1, train_labels_dim2, indices,
+                      train_labels_dim1, train_labels_dim2, indices, order,
                       glm_centers, labels, batch_sizes);
   *width = width_out;
   *height = height_out;

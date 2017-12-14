@@ -211,7 +211,7 @@ void GetTrainingData(const std::vector<image::Image>& images,
 }
 
 void PickRandomIndices(uint32_t total, uint32_t amount,
-                       std::vector<int>& indices) {
+                       std::vector<int>& indices, std::vector<int>& order) {
   auto cmp = [](std::pair<int, float> left, std::pair<int, float> right) {
     return left.second < right.second;
   };
@@ -236,6 +236,8 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
   }
   auto cmp2 = [](int a, int b) { return a < b; };
   std::sort(indices.begin(), indices.end(), cmp2);
+  order.resize(total, -1);
+  for (int i = 0; i < total; ++i) order[indices[i]] = i;
 }
 
 void KmeansDataAndLabels(const std::string& directory, int num_centers,
@@ -243,6 +245,7 @@ void KmeansDataAndLabels(const std::string& directory, int num_centers,
                          int* training_data_dim1, int* training_data_dim2,
                          float** training_labels, int* training_labels_dim1,
                          int* training_labels_dim2, std::vector<int>& indices,
+                         std::vector<int>& order,
                          std::vector<glm::vec2>& centers,
                          std::vector<int>& labels,
                          std::vector<int>& batch_sizes) {
@@ -255,7 +258,8 @@ void KmeansDataAndLabels(const std::string& directory, int num_centers,
   image::Image average;
   // Pick random sample to use for training.
   uint32_t sample_size = static_cast<uint32_t>(0.70 * images.size());
-  if (indices.empty()) PickRandomIndices(images.size(), sample_size, indices);
+  if (indices.empty())
+    PickRandomIndices(images.size(), sample_size, indices, order);
   // Compute average.
   ComputeAverageImage(images, indices, average);
   // Run kmeans.

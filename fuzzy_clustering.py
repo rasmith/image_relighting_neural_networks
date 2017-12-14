@@ -35,7 +35,7 @@ totals = np.ndarray((width, height), dtype = 'float', order='C')
 
 once = False
 
-for indices, centers, labels, closest, train_data, train_labels, batch_sizes\
+for indices, order, centers, labels, closest, train_data, train_labels, batch_sizes\
     in reversed(pixel_clusters):
 
   if not once:
@@ -73,9 +73,9 @@ for indices, centers, labels, closest, train_data, train_labels, batch_sizes\
       end = time.time();
       print("[%d] %d/%d time to train %f\n" % \
           (level, cluster_id, len(centers), end - start))
-
   
-  predicted_images = np.zeros((width, height, num_samples), dtype = 'float') 
+  predicted_images = np.zeros((channels, height, width, num_samples), \
+                    dtype = 'float') 
 
   for cluster_id in cluster_ids:
     batch_size = batch_sizes[cluster_id]

@@ -86,6 +86,7 @@ int main(int argc, char** argv) {
   int training_labels_dim2 = 0;
   std::vector<glm::vec2> centers;
   std::vector<int> indices;
+  std::vector<int> order;
   std::vector<int> labels;
   std::vector<int> batch_sizes;
   int iteration = 0;
@@ -104,7 +105,7 @@ int main(int argc, char** argv) {
     KmeansDataAndLabels(dirname, num_centers, width, height, &training_data,
                         &training_data_dim1, &training_data_dim2,
                         &training_labels, &training_labels_dim1,
-                        &training_labels_dim2, indices, centers, labels,
+                        &training_labels_dim2, indices, order, centers, labels,
                         batch_sizes);
     std::chrono::duration<double> elapsed =
         std::chrono::high_resolution_clock::now() - start;

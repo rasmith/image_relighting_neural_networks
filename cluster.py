@@ -20,6 +20,7 @@ class PixelClusters:
     self.iteration = 0
     self.timed = timed
     self.cxx_indices = kmeans2d.VectorInt()
+    self.cxx_order  = kmeans2d.VectorInt()
 
   def __iter__(self):
     return self
@@ -44,8 +45,9 @@ class PixelClusters:
       start = time.time()
     width, height, train_data, train_labels = \
       kmeans2d.kmeans_training_data(self.directory, num_centers, self.cxx_indices,\
-                                    cxx_centroids, cxx_labels, cxx_batch_sizes)
+              self.cxx_order,  cxx_centroids, cxx_labels, cxx_batch_sizes)
     print("len(cxx_indices) = %d\n" % self.cxx_indices.size())
+    print("len(cxx_order) = %d\n" % self.cxx_order.size())
     print("len(cxx_batch_sizes) = %d\n" % cxx_batch_sizes.size())
     print("len(cxx_centroids) = %d\n" % cxx_centroids.size())
     print("len(cxx_labels) = %d\n" % cxx_labels.size())
@@ -59,12 +61,13 @@ class PixelClusters:
     closest = kmeans2d.closest_n(width, height, k, cxx_centroids)
     cxx_centroids.clear()
     indices = [self.cxx_indices[i] for i in range(0, self.cxx_indices.size())]
+    order = [self.cxx_order[i] for i in range(0, self.cxx_order.size())]
     labels = [cxx_labels[i] for i in range(0, cxx_labels.size())]
     cxx_labels.clear()
     batch_sizes = [cxx_batch_sizes[i] for i in range(0, cxx_batch_sizes.size())]
     cxx_batch_sizes.clear()
     self.iteration += 1
-    return (indices, centroids, labels, closest, train_data, train_labels, \
+    return (indices, order, centroids, labels, closest, train_data, train_labels, \
         batch_sizes)
 
 def pixels_required(num_weights, num_images):

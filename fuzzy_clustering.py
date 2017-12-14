@@ -22,6 +22,7 @@ light_dim = 1
 level = 0
 ensemble_size = 5
 tolerance = 1e-3
+save_data_file_name = "pixel_assignments.cfg"
 
 max_clusters =  int(\
     maximum_clusters(width, height, num_hidden_nodes, num_images))
@@ -36,6 +37,57 @@ flagged = np.ones((height, width), dtype  = bool)
 errors = np.ndarray((height, width), dtype = 'float', order='C')
 
 once = False
+
+def get_flagged_clusters(cluster_ids, closest, flagged):
+  flagged_ids = closest[np.where(flagged)]
+  flagged_ids = np.unique(flagged_ids)
+  flagged_ids.sort()
+  return flagged_ids
+
+def get_flagged_pixels(relative_error, tolerance):
+  return relative_error > tolerance
+  
+def save_pixel_assignments(file_name, model_directory, width, height,\
+                           assignments):
+  # Open file.
+  with open(file_name, "w") as f:
+    f.write("%s\n" % ((model_directory))) # write model directory 
+    f.write("%d\n" % ((width)) # write width
+    f.write("%d\n" % ((height)) # write height
+    i = 0
+    for x in range(0, height):
+      for y in range(0, width):
+        if flagged[y, x]:
+          level, cluster_id = assignment[y, x]
+          f.write("%d %d" %(level, cluster_id)) # write level, cluster id
+          i = i + 1
+  
+def load_pixel_assignments(file_name, assignments):
+  with open(file_name, "r") as f:
+    lines = f.readlines()
+    model_directory = lines[0]
+    width = int(lines[1])
+    height = int(lines[2])
+    i = 3
+    for x in range(0, width):
+      for y in range(0, height):
+        level, cluster_id = np.array(lines[i].split(" ")).astype(int)
+        assignments[y, x] = [level, cluster_id]
+        i = i + 1
+  return model_directory, width, height, assignments
+
+def predict_image(image, average, model_directory, assignments)
+  test, batch_sizes = get_test_data(image, average, cluster_assignments) 
+  with tf.device('/cpu:0'):
+    checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
+    model = ModelMaker(light_dim, num_hidden_nodes)
+    model.set_checkpoint_file(checkpoint_file)
+    model.compile()
+    model.load_weights()
+    predictions = model.predict(test, batch_size) 
+    kmeans2d.predictions_to_images(order, test, predictions, \
+                                  predicted_images)
+
 
 for indices, order, centers, labels, closest, train_data, train_labels, batch_sizes\
     in reversed(pixel_clusters):
@@ -56,7 +108,7 @@ for indices, order, centers, labels, closest, train_data, train_labels, batch_si
   num_clusters = len(centers)
   print("num_centers = %d\n" % len(centers))
   print ("len(batch_sizes) = %d\n" % len(batch_sizes))
-  cluster_ids = range(0, len(centers))
+  cluster_ids = get_flagged_clusters(range(0, len(centers)), closest, flagged)
 
   for cluster_id in cluster_ids:
     checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
@@ -93,18 +145,23 @@ for indices, order, centers, labels, closest, train_data, train_labels, batch_si
         model.set_checkpoint_file(checkpoint_file)
         model.compile()
         model.load_weights()
-        predictions = model.predict(test_data, batch_size) 
-        kmeans2d.predictions_to_images(order, test_data, target_data, \
-                              predictions, predicted_images)
+        predictions = model.predict(test, batch_size) 
+        kmeans2d.predictions_to_images(order, test, target, predictions, \
+                                      predicted_images)
 
-    # Compute error.
-    kmeans2d.compute_errors(ensemble_size, order, train_data, target_data, \
-        predicted_images, errors)
+  # Compute error.
+  kmeans2d.compute_errors(ensemble_size, order, train_data, target_data, \
+      predicted_images, errors)
 
-    # Compute relative error.
-    kmeans2d.compute_total_values(train_data, target_data, totals)
+  # Compute relative error.
+  kmeans2d.compute_total_values(train_data, target_data, totals)
+  relative_error = errors / totals
 
-    # Assign pixels that are approximated well enough.
+  # Assign pixels that are approximated well enough.
+  flagged = get_flagged_pixels(relative_error, tolerance)
+
+  # Save pixel data.
+  save_pixel_assignments(save_data_file_name, level, flagged, closest)
 
     del test
     del target
@@ -115,3 +172,4 @@ for indices, order, centers, labels, closest, train_data, train_labels, batch_si
   
   level = level + 1
 
+# Predict all images.

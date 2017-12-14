@@ -241,6 +241,49 @@ void closest_k_test_target(int k, int cluster_id, float* closest,
 }
 
 // kmeans2d.update_errors(test_data, target_data, predictions, errors)
+void compute_total_values(float* train, int train_dim1, int train_dim2,
+                          float* target, int target_dim1, int target_dim2,
+                          float* totals, int totals_dim1, int totals_dim2) {
+
+  const int num_threads = 8;
+  std::vector<std::thread> threads(num_threads);
+  for (int t = 0; t < num_threads; ++t) {
+    threads[t] =
+        std::thread([
+                      &train,
+                      &train_dim1,
+                      &train_dim2,
+                      &target,
+                      &target_dim1,
+                      &target_dim2,
+                      &totals,
+                      &totals_dim1,
+                      &totals_dim2,
+                      &num_threads
+                    ](int tid)
+                         ->void {
+                      int block_size = target_dim1 / num_threads;
+                      int start = tid * block_size;
+                      int end = std::min(start + block_size, target_dim1);
+                      for (int i = start; i < end; ++i) {
+                        float* train_values = &train[i * train_dim2];
+                        float* target_values = &target[i * target_dim2];
+                        float x_value = train_values[0];
+                        float y_value = train_values[1];
+                        int x = round(x_value * totals_dim2);
+                        int y = round(y_value * totals_dim1);
+                        for (int c = 0; c < target_dim2; ++c) {
+                          float value = target_values[c];
+                          totals[y * totals_dim2 + x] += value * value;
+                        }
+                      }
+                    },
+                    t);
+  }
+  for (int i = 0; i < num_threads; ++i) threads[i].join();
+}
+
+// kmeans2d.update_errors(test_data, target_data, predictions, errors)
 void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
                            int test_dim2, float* predictions,
                            int predictions_dim1, int predictions_dim2,

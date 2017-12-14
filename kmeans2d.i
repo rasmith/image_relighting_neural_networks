@@ -57,6 +57,9 @@ int predicted_images_dim3, int predicted_images_dim4)};
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* errors, int errors_dim1, int errors_dim2)};
 
+%apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
+(float* totals, int totals_dim1, int totals_dim2)};
+
 /*void compute_errors(std::vector<int>& indices, float* train, int train_dim1,*/
                     /*int train_dim2, float* target, int target_dim1,*/
                     /*int target_dim2, float* predictions, int predictions_dim1,*/

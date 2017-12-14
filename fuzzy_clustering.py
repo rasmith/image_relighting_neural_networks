@@ -21,6 +21,7 @@ num_hidden_nodes = 15
 light_dim = 1
 level = 0
 ensemble_size = 5
+tolerance = 1e-3
 
 max_clusters =  int(\
     maximum_clusters(width, height, num_hidden_nodes, num_images))
@@ -99,6 +100,11 @@ for indices, order, centers, labels, closest, train_data, train_labels, batch_si
     # Compute error.
     kmeans2d.compute_errors(ensemble_size, order, train_data, target_data, \
         predicted_images, errors)
+
+    # Compute relative error.
+    kmeans2d.compute_total_values(train_data, target_data, totals)
+
+    # Assign pixels that are approximated well enough.
 
     del test
     del target

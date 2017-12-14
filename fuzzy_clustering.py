@@ -177,9 +177,16 @@ for indices, order, centers, labels, closest, train_data, train_labels, batch_si
   relative_error = errors / totals
 
   # Assign pixels that are approximated well enough.
-  flagged = get_flagged_pixels(relative_error, tolerance)
+  flagged = relative_error > tolerance
 
-  # Save pixel data.
+  # Update assignments.
+  for x in range(0, width):
+    for y in range(0, height):
+      if flagged[y, x]:
+        assignments[y, x, 0] = level
+        assignments[y, x, 1:ensemble_size] = closest[x, y]
+        
+  # Save pixel assignments to file.
   save_pixel_assignments(save_data_file_name, model_directory, assignments)
 
   del train_data

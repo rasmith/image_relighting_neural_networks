@@ -22,8 +22,9 @@ void closest_n(int width, int height, int n, std::vector<float>& centers,
 * cluster_id - centroid identifier
 * closest - contains closest_dim3 centroids for each (x, y)
 *         - in test_dim1 x test_dim2 pixels.
-* closest_dim1 - width
-* closest_dim2 - height
+* closest_dim1 - height (y)
+* closest_dim2 - width  (x)
+* closest_dim3 - ensemble_size (usually 5)
 * train_data - train data
 * train_data_dim1 - number of input train points
 * train_data_dim2 - dimension of train points

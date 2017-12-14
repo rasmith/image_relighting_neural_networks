@@ -173,11 +173,12 @@ void closest_k_test_target(int k, int cluster_id, float* closest,
   int light_dim = 1;
   int coord_dim = 2;
 
+  // closest = np.zeros((height, width, channels))
   // Count how many pixels are k-th closest to this cluster.
   int count = 0;
-  for (int y = 0; y < closest_dim2; ++y) {
-    for (int x = 0; x < closest_dim1; ++x) {
-      int i = k + closest_dim3 * (y + closest_dim2 * x);
+  for (int y = 0; y < closest_dim1; ++y) {
+    for (int x = 0; x < closest_dim2; ++x) {
+      int i = k + closest_dim3 * (y * closest_dim2 + x);
       if (cluster_id == closest[i]) ++count;
     }
   }
@@ -221,9 +222,9 @@ void closest_k_test_target(int k, int cluster_id, float* closest,
                         float* train_values = &train_data[train_data_dim2 * i];
                         float x_value = train_values[0];
                         float y_value = train_values[1];
-                        int x = round(x_value * closest_dim1);
-                        int y = round(y_value * closest_dim2);
-                        int l = k + closest_dim3 * (y + closest_dim2 * x);
+                        int x = round(x_value * closest_dim2);
+                        int y = round(y_value * closest_dim1);
+                        int l = k + closest_dim3 * (y * closest_dim2 + x);
                         if (cluster_id == closest[l]) {
                           float* target_values =
                               &target_data[target_data_dim2 * l];
@@ -288,7 +289,7 @@ void compute_total_values(float* train, int train_dim1, int train_dim2,
   for (int i = 0; i < num_threads; ++i) {
     float* values = total_values_threads[i];
     for (int j = 0; j < totals_dim2 * totals_dim1; ++j) totals[j] += values[j];
-    delete [] values;
+    delete[] values;
   }
 }
 
@@ -424,14 +425,14 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
   for (int t = 0; t < num_threads; ++t) {
     float* values = error_values_threads[t];
     for (int j = 0; j < errors_dim1 * errors_dim2; ++j) errors[j] += values[j];
-    delete [] values;
+    delete[] values;
   }
 }
 
 void closest_n(int width, int height, int n, std::vector<float>& centers,
                int** closest, int* dim1, int* dim2, int* dim3) {
-  *dim1 = width;
-  *dim2 = height;
+  *dim1 = height;
+  *dim2 = width;
   *dim3 = n;
   *closest = new int[(*dim1) * (*dim2) * (*dim3)];
   std::vector<glm::vec2> glm_centers(centers.size() / 2);
@@ -466,7 +467,7 @@ void closest_n(int width, int height, int n, std::vector<float>& centers,
               int best = -1;
               tree.NearestNeighbor(pixel, min_distance, &best, &best_distance);
               min_distance = best_distance;
-              (*closest)[k + n * (x * height + y)] = best;
+              (*closest)[k + n * (x + y * width)] = best;
             }
           }
         },

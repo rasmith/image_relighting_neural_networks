@@ -241,51 +241,58 @@ void closest_k_test_target(int k, int cluster_id, float* closest,
 }
 
 // kmeans2d.update_errors(test_data, target_data, predictions, errors)
-void update_errors(float* test, int test_dim1, int test_dim2, float* target,
-                   int target_dim1, int target_dim2, float* predictions,
-                   int predictions_dim1, int predictions_dim2, float* errors,
-                   int errors_dim1, int errors_dim2) {
+void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
+                           int test_dim2, float* predictions,
+                           int predictions_dim1, int predictions_dim2,
+                           float* predicted_images, int predicted_images_dim1,
+                           int predicted_images_dim2, int predicted_images_dim3,
+                           int predicted_images_dim4) {
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
   for (int t = 0; t < num_threads; ++t) {
-    threads[t] =
-        std::thread([
-                      &test,
-                      &test_dim1,
-                      &test_dim2,
-                      &target,
-                      &target_dim1,
-                      &target_dim2,
-                      &predictions,
-                      &predictions_dim1,
-                      &predictions_dim2,
-                      &errors,
-                      &errors_dim1,
-                      &errors_dim2,
-                      &num_threads
-                    ](int tid)
-                         ->void {
-                      int block_size = predictions_dim1 / num_threads;
-                      int start = tid * block_size;
-                      int end = std::min(start + block_size, predictions_dim1);
-                      for (int i = start; i < end; ++i) {
-                        float* predicted_values =
-                            &predictions[i * predictions_dim2];
-                        float* target_values = &target[i * target_dim2];
-                        float sum = 0.0f;
-                        for (int j = 0; j < predictions_dim2; ++j) {
-                          float diff = predicted_values[j] - target_values[j];
-                          sum += diff * diff;
-                        }
-                        float* test_values = &test[i * test_dim2];
-                        float x_value = test_values[0];
-                        float y_value = test_values[1];
-                        int x = round(x_value * errors_dim1);
-                        int y = round(y_value * errors_dim2);
-                        errors[errors_dim1 * y + x] += sum;
-                      }
-                    },
-                    t);
+    threads[t] = std::thread(
+        [
+          &test,
+          &test_dim1,
+          &test_dim2,
+          &predictions,
+          &predictions_dim1,
+          &predictions_dim2,
+          &predicted_images,
+          &predicted_images_dim1,
+          &predicted_images_dim2,
+          &predicted_images_dim3,
+          &num_threads
+        ](int tid)
+             ->void {
+          int block_size = predictions_dim1 / num_threads;
+          int start = tid * block_size;
+          int end = std::min(start + block_size, predictions_dim1);
+          for (int i = start; i < end; ++i) {
+            float* predicted_values = &predictions[i * predictions_dim2];
+            float* test_values = &test[i * test_dim2];
+            float x_value = test_values[0];
+            float y_value = test_values[1];
+            float i_value = test_values[2];
+            int num_images = predicted_images_dim1;
+            int height = predicted_images_dim2;
+            int width = predicted_images_dim3;
+            int channels = predicted_images_dim4;
+            // predicted_images[i, y, x, c]
+            // I = channels * (width * (height * i + y) + x) + c
+            // I = channels * (width * height * i + width * y + x) + c
+            // I = width * height * channels * i + (width * y + x) * channels
+            //     + c
+            int x = round(x_value * predicted_images_dim3);
+            int y = round(y_value * predicted_images_dim2);
+            int i = round(i_value * predicted_images_dim1);
+            for (int c = 0; c < channels; ++c)
+              predicted_images
+                  [channels * (width * (height * order[i] + y) + x) + c] = +=
+                  predicted_values[c];
+          }
+        },
+        t);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
 }

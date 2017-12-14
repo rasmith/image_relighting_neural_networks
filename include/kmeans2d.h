@@ -46,7 +46,9 @@ void closest_k_test_target(int k, int cluster_id, float* closest,
                            float** test, int* test_dim1, int* test_dim2,
                            float** target, int* target_dim1, int* target_dim2);
 
-void update_errors(float* test, int test_dim1, int test_dim2, float* target,
-                   int target_dim1, int target_dim2, float* predictions,
-                   int predictions_dim1, int predictions_dim2, float* errors,
-                   int errors_dim1, int errors_dim2);
+void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
+                           int test_dim2, float* predictions,
+                           int predictions_dim1, int predictions_dim2,
+                           float* predicted_images, int predicted_images_dim1,
+                           int predicted_images_dim2, int predicted_images_dim3,
+                           int predicted_images_dim4);

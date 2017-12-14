@@ -29,10 +29,19 @@ timed = True
 pixel_clusters = \
     PixelClusters(dirname, num_levels, max_clusters, ensemble_size, timed)
 
-flagged_pixels = np.ones((width, height), dtype  = bool)
-total_estimate = 0
+flagged = np.ones((width, height), dtype  = bool)
+errors = np.ndarray((width, height), dtype = 'float', order='C')
+totals = np.ndarray((width, height), dtype = 'float', order='C')
+
+once = False
+
 for indices, centers, labels, closest, train_data, train_labels, batch_sizes\
     in reversed(pixel_clusters):
+
+  if not once:
+    kmeans2d.total_norm(train_data, train_labels, totals)
+    totals = np.sqrt(totals)
+    
   print("closest.shape = %s\n" % str(closest.shape))
   num_samples = len(indices)
   starts = np.zeros(len(batch_sizes), dtype=np.int32)
@@ -65,8 +74,9 @@ for indices, centers, labels, closest, train_data, train_labels, batch_sizes\
       print("[%d] %d/%d time to train %f\n" % \
           (level, cluster_id, len(centers), end - start))
 
-  errors = np.ndarray((width, height), dtype = 'float', order='C')
   
+  predicted_images = np.zeros((width, height, num_samples), dtype = 'float') 
+
   for cluster_id in cluster_ids:
     batch_size = batch_sizes[cluster_id]
     for k in range(0, ensemble_size):
@@ -81,8 +91,10 @@ for indices, centers, labels, closest, train_data, train_labels, batch_sizes\
         model.compile()
         model.load_weights()
         predictions = model.predict(test_data, batch_size) 
-        kmeans2d.update_errors(test_data, target_data, predictions, errors)
-    errors /= ensemble_size
+        kmeans2d.predictions_to_images(test_data, target_data, \
+                              predictions, predicted_images)
+    errors /= np.sqrt(float(ensemble_size))
+
     del test
     del target
 
@@ -92,4 +104,3 @@ for indices, centers, labels, closest, train_data, train_labels, batch_sizes\
   
   level = level + 1
 
-print ("Estimate = %f\n" % (total_estimate))

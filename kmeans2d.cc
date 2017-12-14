@@ -247,6 +247,9 @@ void compute_total_values(float* train, int train_dim1, int train_dim2,
 
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
+  std::vector<float*> total_values_threads;
+  for (int t = 0; t < num_threads; ++t)
+    total_values_threads[t] = new float[totals_dim1 * totals_dim2];
   for (int t = 0; t < num_threads; ++t) {
     threads[t] =
         std::thread([
@@ -256,12 +259,13 @@ void compute_total_values(float* train, int train_dim1, int train_dim2,
                       &target,
                       &target_dim1,
                       &target_dim2,
-                      &totals,
                       &totals_dim1,
                       &totals_dim2,
-                      &num_threads
+                      &num_threads,
+                      &total_values_threads
                     ](int tid)
                          ->void {
+                      float* totals = total_values_threads[tid];
                       int block_size = target_dim1 / num_threads;
                       int start = tid * block_size;
                       int end = std::min(start + block_size, target_dim1);
@@ -281,6 +285,11 @@ void compute_total_values(float* train, int train_dim1, int train_dim2,
                     t);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
+  for (int i = 0; i < num_threads; ++i) {
+    float* values = total_values_threads[i];
+    for (int j = 0; j < totals_dim2 * totals_dim1; ++j) totals[j] += values[j];
+    delete [] values;
+  }
 }
 
 // kmeans2d.update_errors(test_data, target_data, predictions, errors)
@@ -353,6 +362,9 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
                     int errors_dim2) {
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
+  std::vector<float*> error_values_threads(num_threads, nullptr);
+  for (int t = 0; t < num_threads; ++t)
+    error_values_threads[t] = new float[errors_dim1 * errors_dim2];
   for (int t = 0; t < num_threads; ++t) {
     threads[t] = std::thread(
         [
@@ -372,12 +384,13 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
           &predicted_images_dim2,
           &predicted_images_dim3,
           &predicted_images_dim4,
-          &errors,
+          &error_values_threads,
           &errors_dim1,
           &errors_dim2,
           &num_threads
         ](int tid)
              ->void {
+          float* errors = error_values_threads[tid];
           int block_size = predictions_dim1 / num_threads;
           int start = tid * block_size;
           int end = std::min(start + block_size, predictions_dim1);
@@ -408,6 +421,11 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
         t);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
+  for (int t = 0; t < num_threads; ++t) {
+    float* values = error_values_threads[t];
+    for (int j = 0; j < errors_dim1 * errors_dim2; ++j) errors[j] += values[j];
+    delete [] values;
+  }
 }
 
 void closest_n(int width, int height, int n, std::vector<float>& centers,

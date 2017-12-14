@@ -53,3 +53,12 @@ void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
                            float* predicted_images, int predicted_images_dim1,
                            int predicted_images_dim2, int predicted_images_dim3,
                            int predicted_images_dim4);
+
+void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
+                    int train_dim1, int train_dim2, float* target,
+                    int target_dim1, int target_dim2, float* predictions,
+                    int predictions_dim1, int predictions_dim2,
+                    float* predicted_images, int predicted_images_dim1,
+                    int predicted_images_dim2, int predicted_images_dim3,
+                    int predicted_images_dim4, float* errors, int errors_dim1,
+                    int errors_dim2);

@@ -45,12 +45,25 @@
 (float* test, int test_dim1, int test_dim2)};
 
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
+(float* target, int target_dim1, int target_dim2)};
+
+%apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* predictions, int predictions_dim1, int predictions_dim2)};
 
 %apply (float* INPLACE_ARRAY4, int DIM1, int DIM2, int DIM3, int DIM4) {\
 (float* predicted_images, int predicted_images_dim1, int predicted_images_dim2,\
 int predicted_images_dim3, int predicted_images_dim4)};
 
+%apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
+(float* errors, int errors_dim1, int errors_dim2)};
+
+/*void compute_errors(std::vector<int>& indices, float* train, int train_dim1,*/
+                    /*int train_dim2, float* target, int target_dim1,*/
+                    /*int target_dim2, float* predictions, int predictions_dim1,*/
+                    /*int predictions_dim2, float* predicted_images,*/
+                    /*int predicted_images_dim1, int predicted_images_dim2,*/
+                    /*int predicted_images_dim3, int predicted_images_dim4,*/
+                    /*float* errors, int errors_dim1, int errors_dim2);*/
 namespace std {
    %template(VectorInt) vector<int>;
    %template(VectorFloat) vector<float>;

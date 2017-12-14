@@ -8,14 +8,26 @@ from multiprocessing import Pool
 from model import ModelMaker
 import tensorflow as tf
 from keras import backend as K
+import matplotlib.image as mpimg
 
 from cluster import *
 
 # width = 696
 # height = 464
-width = 128
-height = 128
-num_images = 1024
+def get_parameters(directory):
+  os.chdir(directory)
+  png_files = glob.glob("*.png")
+  img = mpimg.imread(png_files[0])
+  height, width, channels = img.shape
+  num_images = len(png_files)
+  return width, height, num_images
+
+
+dirname = sys.argv[1]
+width, height, num_images = get_parameters(dirname)
+
+print("width = %d, height = %d, num_images = %d\n" % (width, height, num_images))
+quit()
 num_levels = 4
 num_hidden_nodes = 15 
 light_dim = 1
@@ -27,7 +39,6 @@ save_data_file_name = "pixel_assignments.cfg"
 max_clusters =  int(\
     maximum_clusters(width, height, num_hidden_nodes, num_images))
 
-dirname = sys.argv[1]
 timed = True
 
 pixel_clusters = \
@@ -47,47 +58,53 @@ def get_flagged_clusters(cluster_ids, closest, flagged):
 def get_flagged_pixels(relative_error, tolerance):
   return relative_error > tolerance
   
-def save_pixel_assignments(file_name, model_directory, width, height,\
-                           assignments):
+def save_pixel_assignments(file_name, model_directory, assignments):
+  height, width, assignment_size = assignments.shape
+  ensemble_size = assignment_size - 1
   # Open file.
   with open(file_name, "w") as f:
     f.write("%s\n" % ((model_directory))) # write model directory 
-    f.write("%d\n" % ((width)) # write width
-    f.write("%d\n" % ((height)) # write height
-    i = 0
+    f.write("%d\n" % ((width))) # write width
+    f.write("%d\n" % ((height))) # write height
+    f.write("%d\n" % ((ensemble_size))) # ensemble_size
     for x in range(0, height):
       for y in range(0, width):
-        if flagged[y, x]:
-          level, cluster_id = assignment[y, x]
-          f.write("%d %d" %(level, cluster_id)) # write level, cluster id
-          i = i + 1
-  
-def load_pixel_assignments(file_name, assignments):
+          for i in range(0, assignment_size):
+            f.write("%d" % assignments[y,x,i])
+
+def load_pixel_assignments(file_name):
   with open(file_name, "r") as f:
     lines = f.readlines()
     model_directory = lines[0]
     width = int(lines[1])
     height = int(lines[2])
-    i = 3
+    ensemble_size = int(lines[3])
+    assignment_size = ensemble_size + 1
+    assignments = np.zeros((height, width, assignment_size))
+    j = 4
     for x in range(0, width):
       for y in range(0, height):
-        level, cluster_id = np.array(lines[i].split(" ")).astype(int)
-        assignments[y, x] = [level, cluster_id]
-        i = i + 1
+        values = np.array(lines[j].split(" ")).astype(int)
+        for i in range(0, assignment_size):
+          assignments[y, x, i] = int(values[i])
+        j = j + 1
   return model_directory, width, height, assignments
 
-def predict_image(image, average, model_directory, assignments)
+
+def predict_image(image, average, model_directory, assignments):
   test, batch_sizes = get_test_data(image, average, cluster_assignments) 
   with tf.device('/cpu:0'):
-    checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
+    checkpoint_file = model_directory+'/model_'\
+                    +str(level)+'-'+str(cluster_id)+'.hdf5'
     model = ModelMaker(light_dim, num_hidden_nodes)
     model.set_checkpoint_file(checkpoint_file)
     model.compile()
     model.load_weights()
     predictions = model.predict(test, batch_size) 
-    kmeans2d.predictions_to_images(order, test, predictions, \
-                                  predicted_images)
+#    kmeans2d.predictions_to_image(test, predictions, predicted_image)
 
+# y  x level clusters 
+assignments = np.zeros((height, width, 1, ensemble_size), dtype = 'int')
 
 for indices, order, centers, labels, closest, train_data, train_labels, batch_sizes\
     in reversed(pixel_clusters):
@@ -148,6 +165,8 @@ for indices, order, centers, labels, closest, train_data, train_labels, batch_si
         predictions = model.predict(test, batch_size) 
         kmeans2d.predictions_to_images(order, test, target, predictions, \
                                       predicted_images)
+      del test
+      del target
 
   # Compute error.
   kmeans2d.compute_errors(ensemble_size, order, train_data, target_data, \
@@ -161,10 +180,7 @@ for indices, order, centers, labels, closest, train_data, train_labels, batch_si
   flagged = get_flagged_pixels(relative_error, tolerance)
 
   # Save pixel data.
-  save_pixel_assignments(save_data_file_name, level, flagged, closest)
-
-    del test
-    del target
+  save_pixel_assignments(save_data_file_name, model_directory, assignments)
 
   del train_data
   del train_labels

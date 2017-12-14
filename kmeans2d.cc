@@ -213,12 +213,16 @@ void closest_k_test_target(int k, int cluster_id, float* closest,
                       &test_dim2,
                       &target,
                       &target_dim1,
-                      &target_dim2
+                      &target_dim2,
+                      &num_threads
                     ](int tid)
                          ->void {
                       // Write out the test and target data.
                       int pos = 0;
-                      for (int i = 0; i < train_data_dim1; ++i) {
+                      int block_size = train_data_dim1 / block_size;
+                      int start = tid * block_size;
+                      int end = std::min(train_data_dim1, start + block_size);
+                      for (int i = start; i < end; ++i) {
                         float* train_values = &train_data[train_data_dim2 * i];
                         float x_value = train_values[0];
                         float y_value = train_values[1];

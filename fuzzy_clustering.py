@@ -22,8 +22,15 @@ def get_parameters(directory):
   num_images = len(png_files)
   return width, height, num_images
 
+def init(dirname):
+  models_dir = dirname + '/models'
+  cfg_dir = dirname + '/cfg'
+  os.mkdir(models_dir) if not os.path.exists(models_dir)
+  os.mkdir(cfg_dir) if not os.path.exists(cfg_dir)
 
 dirname = sys.argv[1]
+destdir = sys.argv[2] if len(sys.argv) > 1 else ''
+
 width, height, num_images = get_parameters(dirname)
 
 print("width = %d, height = %d, num_images = %d\n" % (width, height, num_images))
@@ -34,7 +41,6 @@ light_dim = 1
 level = 0
 ensemble_size = 5
 tolerance = 1e-3
-save_data_file_name = "pixel_assignments.cfg"
 
 max_clusters =  int(\
     maximum_clusters(width, height, num_hidden_nodes, num_images))
@@ -49,6 +55,8 @@ errors = np.ndarray((height, width), dtype = 'float', order='C')
 
 once = False
 
+init(dirname)
+
 def get_flagged_clusters(cluster_ids, closest, flagged):
   flagged_ids = closest[np.where(flagged)]
   flagged_ids = np.unique(flagged_ids)
@@ -58,55 +66,78 @@ def get_flagged_clusters(cluster_ids, closest, flagged):
 def get_flagged_pixels(relative_error, tolerance):
   return relative_error > tolerance
   
-def save_pixel_assignments(file_name, model_directory, assignments):
+def save_cfg(dirname, average, sampled, assignments):
+  cfg = dirname + '/cfg/relighting.cfg'
   height, width, assignment_size = assignments.shape
   ensemble_size = assignment_size - 1
   # Open file.
-  with open(file_name, "w") as f:
-    f.write("%s\n" % ((model_directory))) # write model directory 
-    f.write("%d\n" % ((width))) # write width
-    f.write("%d\n" % ((height))) # write height
-    f.write("%d\n" % ((ensemble_size))) # ensemble_size
+  with open(cfg, "w") as f:
+    f.write("%d\n" % (width)) # write width
+    f.write("%d\n" % (height)) # write height
+    f.write("%d\n" % (num_images)) # write num_images
+    f.write("%d\n" % (ensemble_size)) # ensemble_size
+    f.write("%s\n" % (' '.join([str(i) for i in x]))) # sampled images
     for x in range(0, height):
       for y in range(0, width):
           for i in range(0, assignment_size):
             f.write("%d" % assignments[y,x,i])
+  mpimg.imsave(cfg + '/average.png', average)
 
-def load_pixel_assignments(file_name):
-  with open(file_name, "r") as f:
+def load_cfg(dirname):
+  cfg = dirname + '/cfg/relighting.cfg'
+  with open(cfg, "r") as f:
     lines = f.readlines()
-    model_directory = lines[0]
-    width = int(lines[1])
-    height = int(lines[2])
+    width = int(lines[0])
+    height = int(lines[1])
+    num_images = int(lines[2])
     ensemble_size = int(lines[3])
+    sampled = [int(i) for i in lines[4].split(' ')]
     assignment_size = ensemble_size + 1
     assignments = np.zeros((height, width, assignment_size))
-    j = 4
-    for x in range(0, width):
-      for y in range(0, height):
-        values = np.array(lines[j].split(" ")).astype(int)
+    j = 5
+    for y in range(0, height):
+     for x in range(0, width):
+        values = np.array(lines[j].split(" ")).astype(np.int)
         for i in range(0, assignment_size):
           assignments[y, x, i] = int(values[i])
         j = j + 1
-  return model_directory, width, height, assignments
+  img_dir = dirname + '/img'
+  model_dir= dirname + '/models'
+  return model_dir, img_dir, width, height, num_images, sampled, assignments
 
 
-def predict_image(image, average, model_directory, assignments):
-  test, batch_sizes = get_test_data(image, average, cluster_assignments) 
+def predict_images(dirname, dest_dir):
+  model_dir, img_dir, width, height, num_images, sampled, assignments = \
+    load_cfg(dirname)
+  img = mpimg.imread(cfg_dir + "/average.png")
+  for i in range(0, images):
+    image = predict_image(i, average, model_dir, assignments)
+    mpimpg.imsave("%03d_out.png", image)
+    
+def predict_img(i, average, model_dir, assignments):
   with tf.device('/cpu:0'):
-    checkpoint_file = model_directory+'/model_'\
-                    +str(level)+'-'+str(cluster_id)+'.hdf5'
-    model = ModelMaker(light_dim, num_hidden_nodes)
-    model.set_checkpoint_file(checkpoint_file)
-    model.compile()
-    model.load_weights()
-    predictions = model.predict(test, batch_size) 
-#    kmeans2d.predictions_to_image(test, predictions, predicted_image)
+    test, batch_sizes, starts, ends, levels, cluster_ids = \
+      kmeans2d.assignments_to_predict_data( assignments)
+    for i in range(0, len(cluster_ids)):
+      level = level[i]
+      cluster_id = cluster_ids[i]
+      batch_size = batch_size[i]
+      start = starts[i]
+      end = ends[i]
+      checkpoint_file = model_dir+'/model_'\
+                      +str(level)+'-'+str(cluster_id)+'.hdf5'
+      model = ModelMaker(light_dim, num_hidden_nodes)
+      model.set_checkpoint_file(checkpoint_file)
+      model.compile()
+      model.load_weights()
+      predictions = model.predict(test[start:end], batch_size) 
+      kmeans2d.predictions_to_img(test[start:end], predictions, predicted_img)
 
 # y  x level clusters 
 assignments = np.zeros((height, width, 1, ensemble_size), dtype = 'int')
 
-for indices, order, centers, labels, closest, train_data, train_labels, batch_sizes\
+for indices, order, centers, labels, closest, average, train_data, \
+    train_labels, batch_sizes\
     in reversed(pixel_clusters):
 
   if not once:
@@ -187,12 +218,16 @@ for indices, order, centers, labels, closest, train_data, train_labels, batch_si
         assignments[y, x, 1:ensemble_size] = closest[x, y]
         
   # Save pixel assignments to file.
-  save_pixel_assignments(save_data_file_name, model_directory, assignments)
+  save_cfg(dirname, average, sampled, assignments)
 
   del train_data
   del train_labels
   del closest
+  del average
   
   level = level + 1
 
 # Predict all images.
+if not destdir == '':
+  predict_images(dirname, destdir)
+

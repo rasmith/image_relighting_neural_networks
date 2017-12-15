@@ -26,6 +26,9 @@
 %apply (int** ARGOUTVIEWM_ARRAY3, int* DIM1, int* DIM2, int* DIM3) {\
 (int** closest, int* dim1, int* dim2, int* dim3)};
 
+%apply (int** ARGOUTVIEWM_ARRAY3, int* DIM1, int* DIM2, int* DIM3) {\
+(int** average, int* average_dim1, int* average_dim2, int* average_dim3)};
+
 %apply (float* IN_ARRAY3, int DIM1, int DIM2, int DIM3) {\
 (float* closest, int closest_dim1, int closest_dim2, int closest_dim3)};
 

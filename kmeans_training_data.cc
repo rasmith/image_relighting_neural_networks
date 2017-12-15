@@ -240,15 +240,14 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
   for (int i = 0; i < total; ++i) order[indices[i]] = i;
 }
 
-void KmeansDataAndLabels(const std::string& directory, int num_centers,
-                         int& width, int& height, float** training_data,
-                         int* training_data_dim1, int* training_data_dim2,
-                         float** training_labels, int* training_labels_dim1,
-                         int* training_labels_dim2, std::vector<int>& indices,
-                         std::vector<int>& order,
-                         std::vector<glm::vec2>& centers,
-                         std::vector<int>& labels,
-                         std::vector<int>& batch_sizes) {
+void KmeansDataAndLabels(
+    const std::string& directory, int num_centers, int& width, int& height,
+    float** training_data, int* training_data_dim1, int* training_data_dim2,
+    float** training_labels, int* training_labels_dim1,
+    int* training_labels_dim2, float** average_img, int* average_dim1,
+    int* average_dim2, int* average_dim3, std::vector<int>& indices,
+    std::vector<int>& order, std::vector<glm::vec2>& centers,
+    std::vector<int>& labels, std::vector<int>& batch_sizes) {
   std::vector<image::Image> images;
   // Load images.
   LoadImages(directory, images);
@@ -262,6 +261,20 @@ void KmeansDataAndLabels(const std::string& directory, int num_centers,
     PickRandomIndices(images.size(), sample_size, indices, order);
   // Compute average.
   ComputeAverageImage(images, indices, average);
+  // Return average img to user in normalized form.
+  *average_img = new float[width * height];
+  *average_dim1 = height;
+  *average_dim2 = width;
+  *average_dim3 = 3;
+  for (int y = 0; y < width; ++y) {
+    for (int x = 0; x < width; ++x) {
+      image::Pixel p = average(x, y);
+      float *values = &average_img[3*(x + width * y)];
+      values[0] = p.r / 255.0f;
+      values[1] = p.g / 255.0f;
+      values[2] = p.b / 255.0f;
+    }
+  }
   // Run kmeans.
   centers.resize(num_centers);
   labels.resize(width * height);

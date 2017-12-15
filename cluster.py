@@ -43,7 +43,7 @@ class PixelClusters:
     cxx_batch_sizes = kmeans2d.VectorInt()
     if self.timed:
       start = time.time()
-    width, height, train_data, train_labels = \
+    width, height, train_data, train_labels, average = \
       kmeans2d.kmeans_training_data(self.directory, num_centers, self.cxx_indices,\
               self.cxx_order,  cxx_centroids, cxx_labels, cxx_batch_sizes)
     print("len(cxx_indices) = %d\n" % self.cxx_indices.size())
@@ -67,8 +67,8 @@ class PixelClusters:
     batch_sizes = [cxx_batch_sizes[i] for i in range(0, cxx_batch_sizes.size())]
     cxx_batch_sizes.clear()
     self.iteration += 1
-    return (indices, order, centroids, labels, closest, train_data, train_labels, \
-        batch_sizes)
+    return (indices, order, centroids, labels, closest, average, train_data, \
+            train_labels, batch_sizes)
 
 def pixels_required(num_weights, num_images):
   return 25 * num_images / num_images

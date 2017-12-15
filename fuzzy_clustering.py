@@ -15,26 +15,32 @@ from cluster import *
 # width = 696
 # height = 464
 def get_parameters(directory):
+  current_dir = os.getcwd()
   os.chdir(directory)
   png_files = glob.glob("*.png")
   img = mpimg.imread(png_files[0])
   height, width, channels = img.shape
   num_images = len(png_files)
+  os.chdir(current_dir)
   return width, height, num_images
 
 def init(dirname):
   models_dir = dirname + '/models'
   cfg_dir = dirname + '/cfg'
-  os.mkdir(models_dir) if not os.path.exists(models_dir)
-  os.mkdir(cfg_dir) if not os.path.exists(cfg_dir)
+  if not os.path.exists(models_dir):
+    os.mkdir(models_dir) 
+  if not os.path.exists(cfg_dir):
+    os.mkdir(cfg_dir) 
 
 dirname = sys.argv[1]
-destdir = sys.argv[2] if len(sys.argv) > 1 else ''
+if len(sys.argv) > 2:
+  destdir = sys.argv[2]
+else:
+  destdir = ''
 
 width, height, num_images = get_parameters(dirname)
 
 print("width = %d, height = %d, num_images = %d\n" % (width, height, num_images))
-quit()
 num_levels = 4
 num_hidden_nodes = 15 
 light_dim = 1
@@ -53,7 +59,6 @@ pixel_clusters = \
 flagged = np.ones((height, width), dtype  = bool)
 errors = np.ndarray((height, width), dtype = 'float', order='C')
 
-once = False
 
 init(dirname)
 
@@ -148,11 +153,7 @@ assignments = np.zeros((height, width, ensemble_size + 1), dtype = 'int')
 for indices, order, centers, labels, closest, average, train_data, \
     train_labels, batch_sizes\
     in reversed(pixel_clusters):
-
-  if not once:
-    kmeans2d.total_norm(train_data, train_labels, totals)
-    totals = np.sqrt(totals)
-    
+  print("level = %d" % ((level)))
   print("closest.shape = %s\n" % str(closest.shape))
   num_samples = len(indices)
   starts = np.zeros(len(batch_sizes), dtype=np.int32)
@@ -185,6 +186,7 @@ for indices, order, centers, labels, closest, average, train_data, \
       print("[%d] %d/%d time to train %f\n" % \
           (level, cluster_id, len(centers), end - start))
   
+  channels = 3
   predicted_images = np.zeros((channels, height, width, num_samples), \
                     dtype = 'float') 
 
@@ -192,8 +194,8 @@ for indices, order, centers, labels, closest, average, train_data, \
   for cluster_id in cluster_ids:
     batch_size = batch_sizes[cluster_id]
     for k in range(0, ensemble_size):
-      test, target = kmeans2d.closest_test_target(k, cluster_id, closest,\
-                                                  train_data, target_data) 
+      test, target = kmeans2d.closest_k_test_target(k, cluster_id, closest,\
+                                                  train_data, train_labels) 
       checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
       print("[%d] %d/%d checkpoint_file = %s" %
             (level, cluster_id, len(centers) - 1, checkpoint_file))

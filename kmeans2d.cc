@@ -163,6 +163,8 @@ void kmeans(int width, int height, std::vector<glm::vec2>& centers,
 //test, target = kmeans2d.closest_test_target(k, closest, cluster_id,\
                                                   //train_data, target_data)
 
+      //test, target = kmeans2d.closest_k_test_target(k, cluster_id, closest,\
+                                                  //train_data, train_labels) 
 // Array indexing:
 // i = z  + depth * (y + height * x)
 void closest_k_test_target(int k, int cluster_id, float* closest,

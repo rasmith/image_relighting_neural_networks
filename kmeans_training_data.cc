@@ -212,6 +212,9 @@ void GetTrainingData(const std::vector<image::Image>& images,
 
 void PickRandomIndices(uint32_t total, uint32_t amount,
                        std::vector<int>& indices, std::vector<int>& order) {
+  std::cout << "PickRandomIndices\n";
+  std::cout << "total = " << total << "\n";
+  std::cout << "amount = " << amount << "\n";
   auto cmp = [](std::pair<int, float> left, std::pair<int, float> right) {
     return left.second < right.second;
   };
@@ -237,7 +240,10 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
   auto cmp2 = [](int a, int b) { return a < b; };
   std::sort(indices.begin(), indices.end(), cmp2);
   order.resize(total, -1);
-  for (int i = 0; i < total; ++i) order[indices[i]] = i;
+  std::cout << "indices = ";
+  for (int i = 0; i < indices.size(); ++i)  std::cout << indices[i] << " ";
+  std::cout << "\n";
+  for (int i = 0; i < indices.size(); ++i) order[indices[i]] = i;
 }
 
 void KmeansDataAndLabels(
@@ -248,36 +254,46 @@ void KmeansDataAndLabels(
     int* average_dim2, int* average_dim3, std::vector<int>& indices,
     std::vector<int>& order, std::vector<glm::vec2>& centers,
     std::vector<int>& labels, std::vector<int>& batch_sizes) {
+  std::cout << "KmeansDataAndLabels\n";
   std::vector<image::Image> images;
   // Load images.
+  std::cout << "directory = " << directory << "\n";
   LoadImages(directory, images);
   width = (images.size() > 0 ? images[0].width() : -1);
   height = (images.size() > 0 ? images[0].height() : -1);
+  std::cout << "width = " << width << " height = " << height << "\n";
+  std::cout << "#images = " << images.size() << "\n";
   if (images.size() < 1) return;
   image::Image average;
   // Pick random sample to use for training.
   uint32_t sample_size = static_cast<uint32_t>(0.70 * images.size());
+  std::cout << "pick indices\n";
+  std::cout << "sample_size = " << sample_size << "\n";
   if (indices.empty())
     PickRandomIndices(images.size(), sample_size, indices, order);
+  std::cout << "average\n";
   // Compute average.
   ComputeAverageImage(images, indices, average);
   // Return average img to user in normalized form.
-  *average_img = new float[width * height];
+  //std::cout << "write out average image\n";
+  *average_img = new float[width * height * 3];
   *average_dim1 = height;
   *average_dim2 = width;
   *average_dim3 = 3;
-  for (int y = 0; y < width; ++y) {
-    for (int x = 0; x < width; ++x) {
-      image::Pixel p = average(x, y);
-      float *values = &(*average_img)[3*(x + width * y)];
-      values[0] = p.r / 255.0f;
-      values[1] = p.g / 255.0f;
-      values[2] = p.b / 255.0f;
-    }
-  }
+  //for (int y = 0; y < height; ++y) {
+    //for (int x = 0; x < width; ++x) {
+      //image::Pixel p = average(x, y);
+      //float *values = &((*average_img)[3*(x + width * y)]);
+      //values[0] = p.r / 255.0f;
+      //values[1] = p.g / 255.0f;
+      //values[2] = p.b / 255.0f;
+    //}
+  //}
+//std::cout << "done\n";
   // Run kmeans.
   centers.resize(num_centers);
   labels.resize(width * height);
+  std::cout << "kmeans\n";
   kmeans(width, height, centers, labels);
   // Get labels and data.
   GetTrainingData(images, indices, num_centers, labels, average, training_data,

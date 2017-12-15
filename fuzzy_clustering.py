@@ -112,12 +112,13 @@ def predict_images(dirname, dest_dir):
   img = mpimg.imread(cfg_dir + "/average.png")
   for i in range(0, images):
     image = predict_image(i, average, model_dir, assignments)
-    mpimpg.imsave("%03d_out.png", image)
+    img_name = "%03d_out.png" % ((i))
+    mpimpg.imsave(img_name, image)
     
 def predict_img(i, average, model_dir, assignments):
   with tf.device('/cpu:0'):
     test, batch_sizes, starts, ends, levels, cluster_ids = \
-      kmeans2d.assignments_to_predict_data( assignments)
+      kmeans2d.assignments_to_predict_data(assignments)
     for i in range(0, len(cluster_ids)):
       level = level[i]
       cluster_id = cluster_ids[i]
@@ -134,7 +135,7 @@ def predict_img(i, average, model_dir, assignments):
       kmeans2d.predictions_to_img(test[start:end], predictions, predicted_img)
 
 # y  x level clusters 
-assignments = np.zeros((height, width, 1, ensemble_size), dtype = 'int')
+assignments = np.zeros((height, width, ensemble_size + 1), dtype = 'int')
 
 for indices, order, centers, labels, closest, average, train_data, \
     train_labels, batch_sizes\

@@ -69,3 +69,12 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
 void compute_total_values(float* train, int train_dim1, int train_dim2,
                           float* target, int target_dim1, int target_dim2,
                           float* totals, int totals_dim1, int totals_dim2);
+
+void assign_to_predict_data(int num_images, int* assign, int assign_dim1,
+                            int assign_dim2, int assign_dim3, uint8_t* average,
+                            int average_dim1, int average_dim2,
+                            int average_dim3, float** test, int* test_dim1,
+                            int* test_dim2, int** batch_sizes,
+                            int* batch_sizes_dim1, int** levels,
+                            int* levels_dim1, int** cluster_ids,
+                            int* cluster_ids_dim1);

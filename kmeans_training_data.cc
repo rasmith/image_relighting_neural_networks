@@ -269,7 +269,7 @@ void KmeansDataAndLabels(
   for (int y = 0; y < width; ++y) {
     for (int x = 0; x < width; ++x) {
       image::Pixel p = average(x, y);
-      float *values = &average_img[3*(x + width * y)];
+      float *values = &(*average_img)[3*(x + width * y)];
       values[0] = p.r / 255.0f;
       values[1] = p.g / 255.0f;
       values[2] = p.b / 255.0f;

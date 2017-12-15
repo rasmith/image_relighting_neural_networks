@@ -63,6 +63,31 @@ int predicted_images_dim3, int predicted_images_dim4)};
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* totals, int totals_dim1, int totals_dim2)};
 
+/*void assignments_to_predict_data(*/
+    /*int* assignments, int assignments_dim1, int assignments_dim2,*/
+    /*int assignments_dim3, uint8_t* average, int average_dim1, int average_dim2,*/
+    /*int average_dim3, float** test, int* test_dim1,*/
+    /*int* test_dim2 float** batch_sizes, int* batch_size_dim1, float** levels,*/
+    /*int* levels_dim1, float** cluster_ids, int* cluster_ids_dim1);*/
+%apply (float* IN_ARRAY3, int DIM1, int DIM2, int DIM3) {\
+(float* assign, int assign_dim1, int assign_dim2, int assign_dim3)};
+  
+%apply (uint8_t* IN_ARRAY3, int DIM1, int DIM2, int DIM3) {\
+(uint8_t* average, int average_dim1, int average_dim2, int average_dim3)};
+
+%apply (float** ARGOUTVIEWM_ARRAY2, int DIM1, int DIM2) {\
+(float** test, int* test_dim1, int* test_dim2)};
+
+%apply (int* ARGOUTVIEWM_ARRAY1, int DIM1) {\
+(int** batch_sizes, int* batch_sizes_dim1 ) };
+
+%apply (int* ARGOUTVIEWM_ARRAY1, int DIM1) {\
+(int** cluster_ids, int* cluster_ids_dim1) };
+
+%apply (int* ARGOUTVIEWM_ARRAY1, int DIM1) {\
+(int** levels, int* levels_dim1) };
+
+
 /*void compute_errors(std::vector<int>& indices, float* train, int train_dim1,*/
                     /*int train_dim2, float* target, int target_dim1,*/
                     /*int target_dim2, float* predictions, int predictions_dim1,*/

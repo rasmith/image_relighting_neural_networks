@@ -2,13 +2,17 @@
 #include "kdtree.h"
 #include "kmeans_training_data.h"
 
-#include <dirent.h>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <dirent.h>
+#include <functional>
 #include <iterator>
 #include <random>
+#include <string>
 #include <thread>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -487,6 +491,78 @@ void kmeans2d(int width, int height, std::vector<float>& centers,
   for (int i = 0; i < glm_centers.size(); ++i) {
     centers[2 * i] = glm_centers[i][0];
     centers[2 * i + 1] = glm_centers[i][1];
+  }
+}
+
+//test, batch_sizes, levels, cluster_ids = \
+      //kmeans2d.assignments_to_predict_data(assignments, average)
+typedef std::pair<int, int> Tuple;
+typedef std::vector<Tuple> Tuples;
+struct TupleHash {
+  std::size_t operator()(const Tuple& t) const {
+    std::hash<std::string> h;
+    return h(std::to_string(t.first) + "-" + std::to_string(t.second));
+  }
+};
+
+void assign_to_predict_data(int num_images, int* assign, int assign_dim1,
+                            int assign_dim2, int assign_dim3, uint8_t* average,
+                            int average_dim1, int average_dim2,
+                            int average_dim3, float** test, int* test_dim1,
+                            int* test_dim2, int** batch_sizes,
+                            int* batch_sizes_dim1, int** levels,
+                            int* levels_dim1, int** cluster_ids,
+                            int* cluster_ids_dim1) {
+  int width = assign_dim2;
+  int height = assign_dim1;
+  std::unordered_map<Tuple, Tuples, TupleHash> map;
+  for (int y = 0; y < width; ++y) {
+    for (int x = 0; x < width; ++x) {
+      int* assignment = &assign[assign_dim3 * (y * width + x)];
+      int level = assignment[0];
+      for (int i = 1; i < assign_dim3; ++i) {
+        Tuple t = std::make_pair(x, y);
+        int center = assignment[i];
+        if (map.find(std::make_pair(level, center)) == map.end())
+          map.emplace(t, Tuples());
+        auto item = map.find(std::make_pair(level, center));
+        item->second.push_back(t);
+      }
+    }
+  }
+  int total_size = 0;
+  for (auto iter = map.begin(); iter != map.end(); ++iter)
+    total_size += iter->second.size();
+  *test_dim1 = total_size;
+  *test_dim2 = 6;
+  *test = new float[(*test_dim1) * (*test_dim2)];
+  *cluster_ids_dim1 = *batch_sizes_dim1 = *levels_dim1 = map.size();
+  *cluster_ids = new int[*cluster_ids_dim1];
+  *levels = new int[*levels_dim1];
+  *batch_sizes = new int[*batch_sizes_dim1];
+  int current = 0;
+  for (auto iter = map.begin(); iter != map.end(); ++iter) {
+    auto& v = iter->second;
+    auto& cl = iter->first;
+    int level = cl.first;
+    int center = cl.second;
+    (*cluster_ids)[current] = center;
+    (*levels)[current] = level;
+    (*batch_sizes)[current] = v.size();
+    float* values = &(*test)[(*test_dim2) * current];
+    for (int i = 0; i < v.size(); ++i) {
+      auto& xy = v[i];
+      int x = xy.first;
+      int y = xy.second;
+      values[0] = x / static_cast<float>(width);
+      values[1] = y / static_cast<float>(height);
+      values[2] = i / static_cast<float>(num_images);
+      uint8_t* rgb = &average[3 * (width * y + x)];
+      values[3] = rgb[0] / 255.0f;
+      values[4] = rgb[1] / 255.0f;
+      values[5] = rgb[2] / 255.0f;
+    }
+    ++current;
   }
 }
 

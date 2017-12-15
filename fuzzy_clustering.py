@@ -125,6 +125,8 @@ def predict_img(i, average, model_dir, assignments):
       if i > 0:
         starts[i] = batch_sizes[i] * num_samples + starts[i-1]
     ends = starts + np.array(batch_sizes) * num_samples
+    height, width, channels = average.shape;
+    predict_img = np.zeros((height, width, channels), np.float)
     for i in range(0, len(cluster_ids)):
       level = level[i]
       cluster_id = cluster_ids[i]

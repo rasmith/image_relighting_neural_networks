@@ -566,6 +566,23 @@ void assign_to_predict_data(int num_images, int* assign, int assign_dim1,
   }
 }
 
+// kmeans2d.predictions_to_img(test[start:end], predictions, predicted_img)
+void predictions_to_img(float* test, int test_dim1, int test_dim2,
+                        float* predictions, int predictions_dim1,
+                        int predictions_dim2, float* img, int img_dim1,
+                        int img_dim2, int img_dim3) {
+  int height = img_dim1;
+  int width = img_dim2;
+  for (int i = 0; i < test_dim1; ++i) {
+    float* test_values = &test[i * test_dim2];
+    int x = round(width * test_values[0]);
+    int y = round(height * test_values[1]);
+    float* predicted_values = &predictions[i * predictions_dim2];
+    for (int c = 0; c < img_dim3; ++c)
+      img[c + img_dim3 * (y * img_dim2 + x)] +=  predicted_values[c];
+  }
+}
+
 void kmeans_training_data(const std::string& directory, int num_centers,
                           int* width, int* height, std::vector<int>& indices,
                           std::vector<int>& order, std::vector<float>& centers,

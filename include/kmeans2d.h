@@ -78,3 +78,8 @@ void assign_to_predict_data(int num_images, int* assign, int assign_dim1,
                             int* batch_sizes_dim1, int** levels,
                             int* levels_dim1, int** cluster_ids,
                             int* cluster_ids_dim1);
+
+void predictions_to_img(float* test, int test_dim1, int test_dim2,
+                        float* predictions, int predictions_dim1,
+                        int predictions_dim2, float* img, int img_dim1,
+                        int img_dim2, int img_dim3);

@@ -117,8 +117,14 @@ def predict_images(dirname, dest_dir):
     
 def predict_img(i, average, model_dir, assignments):
   with tf.device('/cpu:0'):
-    test, batch_sizes, starts, ends, levels, cluster_ids = \
-      kmeans2d.assignments_to_predict_data(assignments)
+    test, batch_sizes,  levels, cluster_ids = \
+      kmeans2d.assignments_to_predict_data(num_images, assignments)
+    starts = np.zeros(len(batch_sizes), dtype=np.int32)
+    ends = np.zeros(len(batch_sizes), dtype=np.int32)
+    for i in range(0, len(batch_sizes)):
+      if i > 0:
+        starts[i] = batch_sizes[i] * num_samples + starts[i-1]
+    ends = starts + np.array(batch_sizes) * num_samples
     for i in range(0, len(cluster_ids)):
       level = level[i]
       cluster_id = cluster_ids[i]

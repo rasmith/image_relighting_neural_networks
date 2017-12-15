@@ -81,6 +81,13 @@ int predicted_images_dim3, int predicted_images_dim4)};
 %apply (int* ARGOUTVIEWM_ARRAY1, int DIM1) {\
 (int** levels, int* levels_dim1) };
 
+%apply (float* IN_ARRAY3, int DIM1, int DIM2, int DIM3) {\
+(float* img, int img_dim1, int img_dim2, int img_dim3)};
+
+/*void predictions_to_img(float* test, int test_dim1, int test_dim2,*/
+                        /*float* predictions, int predictions_dim1,*/
+                        /*int predictions_dim2, float* img, int img_dim1,*/
+                        /*int img_dim2, int img_dim3) {*/
 namespace std {
    %template(VectorInt) vector<int>;
    %template(VectorFloat) vector<float>;

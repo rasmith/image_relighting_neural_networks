@@ -194,8 +194,12 @@ for indices, order, centers, labels, closest, average, train_data, \
   for cluster_id in cluster_ids:
     batch_size = batch_sizes[cluster_id]
     for k in range(0, ensemble_size):
-      test, target = kmeans2d.closest_k_test_target(k, cluster_id, closest,\
+      print("train_data.shape = %s" % str(train_data.shape))
+      print("train_labels.shape = %s" % str(train_labels.shape))
+      test, target = kmeans2d.closest_k_test_target(int(k), int(cluster_id), closest,\
                                                   train_data, train_labels) 
+      print("test.shape = %s" % str(test.shape))
+      print("target.shape = %s" % str(target.shape))
       checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
       print("[%d] %d/%d checkpoint_file = %s" %
             (level, cluster_id, len(centers) - 1, checkpoint_file))
@@ -210,6 +214,7 @@ for indices, order, centers, labels, closest, average, train_data, \
       del test
       del target
 
+  print("compute errors\n")
   # Compute error.
   kmeans2d.compute_errors(ensemble_size, order, train_data, target_data, \
       predicted_images, errors)

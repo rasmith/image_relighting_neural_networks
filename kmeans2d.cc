@@ -167,13 +167,12 @@ void kmeans(int width, int height, std::vector<glm::vec2>& centers,
                                                   //train_data, train_labels) 
 // Array indexing:
 // i = z  + depth * (y + height * x)
-void closest_k_test_target(int k, int cluster_id, float* closest,
-                           int closest_dim1, int closest_dim2, int closest_dim3,
-                           float* train_data, int train_data_dim1,
-                           int train_data_dim2, float* target_data,
-                           int target_data_dim1, int target_data_dim2,
-                           float** test, int* test_dim1, int* test_dim2,
-                           float** target, int* target_dim1, int* target_dim2) {
+void closest_k_test_target(int k, int cluster_id, 
+      int* closest, int closest_dim1, int closest_dim2, int closest_dim3,
+      float* train_data, int train_data_dim1, int train_data_dim2,
+      float* target_data, int target_data_dim1, int target_data_dim2,
+      float** test, int* test_dim1, int* test_dim2,
+      float** target, int* target_dim1, int* target_dim2) {
   // Train data configuratian.
   int pixel_dim = 3;
   int light_dim = 1;
@@ -249,6 +248,7 @@ void closest_k_test_target(int k, int cluster_id, float* closest,
                     },
                     t);
   }
+  for(int t = 0; t < num_threads; ++t) threads[t].join();
 }
 
 // kmeans2d.update_errors(test_data, target_data, predictions, errors)

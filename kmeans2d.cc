@@ -163,23 +163,27 @@ void kmeans(int width, int height, std::vector<glm::vec2>& centers,
 //test, target = kmeans2d.closest_test_target(k, closest, cluster_id,\
                                                   //train_data, target_data)
 
-      //test, target = kmeans2d.closest_k_test_target(k, cluster_id, closest,\
-                                                  //train_data, train_labels) 
+//test, target = kmeans2d.closest_k_test_target(k, cluster_id, closest,\
+                                                  //train_data, train_labels)
 // Array indexing:
 // i = z  + depth * (y + height * x)
-void closest_k_test_target(int k, int cluster_id, 
-      int* closest, int closest_dim1, int closest_dim2, int closest_dim3,
-      float* train_data, int train_data_dim1, int train_data_dim2,
-      float* target_data, int target_data_dim1, int target_data_dim2,
-      float** test, int* test_dim1, int* test_dim2,
-      float** target, int* target_dim1, int* target_dim2) {
+void closest_k_test_target(int k, int cluster_id, int* closest,
+                           int closest_dim1, int closest_dim2, int closest_dim3,
+                           float* train_data, int train_data_dim1,
+                           int train_data_dim2, float* target_data,
+                           int target_data_dim1, int target_data_dim2,
+                           float** test, int* test_dim1, int* test_dim2,
+                           float** target, int* target_dim1, int* target_dim2) {
   // Train data configuratian.
   int pixel_dim = 3;
   int light_dim = 1;
   int coord_dim = 2;
-
+  int num_images = train_data_dim1 / (closest_dim1 * closest_dim2);
+  std::cout << "closest_k_test_target: num_images = " << num_images << "\n";
+  std::cout << "closest_k_test_target: k = " << k << "\n";
   // closest = np.zeros((height, width, channels))
   // Count how many pixels are k-th closest to this cluster.
+  std::cout << "closest_k_test_target: count pixels\n";
   int count = 0;
   for (int y = 0; y < closest_dim1; ++y) {
     for (int x = 0; x < closest_dim2; ++x) {
@@ -189,10 +193,12 @@ void closest_k_test_target(int k, int cluster_id,
   }
 
   // Set test and target dimensions.
-  *test_dim1 = count;
+  std::cout << "closest_k_test_target:allocate test\n";
+  *test_dim1 = count * num_images;
   *test_dim2 = pixel_dim + light_dim + coord_dim;
   *test = new float[(*test_dim1) * (*test_dim2)];
-  *target_dim1 = count;
+  std::cout << "closest_k_test_target:allocate target\n";
+  *target_dim1 = count * num_images;
   *target_dim2 = pixel_dim;
   *target = new float[(*target_dim1) * (*target_dim2)];
 
@@ -202,6 +208,7 @@ void closest_k_test_target(int k, int cluster_id,
     threads[t] =
         std::thread([
                       &k,
+                      &num_images,
                       &cluster_id,
                       &closest,
                       &closest_dim1,
@@ -224,9 +231,11 @@ void closest_k_test_target(int k, int cluster_id,
                          ->void {
                       // Write out the test and target data.
                       int pos = 0;
-                      int block_size = train_data_dim1 / block_size;
+                      int block_size = num_images / num_threads;
                       int start = tid * block_size;
                       int end = std::min(train_data_dim1, start + block_size);
+                      std::cout << "tid=" << tid << " start =" << start
+                                << " end = " << end << "\n";
                       for (int i = start; i < end; ++i) {
                         float* train_values = &train_data[train_data_dim2 * i];
                         float x_value = train_values[0];
@@ -236,19 +245,22 @@ void closest_k_test_target(int k, int cluster_id,
                         int l = k + closest_dim3 * (y * closest_dim2 + x);
                         if (cluster_id == closest[l]) {
                           float* target_values =
-                              &target_data[target_data_dim2 * l];
-                          for (int j = 0; j < train_data_dim2; ++j)
+                              &target_data[target_data_dim2 * i];
+                          for (int j = 0; j < *test_dim1; ++j) 
                             (*test)[(*test_dim2) * pos + j] = train_values[j];
-                          for (int j = 0; j < target_data_dim2; ++j)
+                          for (int j = 0; j < *target_dim1; ++j) {
+                            assert((*target_dim2) * pos + j <
+                                   (*target_dim1) * (*target_dim2));
                             (*target)[(*target_dim2) * pos + j] =
                                 target_values[j];
+                          }
                           ++pos;
                         }
                       }
                     },
                     t);
   }
-  for(int t = 0; t < num_threads; ++t) threads[t].join();
+  for (int t = 0; t < num_threads; ++t) threads[t].join();
 }
 
 // kmeans2d.update_errors(test_data, target_data, predictions, errors)
@@ -581,7 +593,7 @@ void predictions_to_img(float* test, int test_dim1, int test_dim2,
     int y = round(height * test_values[1]);
     float* predicted_values = &predictions[i * predictions_dim2];
     for (int c = 0; c < img_dim3; ++c)
-      img[c + img_dim3 * (y * img_dim2 + x)] +=  predicted_values[c];
+      img[c + img_dim3 * (y * img_dim2 + x)] += predicted_values[c];
   }
 }
 

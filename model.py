@@ -46,5 +46,5 @@ class ModelMaker:
     self.model.load_weights(self.checkpoint_file)
 
   def predict(self, test_data, target_data, batch_size):
-    predictions = self.model.predict(test_data, batch_size) 
+    return self.model.predict(test_data, batch_size) 
 

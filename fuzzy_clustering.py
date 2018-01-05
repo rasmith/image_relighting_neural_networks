@@ -150,7 +150,7 @@ def predict_img(i, average, model_dir, assignments):
 # y  x level clusters 
 assignments = np.zeros((height, width, ensemble_size + 1), dtype = 'int')
 
-for indices, order, centers, labels, closest, average, train_data, \
+for indices, cxx_order, centers, labels, closest, average, train_data, \
     train_labels, batch_sizes\
     in reversed(pixel_clusters):
   print("level = %d" % ((level)))
@@ -188,7 +188,7 @@ for indices, order, centers, labels, closest, average, train_data, \
   
   channels = 3
   predicted_images = np.zeros((channels, height, width, num_samples), \
-                    dtype = 'float') 
+                    dtype = np.float32) 
 
   # Compute all of the predicted images.
   for cluster_id in cluster_ids:
@@ -196,8 +196,8 @@ for indices, order, centers, labels, closest, average, train_data, \
     for k in range(0, ensemble_size):
       print("train_data.shape = %s" % str(train_data.shape))
       print("train_labels.shape = %s" % str(train_labels.shape))
-      test, target = kmeans2d.closest_k_test_target(int(k), int(cluster_id), closest,\
-                                                  train_data, train_labels) 
+      test, target = kmeans2d.closest_k_test_target(int(k), int(cluster_id),\
+                                              closest,train_data, train_labels) 
       print("test.shape = %s" % str(test.shape))
       print("target.shape = %s" % str(target.shape))
       checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
@@ -208,15 +208,20 @@ for indices, order, centers, labels, closest, average, train_data, \
         model.set_checkpoint_file(checkpoint_file)
         model.compile()
         model.load_weights()
-        predictions = model.predict(test, batch_size) 
-        kmeans2d.predictions_to_images(order, test, target, predictions, \
-                                      predicted_images)
+        predictions = model.predict(test, target, batch_size) 
+        print("cxx_order = %s" % type(cxx_order))
+        print("test = %s, %s" % (type(test), test.dtype))
+        print("predictions = %s, %s" % (type(predictions), predictions.dtype))
+        print("predicted_images = %s, %s"  %   (type(predicted_images), \
+          predicted_images.dtype))
+        kmeans2d.predictions_to_images(cxx_order, test, predictions, \
+                                       predicted_images)
       del test
       del target
 
   print("compute errors\n")
   # Compute error.
-  kmeans2d.compute_errors(ensemble_size, order, train_data, target_data, \
+  kmeans2d.compute_errors(ensemble_size, cxx_order, train_data, target_data, \
       predicted_images, errors)
 
   # Compute relative error.

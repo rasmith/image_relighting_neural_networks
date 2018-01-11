@@ -123,6 +123,14 @@ void GetTrainingData(const std::vector<image::Image>& images,
                      int* train_data_dim2, float** train_labels,
                      int* train_labels_dim1, int* train_labels_dim2,
                      std::vector<int>& batch_sizes) {
+  std::cout << "GetTrainingData:images.size()  = " << images.size() << "\n";
+  std::cout << "GetTrainingData:indices.size() = " << indices.size() << "\n";
+  std::cout << "GetTrainingData:min_index = "
+            << *std::min_element(indices.begin(),
+                                 indices.begin() + indices.size()) << "\n";
+  std::cout << "GetTrainingData:max_index = "
+            << *std::max_element(indices.begin(),
+                                 indices.begin() + indices.size()) << "\n";
   const uint32_t coord_dim = 2;
   const uint32_t light_dim = 1;
   const uint32_t pixel_dim = 3;
@@ -189,7 +197,6 @@ void GetTrainingData(const std::vector<image::Image>& images,
                                        pixel_counts[center],
                                    k = count * data_size,
                                    l = count * label_size;
-
                           image::Pixel p = img(x, y), a = average(x, y);
                           (*train_data)[k] = x / static_cast<float>(width);
                           (*train_data)[k + 1] = y / static_cast<float>(height);
@@ -238,10 +245,16 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
     q.pop();
   }
   auto cmp2 = [](int a, int b) { return a < b; };
+  std::cout << "min_index = " << *std::min_element(
+                                      indices.begin(),
+                                      indices.begin() + indices.size()) << "\n";
+  std::cout << "max_index = " << *std::max_element(
+                                      indices.begin(),
+                                      indices.begin() + indices.size()) << "\n";
   std::sort(indices.begin(), indices.end(), cmp2);
   order.resize(total, -1);
   std::cout << "indices = ";
-  for (int i = 0; i < indices.size(); ++i)  std::cout << indices[i] << " ";
+  for (int i = 0; i < indices.size(); ++i) std::cout << indices[i] << " ";
   std::cout << "\n";
   for (int i = 0; i < indices.size(); ++i) order[indices[i]] = i;
 }
@@ -275,21 +288,21 @@ void KmeansDataAndLabels(
   // Compute average.
   ComputeAverageImage(images, indices, average);
   // Return average img to user in normalized form.
-  //std::cout << "write out average image\n";
+  // std::cout << "write out average image\n";
   *average_img = new float[width * height * 3];
   *average_dim1 = height;
   *average_dim2 = width;
   *average_dim3 = 3;
-  //for (int y = 0; y < height; ++y) {
-    //for (int x = 0; x < width; ++x) {
-      //image::Pixel p = average(x, y);
-      //float *values = &((*average_img)[3*(x + width * y)]);
-      //values[0] = p.r / 255.0f;
-      //values[1] = p.g / 255.0f;
-      //values[2] = p.b / 255.0f;
-    //}
+  // for (int y = 0; y < height; ++y) {
+  // for (int x = 0; x < width; ++x) {
+  // image::Pixel p = average(x, y);
+  // float *values = &((*average_img)[3*(x + width * y)]);
+  // values[0] = p.r / 255.0f;
+  // values[1] = p.g / 255.0f;
+  // values[2] = p.b / 255.0f;
   //}
-//std::cout << "done\n";
+  //}
+  // std::cout << "done\n";
   // Run kmeans.
   centers.resize(num_centers);
   labels.resize(width * height);

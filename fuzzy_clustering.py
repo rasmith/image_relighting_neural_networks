@@ -193,11 +193,12 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   # Compute all of the predicted images.
   for cluster_id in cluster_ids:
     batch_size = batch_sizes[cluster_id]
+    print("batch_size = %d\n" % (batch_size))
     for k in range(0, ensemble_size):
       print("train_data.shape = %s" % str(train_data.shape))
       print("train_labels.shape = %s" % str(train_labels.shape))
       test, target = kmeans2d.closest_k_test_target(int(k), int(cluster_id),\
-                                              closest,train_data, train_labels) 
+                                              closest, train_data, train_labels) 
       print("test.shape = %s" % str(test.shape))
       print("target.shape = %s" % str(target.shape))
       checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'

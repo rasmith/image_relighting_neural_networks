@@ -167,6 +167,30 @@ void kmeans(int width, int height, std::vector<glm::vec2>& centers,
                                                   //train_data, train_labels)
 // Array indexing:
 // i = z  + depth * (y + height * x)
+//
+// closest_k_target_target
+//
+// for a given centroid, returns the training and target data for the pixels
+// that have this centroid as k-th closest.
+//
+// k - the number k that where all pixels have cluster_id as k closest.
+// cluster_id - centroid id
+// closest - for each pixel, the 5 closest centroids in order.
+// closest_dim1 - height
+// closest_dim2 - width
+// closest_dim3 - maximum value for k
+// train_data - input training data (x, y, i, r, g, b)
+// train_data_dim1 - number of samples
+// train_labels_dim2 - data size per sample (3)
+// target_data - actual values (r,g,b)
+// target_data_dim1 - number of samples
+// target_data_dim2 - data size per sample (6)
+// test - output data from training input (x, y, i, r, g, b)
+// test_dim1 - number of values
+// test_dim2 - number of samples
+// target - output data from training input (r, g, b)
+// target_dim1 - number of values
+// target_dim2 - number of samples
 void closest_k_test_target(int k, int cluster_id, int* closest,
                            int closest_dim1, int closest_dim2, int closest_dim3,
                            float* train_data, int train_data_dim1,
@@ -180,10 +204,21 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
   int coord_dim = 2;
   int num_images = train_data_dim1 / (closest_dim1 * closest_dim2);
   std::cout << "closest_k_test_target: num_images = " << num_images << "\n";
+  std::cout << "closest_k_test_target: closest_dim1 = " << closest_dim1 << "\n";
+  std::cout << "closest_k_test_target: closest_dim2 = " << closest_dim2 << "\n";
+  std::cout << "closest_k_test_target: closest_dim3 = " << closest_dim3 << "\n";
   std::cout << "closest_k_test_target: k = " << k << "\n";
   // closest = np.zeros((height, width, channels))
   // Count how many pixels are k-th closest to this cluster.
   std::cout << "closest_k_test_target: count pixels\n";
+  std::cout << "closest_k_test_target: train_data_dim1 = " << train_data_dim1
+            << "\n";
+  std::cout << "closest_k_test_target: train_data_dim2 = " << train_data_dim2
+            << "\n";
+  std::cout << "closest_k_test_target: target_data_dim1 = " << target_data_dim1
+            << "\n";
+  std::cout << "closest_k_test_target: target_data_dim2 = " << target_data_dim2
+            << "\n";
   int count = 0;
   for (int y = 0; y < closest_dim1; ++y) {
     for (int x = 0; x < closest_dim2; ++x) {
@@ -192,6 +227,7 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
     }
   }
 
+  std::cout << "closest_k_test_target: count = " << count << "\n";
   // Set test and target dimensions.
   std::cout << "closest_k_test_target:allocate test\n";
   *test_dim1 = count * num_images;
@@ -201,6 +237,10 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
   *target_dim1 = count * num_images;
   *target_dim2 = pixel_dim;
   *target = new float[(*target_dim1) * (*target_dim2)];
+  std::cout << "closest_k_test_target: test_dim1 = " << *test_dim1
+            << " test_dim2 = " << *test_dim2 << "\n";
+  std::cout << "closest_k_target_target: target_dim1 = " << *target_dim1
+            << " target_dim2 = " << *target_dim2 << "\n";
 
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
@@ -230,31 +270,35 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
                     ](int tid)
                          ->void {
                       // Write out the test and target data.
+                      int num_pixels = closest_dim1 * closest_dim2;
                       int pos = 0;
                       int block_size = num_images / num_threads;
                       int start = tid * block_size;
-                      int end = std::min(train_data_dim1, start + block_size);
+                      int end = std::min(num_images, start + block_size);
                       std::cout << "tid=" << tid << " start =" << start
                                 << " end = " << end << "\n";
                       for (int i = start; i < end; ++i) {
-                        float* train_values = &train_data[train_data_dim2 * i];
-                        float x_value = train_values[0];
-                        float y_value = train_values[1];
-                        int x = round(x_value * closest_dim2);
-                        int y = round(y_value * closest_dim1);
-                        int l = k + closest_dim3 * (y * closest_dim2 + x);
-                        if (cluster_id == closest[l]) {
-                          float* target_values =
-                              &target_data[target_data_dim2 * i];
-                          for (int j = 0; j < *test_dim1; ++j) 
-                            (*test)[(*test_dim2) * pos + j] = train_values[j];
-                          for (int j = 0; j < *target_dim1; ++j) {
-                            assert((*target_dim2) * pos + j <
-                                   (*target_dim1) * (*target_dim2));
-                            (*target)[(*target_dim2) * pos + j] =
-                                target_values[j];
+                        for (int n = 0; n < num_pixels; ++n) {
+                          float* train_values =
+                              &train_data[num_pixels * train_data_dim2 * i +
+                                          train_data_dim2 * n];
+                          float x_value = train_values[0];
+                          float y_value = train_values[1];
+                          int x = round(x_value * closest_dim2);
+                          int y = round(y_value * closest_dim1);
+                          int l = k + closest_dim3 * (y * closest_dim2 + x);
+                          if (cluster_id == closest[l]) {
+                            float* target_values =
+                                &target_data[target_data_dim2 * i];
+                            for (int j = 0; j < *test_dim2; ++j)
+                              (*test)[(*test_dim2) * pos + j] = train_values[j];
+                            for (int j = 0; j < *target_dim2; ++j) {
+                              assert((*target_dim2) * pos + j <
+                                     (*target_dim1) * (*target_dim2));
+                              (*target)[(*target_dim2) * pos + j] =
+                                  target_values[j];
+                            }
                           }
-                          ++pos;
                         }
                       }
                     },
@@ -322,54 +366,77 @@ void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
                            float* predicted_images, int predicted_images_dim1,
                            int predicted_images_dim2, int predicted_images_dim3,
                            int predicted_images_dim4) {
+  std::cout << "test_dim1 = " << test_dim1 << "\n";
+  std::cout << "test_dim2 = " << test_dim2 << "\n";
+  std::cout << "predictions_dim1 = " << predictions_dim1 << "\n";
+  std::cout << "predictions_dim2 = " << predictions_dim2 << "\n";
+  std::cout << "predicted_images_dim1 = " << predicted_images_dim1 << "\n";
+  std::cout << "predicted_images_dim2 = " << predicted_images_dim2 << "\n";
+  std::cout << "predicted_images_dim3 = " << predicted_images_dim3 << "\n";
+  std::cout << "predicted_images_dim4 = " << predicted_images_dim4 << "\n";
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
   for (int t = 0; t < num_threads; ++t) {
-    threads[t] = std::thread(
-        [
-          &order,
-          &test,
-          &test_dim1,
-          &test_dim2,
-          &predictions,
-          &predictions_dim1,
-          &predictions_dim2,
-          &predicted_images,
-          &predicted_images_dim1,
-          &predicted_images_dim2,
-          &predicted_images_dim3,
-          &predicted_images_dim4,
-          &num_threads
-        ](int tid)
-             ->void {
-          int block_size = predictions_dim1 / num_threads;
-          int start = tid * block_size;
-          int end = std::min(start + block_size, predictions_dim1);
-          for (int i = start; i < end; ++i) {
-            float* predicted_values = &predictions[i * predictions_dim2];
-            float* test_values = &test[i * test_dim2];
-            float x_value = test_values[0];
-            float y_value = test_values[1];
-            float i_value = test_values[2];
-            int num_images = predicted_images_dim1;
-            int height = predicted_images_dim2;
-            int width = predicted_images_dim3;
-            int channels = predicted_images_dim4;
-            // predicted_images[i, y, x, c]
-            // I = channels * (width * (height * i + y) + x) + c
-            // I = channels * (width * height * i + width * y + x) + c
-            // I = width * height * channels * i + (width * y + x) * channels
-            //     + c
-            int x = round(x_value * predicted_images_dim3);
-            int y = round(y_value * predicted_images_dim2);
-            int n = round(i_value * predicted_images_dim1);
-            for (int c = 0; c < channels; ++c)
-              predicted_images
-                  [channels * (width * (height * order[n] + y) + x) + c] +=
-                  predicted_values[c];
-          }
-        },
-        t);
+    threads[t] =
+        std::thread([
+                      &order,
+                      &test,
+                      &test_dim1,
+                      &test_dim2,
+                      &predictions,
+                      &predictions_dim1,
+                      &predictions_dim2,
+                      &predicted_images,
+                      &predicted_images_dim1,
+                      &predicted_images_dim2,
+                      &predicted_images_dim3,
+                      &predicted_images_dim4,
+                      &num_threads
+                    ](int tid)
+                         ->void {
+                      int block_size = predictions_dim1 / num_threads;
+                      int start = tid * block_size;
+                      int end = std::min(start + block_size, predictions_dim1);
+                      for (int i = start; i < end; ++i) {
+                        float* predicted_values =
+                            &predictions[i * predictions_dim2];
+                        float* test_values = &test[i * test_dim2];
+                        float x_value = test_values[0];
+                        float y_value = test_values[1];
+                        float i_value = test_values[2];
+                        int num_images = predicted_images_dim4;
+                        int height = predicted_images_dim2;
+                        int width = predicted_images_dim3;
+                        int channels = predicted_images_dim1;
+                        // predicted_images[i, y, x, c]
+                        // I = channels * (width * (height * i + y) + x) + c
+                        // I = channels * (width * height * i + width * y + x) +
+                        // c
+                        // I = width * height * channels * i + (width * y + x) *
+                        // channels
+                        //     + c
+                        int x = round(x_value * predicted_images_dim3);
+                        int y = round(y_value * predicted_images_dim2);
+                        int n = round(i_value * order.size());
+                        for (int c = 0; c < channels; ++c) {
+                          int idx =
+                              channels * (width * (height * order[n] + y) + x) +
+                              c;
+                          if (idx < 0) {
+                            std::cout << "idx = " << idx << " x = " << x
+                                      << " y =  " << y << " n = " << n
+                                      << " c = " << c
+                                      << " i_value = " << i_value
+                                      << " order.size() = " << order.size()
+                                      << " order[n] = " << order[n] << "\n";
+                          }
+                          assert(idx >= 0);
+                          assert(idx <= height * width * channels * num_images);
+                          predicted_images[idx] += predicted_values[c];
+                        }
+                      }
+                    },
+                    t);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
 }

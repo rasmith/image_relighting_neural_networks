@@ -67,11 +67,10 @@ void LoadImages(const std::string& dirname, std::vector<image::Image>& images) {
   for (int i = 0; i < num_threads; ++i) {
     threads[i] =
         std::thread([&num_threads, &file_names, &images ](int tid)->void {
-                      uint32_t block_size = file_names.size() / num_threads;
+                      uint32_t num_files = file_names.size();
+                      uint32_t block_size = num_files / num_threads + 1;
                       uint32_t start = tid * block_size;
-                      uint32_t end =
-                          std::min(start + block_size,
-                                   static_cast<uint32_t>(file_names.size()));
+                      uint32_t end = std::min(start + block_size, num_files);
                       for (int j = start; j < end; ++j)
                         DecodePng(file_names[j].c_str(), images[j]);
                     },
@@ -179,12 +178,10 @@ void GetTrainingData(const std::vector<image::Image>& images,
                       &train_labels
                     ](int tid)
                          ->void {
-                      uint32_t block_size = indices.size() / num_threads,
+                      uint32_t sample_size = indices.size(),
+                               block_size = sample_size / num_threads + 1,
                                start = tid * block_size,
-                               end = std::min(
-                                   start + block_size,
-                                   static_cast<uint32_t>(images.size())),
-                               sample_size = indices.size();
+                               end = std::min(start + block_size, sample_size);
                       std::vector<uint32_t> pixel_counts(num_centers, 0);
                       for (int i = start; i < end; ++i) {
                         const image::Image& img = images[indices[i]];
@@ -201,7 +198,7 @@ void GetTrainingData(const std::vector<image::Image>& images,
                           (*train_data)[k] = x / static_cast<float>(width);
                           (*train_data)[k + 1] = y / static_cast<float>(height);
                           (*train_data)[k + 2] =
-                              indices[i] / static_cast<float>(images.size());
+                              indices[i] / static_cast<float>(sample_size);
                           (*train_data)[k + 3] = a.r / 255.0f;
                           (*train_data)[k + 4] = a.g / 255.0f;
                           (*train_data)[k + 5] = a.b / 255.0f;

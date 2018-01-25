@@ -252,7 +252,7 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
 
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
-  std::vector<int> copied(num_threads, 0);
+  std::vector<int> visited(num_threads, 0);
   std::vector<int> starts(num_threads, 0);
   std::vector<int> ends(num_threads, 0);
   std::vector<int> test_out_starts(num_threads, 0);
@@ -261,7 +261,7 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
   std::vector<int> target_out_ends(num_threads, 0);
   std::vector<int> train_in_starts(num_threads, 0);
   std::vector<int> train_in_ends(num_threads, 0);
-  std::vector<int> pixel_counts(num_threads, 0);
+  std::vector<int> pixels_copied(num_threads, 0);
   for (int t = 0; t < num_threads; ++t) {
     threads[t] =
         std::thread([
@@ -290,7 +290,7 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
                       &target_dim2,
                       &target_data_size,
                       &train_data_size,
-                      &copied,
+                      &visited,
                       &starts,
                       &ends,
                       &test_out_starts,
@@ -299,7 +299,7 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
                       &target_out_ends,
                       &train_in_starts,
                       &train_in_ends,
-                      &pixel_counts,
+                      &pixels_copied,
                       &num_threads
                     ](int tid)
                          ->void {
@@ -331,67 +331,35 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
                       target_out_ends[tid] = target_out_end;
                       starts[tid] = start;
                       ends[tid] = end;
+                      float* train_in_pos = train_data + train_in_start;
                       float* test_out_pos = *test + test_out_start;
                       float* target_out_pos = *target + target_out_start;
                       float* target_in_pos = target_data + target_in_start;
-                      for (float* train_in_pos = train_data + train_in_start;
-                           train_in_pos != train_data + train_in_end;
-                           train_in_pos += train_data_size) {
-                        //assert(test_out_pos - *test >= test_out_start);
-                        //assert(test_out_pos - *test < test_out_end);
-                        //assert(target_out_pos - *target >= target_out_start);
-                        //assert(target_out_pos - *target < target_out_end);
-                        //assert(target_in_pos - target_data >= target_in_start);
-                        //assert(target_in_pos - target_data < target_in_end);
-                        ++copied[tid];
-                        float x_value = train_in_pos[0];
-                        float y_value = train_in_pos[1];
-                        float i_value = train_in_pos[2];
-                        float r_value = train_in_pos[3];
-                        float g_value = train_in_pos[4];
-                        float b_value = train_in_pos[5];
-                        int x = round(closest_dim2 * x_value);
-                        int y = round(closest_dim1 * y_value);
-                        int l = k + closest_dim3 * (y * closest_dim2 + x);
-                        // int i = k + closest_dim3 * (y * closest_dim2 + x);
-                        if (cluster_id == closest[l]) {
-                          ++pixel_counts[tid];
-                          // for (int i = 0; i < train_data_size; ++i) {
-                          // if (!(test_out_pos - *test >= test_out_start) ||
-                          //!(test_out_pos - *test < test_out_end)) {
-                          // std::cout << "tid = " << tid
-                          //<< " train_in_start = " << train_in_start << "\n";
-                          // std::cout << "tid = " << tid
-                          //<< " train_in_end = " << train_in_end << "\n";
-                          // std::cout << "tid = " << tid
-                          //<< " train_in_pos - train_data = "
-                          //<< train_in_pos - train_data << "\n";
-                          // std::cout << "tid = " << tid
-                          //<< " test_out_start = " << test_out_start << "\n";
-                          // std::cout << "tid = " << tid
-                          //<< " test_out_end = " << test_out_end << "\n";
-                          // std::cout << "tid = " << tid << " test_out_pos -
-                          // *test = "
-                          //<< test_out_pos - *test << "\n";
-                          // assert(test_out_pos - *test >= test_out_start);
-                          // assert(test_out_pos - *test < test_out_end);
-                          //}
-                          //// test_out_pos[i] = train_in_pos[i];
-                          //}
-                          // for (int i = 0; i < target_out_size; ++i)
-                          // target_out_pos[i] = target_in_pos[i];
-                          test_out_pos += train_data_size;
-                          target_out_pos += target_data_size;
+                      for (int i = start; i < end; ++i) {
+                        for (int j = 0; j < num_pixels; ++j) {
+                          ++visited[tid];
+                          int x = round(closest_dim2 * *(train_in_pos));
+                          int y = round(closest_dim1 * *(train_in_pos + 1));
+                          int l = k + closest_dim3 * (y * closest_dim2 + x);
+                          if (cluster_id == closest[l]) {
+                            ++pixels_copied[tid];
+                            for (int k = 0; k < train_data_size; ++k)
+                              test_out_pos[k] = train_in_pos[k];
+                            for (int k = 0; k < target_data_size; ++k)
+                              target_out_pos[k] = target_in_pos[k];
+                          }
+                          train_in_pos += train_data_size;
+                          target_in_pos += target_data_size;
                         }
                       }
                     },
                     t);
   }
   for (int t = 0; t < num_threads; ++t) threads[t].join();
-  int total_copied = 0;
+  int total_visited = 0;
   for (int t = 0; t < num_threads; ++t) {
-    std::cout << "Thread " << t << " copied " << copied[t] << " values.\n";
-    total_copied += copied[t];
+    std::cout << "Thread " << t << " visited " << visited[t] << " values.\n";
+    total_visited += visited[t];
     std::cout << "t=" << t << " start =" << starts[t] << " end = " << ends[t]
               << "\n";
     std::cout << "test_out_start = " << test_out_starts[t]
@@ -400,9 +368,9 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
               << " target_out_ends = " << target_out_ends[t] << "\n";
     std::cout << "train_in_start = " << train_in_starts[t]
               << " train_in_ends = " << train_in_ends[t] << "\n";
-    std::cout << "pixel_counts = " << pixel_counts[t] << "\n";
+    std::cout << "pixels_copied = " << pixels_copied[t] << "\n";
   }
-  std::cout << "Copied " << total_copied << " values.\n";
+  std::cout << "Visited " << total_visited << " values.\n";
 }
 
 // kmeans2d.update_errors(test_data, target_data, predictions, errors)

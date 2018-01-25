@@ -347,6 +347,8 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
                               test_out_pos[k] = train_in_pos[k];
                             for (int k = 0; k < target_data_size; ++k)
                               target_out_pos[k] = target_in_pos[k];
+                            test_out_pos += train_data_size;
+                            target_out_pos += target_data_size;
                           }
                           train_in_pos += train_data_size;
                           target_in_pos += target_data_size;

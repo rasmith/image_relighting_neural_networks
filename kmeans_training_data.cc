@@ -147,6 +147,9 @@ void GetTrainingData(const std::vector<image::Image>& images,
   *train_labels = new float[(*train_labels_dim1) * (*train_labels_dim2)];
   std::vector<uint32_t> cluster_sizes(num_centers, 0);
   std::vector<uint32_t> cluster_counts(num_centers, 0);
+  std::cout << "GetTrainingData:width  = " << width << "\n";
+  std::cout << "GetTrainingData:height  = " << height << "\n";
+  std::cout << "GetTrainingData:labels.size= " << labels.size() << "\n";
   // Count pixels per cluster.
   for (int i = 0; i < labels.size(); ++i) ++cluster_sizes[labels[i]];
   batch_sizes.clear();
@@ -178,34 +181,34 @@ void GetTrainingData(const std::vector<image::Image>& images,
                       &train_labels
                     ](int tid)
                          ->void {
+
                       uint32_t sample_size = indices.size(),
                                block_size = sample_size / num_threads + 1,
                                start = tid * block_size,
-                               end = std::min(start + block_size, sample_size);
-                      std::vector<uint32_t> pixel_counts(num_centers, 0);
+                               end = std::min(start + block_size, sample_size),
+                               num_pixels = width * height;
+                      float* train_data_pos =
+                          *train_data + data_size * start * num_pixels;
+                      float* train_labels_pos =
+                          *train_labels + label_size * start * num_pixels;
+                      --train_data_pos;
+                      --train_labels_pos;
                       for (int i = start; i < end; ++i) {
                         const image::Image& img = images[indices[i]];
                         for (int j = 0; j < labels.size(); ++j) {
                           uint32_t center = labels[j], x = j % width,
-                                   y = j / width,
-                                   count =
-                                       cluster_counts[center] * sample_size +
-                                       cluster_sizes[center] * start +
-                                       pixel_counts[center],
-                                   k = count * data_size,
-                                   l = count * label_size;
+                                   y = j / width;
                           image::Pixel p = img(x, y), a = average(x, y);
-                          (*train_data)[k] = x / static_cast<float>(width);
-                          (*train_data)[k + 1] = y / static_cast<float>(height);
-                          (*train_data)[k + 2] =
+                          *(++train_data_pos) = x / static_cast<float>(width);
+                          *(++train_data_pos) = y / static_cast<float>(height);
+                          *(++train_data_pos) =
                               indices[i] / static_cast<float>(sample_size);
-                          (*train_data)[k + 3] = a.r / 255.0f;
-                          (*train_data)[k + 4] = a.g / 255.0f;
-                          (*train_data)[k + 5] = a.b / 255.0f;
-                          (*train_labels)[l] = p.r / 255.0f;
-                          (*train_labels)[l + 1] = p.g / 255.0f;
-                          (*train_labels)[l + 2] = p.b / 255.0f;
-                          ++pixel_counts[center];
+                          *(++train_data_pos) = a.r / 255.0f;
+                          *(++train_data_pos) = a.g / 255.0f;
+                          *(++train_data_pos) = a.b / 255.0f;
+                          *(++train_labels_pos) = p.r / 255.0f;
+                          *(++train_labels_pos) = p.g / 255.0f;
+                          *(++train_labels_pos) = p.b / 255.0f;
                         }
                       }
                     },

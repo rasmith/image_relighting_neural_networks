@@ -202,7 +202,7 @@ void GetTrainingData(const std::vector<image::Image>& images,
                           *(++train_data_pos) = x / static_cast<float>(width);
                           *(++train_data_pos) = y / static_cast<float>(height);
                           *(++train_data_pos) =
-                              indices[i] / static_cast<float>(sample_size);
+                              indices[i] / static_cast<float>(images.size());
                           *(++train_data_pos) = a.r / 255.0f;
                           *(++train_data_pos) = a.g / 255.0f;
                           *(++train_data_pos) = a.b / 255.0f;
@@ -257,6 +257,10 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
   for (int i = 0; i < indices.size(); ++i) std::cout << indices[i] << " ";
   std::cout << "\n";
   for (int i = 0; i < indices.size(); ++i) order[indices[i]] = i;
+  std::cout << "total = " << total << "\n";
+  std::cout << "order= ";
+  for (int i = 0; i < order.size(); ++i) std::cout << order[i] << " ";
+  std::cout << "\n";
 }
 
 void KmeansDataAndLabels(

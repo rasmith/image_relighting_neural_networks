@@ -490,14 +490,14 @@ void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
                           int idx =
                               channels * (width * (height * order[n] + y) + x) +
                               c;
-                          if (idx < 0) {
-                            std::cout << "idx = " << idx << " x = " << x
-                                      << " y =  " << y << " n = " << n
-                                      << " c = " << c
-                                      << " i_value = " << i_value
-                                      << " order.size() = " << order.size()
-                                      << " order[n] = " << order[n] << "\n";
-                          }
+                          // if (idx < 0) {
+                          // std::cout << "idx = " << idx << " x = " << x
+                          //<< " y =  " << y << " n = " << n
+                          //<< " c = " << c
+                          //<< " i_value = " << i_value
+                          //<< " order.size() = " << order.size()
+                          //<< " order[n] = " << order[n] << "\n";
+                          //}
                           assert(idx >= 0);
                           assert(idx <= height * width * channels * num_images);
                           predicted_images[idx] += predicted_values[c];
@@ -510,17 +510,30 @@ void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
 }
 
 // kmeans2d.update_errors(test_data, target_data, predictions, errors)
+//kmeans2d.compute_errors(ensemble_size, cxx_order, train_data, target_data, \
+      //predicted_images, errors)
 void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
                     int train_dim1, int train_dim2, float* target,
-                    int target_dim1, int target_dim2, float* predictions,
-                    int predictions_dim1, int predictions_dim2,
-                    float* predicted_images, int predicted_images_dim1,
-                    int predicted_images_dim2, int predicted_images_dim3,
-                    int predicted_images_dim4, float* errors, int errors_dim1,
-                    int errors_dim2) {
+                    int target_dim1, int target_dim2, float* predicted_images,
+                    int predicted_images_dim1, int predicted_images_dim2,
+                    int predicted_images_dim3, int predicted_images_dim4,
+                    float* errors, int errors_dim1, int errors_dim2) {
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
   std::vector<float*> error_values_threads(num_threads, nullptr);
+  std::cout << "compute_errors:ensemble_size = " << ensemble_size << "\n";
+  std::cout << "compute_errors:train_dim1 = " << train_dim1 << "\n";
+  std::cout << "compute_errors:train_dim2 = " << train_dim2 << "\n";
+  std::cout << "compute_errors:target_dim1 = " << target_dim1 << "\n";
+  std::cout << "compute_errors:target_dim2 = " << target_dim2 << "\n";
+  std::cout << "compute_errors:predicted_images_dim1 = "
+            << predicted_images_dim1 << "\n";
+  std::cout << "compute_errors:predicted_images_dim2 = "
+            << predicted_images_dim2 << "\n";
+  std::cout << "compute_errors:predicted_images_dim3 = "
+            << predicted_images_dim3 << "\n";
+  std::cout << "compute_errors:errors_dim1 = " << errors_dim1 << "\n";
+  std::cout << "compute_errors:errors_dim2 = " << errors_dim2 << "\n";
   for (int t = 0; t < num_threads; ++t)
     error_values_threads[t] = new float[errors_dim1 * errors_dim2];
   for (int t = 0; t < num_threads; ++t) {
@@ -534,9 +547,6 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
           &target,
           &target_dim1,
           &target_dim2,
-          &predictions,
-          &predictions_dim1,
-          &predictions_dim2,
           &predicted_images,
           &predicted_images_dim1,
           &predicted_images_dim2,
@@ -548,12 +558,12 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
           &num_threads
         ](int tid)
              ->void {
+          int num_images = predicted_images_dim4;
           float* errors = error_values_threads[tid];
-          int block_size = predictions_dim1 / num_threads + 1;
+          int block_size = num_images / num_threads + 1;
           int start = tid * block_size;
-          int end = std::min(start + block_size, predictions_dim1);
+          int end = std::min(start + block_size, num_images);
           for (int i = start; i < end; ++i) {
-            float* predicted_values = &predictions[i * predictions_dim2];
             float* train_values = &train[i * train_dim2];
             float* target_values = &target[i * target_dim2];
             float x_value = train_values[0];

@@ -60,9 +60,6 @@
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* target, int target_dim1, int target_dim2)};
 
-%apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
-(float* predictions, int predictions_dim1, int predictions_dim2)};
-
 %apply (float* INPLACE_ARRAY4, int DIM1, int DIM2, int DIM3, int DIM4) {\
 (float* predicted_images, int predicted_images_dim1, int predicted_images_dim2,\
 int predicted_images_dim3, int predicted_images_dim4)};

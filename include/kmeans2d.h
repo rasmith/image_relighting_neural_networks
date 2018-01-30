@@ -42,14 +42,15 @@ void closest_n(int width, int height, int n, std::vector<float>& centers,
 * target_data_dim2 - dimension of output target points, should be same as
 *                  - target_data_dim2
 */
-void closest_k_test_target(int k, int cluster_id, 
-      int* closest, int closest_dim1, int closest_dim2, int closest_dim3,
-      float* train_data, int train_data_dim1, int train_data_dim2,
-      float* target_data, int target_data_dim1, int target_data_dim2,
-      float** test, int* test_dim1, int* test_dim2,
-      float** target, int* target_dim1, int* target_dim2);
+void closest_k_test_target(int k, int cluster_id, int* closest,
+                           int closest_dim1, int closest_dim2, int closest_dim3,
+                           float* train_data, int train_data_dim1,
+                           int train_data_dim2, float* target_data,
+                           int target_data_dim1, int target_data_dim2,
+                           float** test, int* test_dim1, int* test_dim2,
+                           float** target, int* target_dim1, int* target_dim2);
 
-        //kmeans2d.predictions_to_images(order, test, target, predictions, \
+//kmeans2d.predictions_to_images(order, test, target, predictions, \
                                       //predicted_images)
 void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
                            int test_dim2, float* predictions,
@@ -60,12 +61,10 @@ void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
 
 void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
                     int train_dim1, int train_dim2, float* target,
-                    int target_dim1, int target_dim2, float* predictions,
-                    int predictions_dim1, int predictions_dim2,
-                    float* predicted_images, int predicted_images_dim1,
-                    int predicted_images_dim2, int predicted_images_dim3,
-                    int predicted_images_dim4, float* errors, int errors_dim1,
-                    int errors_dim2);
+                    int target_dim1, int target_dim2, float* predicted_images,
+                    int predicted_images_dim1, int predicted_images_dim2,
+                    int predicted_images_dim3, int predicted_images_dim4,
+                    float* errors, int errors_dim1, int errors_dim2);
 
 void compute_total_values(float* train, int train_dim1, int train_dim2,
                           float* target, int target_dim1, int target_dim2,

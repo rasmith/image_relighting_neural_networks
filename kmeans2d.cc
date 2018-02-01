@@ -532,6 +532,8 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
             << predicted_images_dim2 << "\n";
   std::cout << "compute_errors:predicted_images_dim3 = "
             << predicted_images_dim3 << "\n";
+  std::cout << "compute_errors:predicted_images_dim4 = "
+            << predicted_images_dim4 << "\n";
   std::cout << "compute_errors:errors_dim1 = " << errors_dim1 << "\n";
   std::cout << "compute_errors:errors_dim2 = " << errors_dim2 << "\n";
   for (int t = 0; t < num_threads; ++t)
@@ -575,9 +577,34 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
             int height = predicted_images_dim2;
             int width = predicted_images_dim3;
             int channels = predicted_images_dim4;
-            int n = round(i_value * predicted_images_dim1);
+            int n = round(i_value * order.size());
             float sum = 0;
+                        //int x = round(x_value * predicted_images_dim3);
+                        //int y = round(y_value * predicted_images_dim2);
+                        //int n = round(i_value * order.size());
+                        //for (int c = 0; c < channels; ++c) {
+                          //int idx =
+                              //channels * (width * (height * order[n] + y) + x) +
+                              //c;
             for (int c = 0; c < channels; ++c) {
+              int index = channels * (width * (height * order[n] + y) + x) + c;
+              if (!(index >= 0) ||
+                  !(index < predicted_images_dim1 * predicted_images_dim2 *
+                                predicted_images_dim3 *
+                                predicted_images_dim4)) {
+                std::cout << "index = " << index << "\n";
+                std::cout << "channels = " << channels << "\n";
+                std::cout << "width = " << width << "\n";
+                std::cout << "height = " << height << "\n";
+                std::cout << "n = " <<  n << "\n";
+                std::cout << "y = " << y << "\n";
+                std::cout << "x = " << x << "\n";
+                std::cout << "c = " << c << "\n";
+                assert(index >= 0);
+                assert(index < predicted_images_dim1 * predicted_images_dim2 *
+                                   predicted_images_dim3 *
+                                   predicted_images_dim4);
+              }
               float value = predicted_images
                   [channels * (width * (height * order[n] + y) + x) + c];
               float diff = value / ensemble_size - target_values[c];

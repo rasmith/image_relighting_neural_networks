@@ -57,7 +57,7 @@ pixel_clusters = \
     PixelClusters(dirname, num_levels, max_clusters, ensemble_size, timed)
 
 flagged = np.ones((height, width), dtype  = bool)
-errors = np.ndarray((height, width), dtype = 'float', order='C')
+errors = np.ndarray((height, width), dtype = np.float32, order='C')
 
 
 init(dirname)
@@ -222,17 +222,11 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
 
   print("compute errors\n")
   # Compute error.
-# void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
-                    # int train_dim1, int train_dim2, float* target,
-                    # int target_dim1, int target_dim2, float* predicted_images,
-                    # int predicted_images_dim1, int predicted_images_dim2,
-                    # int predicted_images_dim3, int predicted_images_dim4,
-                    # float* errors, int errors_dim1, int errors_dim2) {
-  kmeans2d.compute_errors(ensemble_size, cxx_order, train_data, target_data, \
+  kmeans2d.compute_errors(ensemble_size, cxx_order, train_data, train_labels, \
       predicted_images, errors)
 
   # Compute relative error.
-  kmeans2d.compute_total_values(train_data, target_data, totals)
+  kmeans2d.compute_total_values(train_data, train_labels, totals)
   relative_error = errors / totals
 
   # Assign pixels that are approximated well enough.

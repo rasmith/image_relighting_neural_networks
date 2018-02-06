@@ -379,10 +379,15 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
 void compute_total_values(float* train, int train_dim1, int train_dim2,
                           float* target, int target_dim1, int target_dim2,
                           float* totals, int totals_dim1, int totals_dim2) {
-
+  std::cout << "compute_total_values: train_dim1 = " << train_dim1 << "\n";
+  std::cout << "compute_total_values: train_dim2 = " << train_dim2 << "\n";
+  std::cout << "compute_total_values: target_dim1 = " << target_dim1 << "\n";
+  std::cout << "compute_total_values: target_dim2 = " << target_dim2 << "\n";
+  std::cout << "compute_total_values: totals_dim1 = " << totals_dim1 << "\n";
+  std::cout << "compute_total_values: totals_dim2 = " << totals_dim2 << "\n";
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
-  std::vector<float*> total_values_threads;
+  std::vector<float*> total_values_threads(num_threads, nullptr);
   for (int t = 0; t < num_threads; ++t)
     total_values_threads[t] = new float[totals_dim1 * totals_dim2];
   for (int t = 0; t < num_threads; ++t) {
@@ -413,7 +418,10 @@ void compute_total_values(float* train, int train_dim1, int train_dim2,
                         int y = round(y_value * totals_dim1);
                         for (int c = 0; c < target_dim2; ++c) {
                           float value = target_values[c];
-                          totals[y * totals_dim2 + x] += value * value;
+                          int index = y * totals_dim2 + x;
+                          assert(index >= 0);
+                          assert(index < totals_dim2 * totals_dim1);
+                          totals[index] += value * value;
                         }
                       }
                     },

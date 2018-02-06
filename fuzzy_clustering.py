@@ -225,7 +225,9 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   kmeans2d.compute_errors(ensemble_size, cxx_order, train_data, train_labels, \
       predicted_images, errors)
 
+  print("compute relative error\n")
   # Compute relative error.
+  totals = np.zeros((height, width), dtype = np.float32)
   kmeans2d.compute_total_values(train_data, train_labels, totals)
   relative_error = errors / totals
 

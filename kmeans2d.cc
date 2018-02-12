@@ -421,7 +421,7 @@ void compute_total_values(float* train, int train_dim1, int train_dim2,
                           int index = y * totals_dim2 + x;
                           assert(index >= 0);
                           assert(index < totals_dim2 * totals_dim1);
-                          totals[index] += value * value;
+                          totals[index] += value;
                         }
                       }
                     },
@@ -484,13 +484,6 @@ void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
                         int height = predicted_images_dim2;
                         int width = predicted_images_dim3;
                         int channels = predicted_images_dim1;
-                        // predicted_images[i, y, x, c]
-                        // I = channels * (width * (height * i + y) + x) + c
-                        // I = channels * (width * height * i + width * y + x) +
-                        // c
-                        // I = width * height * channels * i + (width * y + x) *
-                        // channels
-                        //     + c
                         int x = round(x_value * predicted_images_dim3);
                         int y = round(y_value * predicted_images_dim2);
                         int n = round(i_value * order.size());

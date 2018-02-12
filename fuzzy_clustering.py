@@ -215,21 +215,23 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
         print("predictions = %s, %s" % (type(predictions), predictions.dtype))
         print("predicted_images = %s, %s"  %   (type(predicted_images), \
           predicted_images.dtype))
-        kmeans2d.predictions_to_images(cxx_order, test, predictions, \
-                                       predicted_images)
+        # kmeans2d.predictions_to_images(cxx_order, test, predictions, \
+                                       # predicted_images)
+        kmeans2d.predictions_to_errors(cxx_order, ensemble_size,\
+            test, predictions, errors);
       del test
       del target
 
   print("compute errors\n")
   # Compute error.
-  kmeans2d.compute_errors(ensemble_size, cxx_order, train_data, train_labels, \
-      predicted_images, errors)
+  # kmeans2d.compute_errors(ensemble_size, cxx_order, train_data, train_labels, \
+      # predicted_images, errors)
 
   print("compute relative error\n")
   # Compute relative error.
-  totals = np.zeros((height, width), dtype = np.float32)
-  kmeans2d.compute_total_values(train_data, train_labels, totals)
-  relative_error = errors / totals
+  # totals = np.zeros((height, width), dtype = np.float32)
+  # kmeans2d.compute_total_values(train_data, train_labels, totals)
+  # relative_error = errors / totals
 
   # Assign pixels that are approximated well enough.
   flagged = relative_error > tolerance

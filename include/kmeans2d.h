@@ -50,8 +50,27 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
                            float** test, int* test_dim1, int* test_dim2,
                            float** target, int* target_dim1, int* target_dim2);
 
-//kmeans2d.predictions_to_images(order, test, target, predictions, \
-                                      //predicted_images)
+/**
+ * order - specifies order of each image for purposes of sampling input dataset
+ *       - if an image is not chosen, the value of order[i] = -1
+ *       - if an image is chosen, then the value is order[i] = n
+ *       - where i is now the n-th image number that was chosen
+ * test  - test data for the neural network ensembles
+ *       - of the form: xyirgb  xyirgb xyirgb ...
+ *       - where xy are the image pixel coordinates normalied
+ *       - i is the light location, in this case just the image number
+ *       - rgb is the average pixel rgb value.
+ * test_dim1 - number of test data elements
+ * test_dim2 - should always be 6
+ * predictions - image predictions to be made using the input test data
+ * predictions_dim1 - number of predictions, should match test_dim1
+ *                  - of the form: rgb rgb rgb...
+ * predictions_dim2 - should be 3
+ * predicted_images_dim1 - should be 3
+ * predicted_images_dim1 - should be the height
+ * predicted_images_dim2 - should be the width
+ * predicted_images_dim4 - number of sampled images
+ * */
 void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
                            int test_dim2, float* predictions,
                            int predictions_dim1, int predictions_dim2,
@@ -59,19 +78,33 @@ void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
                            int predicted_images_dim2, int predicted_images_dim3,
                            int predicted_images_dim4);
 
+/**
+ * ensemble_size - number of neural networks per pixel
+ * train - training data
+ * train_dim1 - number of training elements
+ * train_dim2 - should be 6
+ * target - actual values
+ * target_dim1 - number of target elements
+ * target_dim2 - should be 3
+ */
 void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
                     int train_dim1, int train_dim2, float* target,
                     int target_dim1, int target_dim2, float* predicted_images,
                     int predicted_images_dim1, int predicted_images_dim2,
                     int predicted_images_dim3, int predicted_images_dim4,
                     float* errors, int errors_dim1, int errors_dim2);
-//void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
-                    //int train_dim1, int train_dim2, float* target,
-                    //int target_dim1, int target_dim2, float* predicted_images,
-                    //int predicted_images_dim1, int predicted_images_dim2,
-                    //int predicted_images_dim3, int predicted_images_dim4,
-                    //float* errors, int errors_dim1, int errors_dim2) {
 
+/**
+ * train - training data
+ * train_dim1 - number of training elements
+ * train_dim2 - should be 6
+ * target - actual values
+ * target_dim1 - number of target elements
+ * target_dim2 - should be 3
+ * total - 
+ * total_dim1 - number of total elements
+ * total_dim2 - should be 3
+ */
 void compute_total_values(float* train, int train_dim1, int train_dim2,
                           float* target, int target_dim1, int target_dim2,
                           float* totals, int totals_dim1, int totals_dim2);

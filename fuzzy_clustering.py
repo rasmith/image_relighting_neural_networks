@@ -234,7 +234,7 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   # relative_error = errors / totals
 
   # Assign pixels that are approximated well enough.
-  flagged = relative_error > tolerance
+  flagged = errors > tolerance
 
   # Update assignments.
   for x in range(0, width):

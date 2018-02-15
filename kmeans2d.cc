@@ -510,6 +510,88 @@ void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
   for (int i = 0; i < num_threads; ++i) threads[i].join();
 }
 
+//kmeans2d.predictions_to_errors(cxx_order, ensemble_size,\
+            //test, predictions, errors);
+//
+
+void predictions_to_errors(std::vector<int>& order, int ensemble_size,
+                           float* test, int test_dim1, int test_dim2,
+                           float* target, int target_dim1, int target_dim2,
+                           float* predictions, int predictions_dim1,
+                           int predictions_dim2, float* errors, int errors_dim1,
+                           int errors_dim2) {
+  std::cout << "predictions_to_errors:ensemble_size = " << ensemble_size
+            << "\n";
+  std::cout << "predictions_to_errors:test_dim1 = " << test_dim1 << "\n";
+  std::cout << "predictions_to_errors:test_dim2 = " << test_dim2 << "\n";
+  std::cout << "predictions_to_errors:predictions_dim1 = " << predictions_dim1
+            << "\n";
+  std::cout << "predictions_to_errors:predictions_dim2 = " << predictions_dim2
+            << "\n";
+  std::cout << "predictions_to_errors:errors_dim1 = " << errors_dim1 << "\n";
+  std::cout << "predictions_to_errors:errors_dim2 = " << errors_dim2 << "\n";
+  const int num_threads = 8;
+  std::vector<float> totals(num_threads, 0.0f);
+  std::vector<std::thread> threads(num_threads);
+  for (int t = 0; t < num_threads; ++t) {
+    threads[t] = std::thread([
+                               &order,
+                               &totals,
+                               &ensemble_size,
+                               &test,
+                               &test_dim1,
+                               &test_dim2,
+                               &target,
+                               &target_dim1,
+                               &target_dim2,
+                               &predictions,
+                               &predictions_dim1,
+                               &predictions_dim2,
+                               &errors,
+                               &errors_dim1,
+                               &errors_dim2,
+                               &num_threads
+                             ](int tid)
+                                  ->void {
+                               int block_size = test_dim1 / num_threads + 1;
+                               int start = tid * block_size;
+                               int end =
+                                   std::min(start + block_size, test_dim1);
+                               float* test_pos = test + test_dim2 * start;
+                               float* target_pos = target + target_dim2 * start;
+                               float* predictions_pos =
+                                   predictions + predictions_dim2 * start;
+                               for (int i = start; i < end; ++i) {
+                                 int x = round(*(test_pos) * errors_dim2);
+                                 int y = round(*(test_pos + 1) * errors_dim1);
+                                 for (int c = 0; c < 3; ++c) {
+                                   errors[y * test_dim2 + x] +=
+                                       predictions_pos[c] - target_pos[c];
+                                   totals[tid] += predictions_pos[c];
+                                 }
+                                 target_pos += target_dim2;
+                                 predictions_pos += predictions_dim2;
+                               }
+                             },
+                             t);
+  }
+  for (int i = 0; i < num_threads; ++i) threads[i].join();
+  float total = 0.0f;
+  for (int i = 0; i < num_threads; ++i) total += totals[i];
+  for (int t = 0; t < num_threads; ++t) {
+    threads[t] = std::thread(
+        [&total, &errors, &errors_dim1, &errors_dim2, &num_threads ](int tid)
+                                                                        ->void {
+          int block_size = errors_dim1 / num_threads + 1;
+          int start = tid * block_size;
+          int end = std::min(start + block_size, errors_dim1);
+          for (int i = start; i < end; ++i) errors[i] /= total;
+        },
+        t);
+  }
+  for (int i = 0; i < num_threads; ++i) threads[i].join();
+}
+
 // kmeans2d.update_errors(test_data, target_data, predictions, errors)
 //kmeans2d.compute_errors(ensemble_size, cxx_order, train_data, target_data, \
       //predicted_images, errors)
@@ -580,13 +662,13 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
             int channels = predicted_images_dim4;
             int n = round(i_value * order.size());
             float sum = 0;
-                        //int x = round(x_value * predicted_images_dim3);
-                        //int y = round(y_value * predicted_images_dim2);
-                        //int n = round(i_value * order.size());
-                        //for (int c = 0; c < channels; ++c) {
-                          //int idx =
-                              //channels * (width * (height * order[n] + y) + x) +
-                              //c;
+            // int x = round(x_value * predicted_images_dim3);
+            // int y = round(y_value * predicted_images_dim2);
+            // int n = round(i_value * order.size());
+            // for (int c = 0; c < channels; ++c) {
+            // int idx =
+            // channels * (width * (height * order[n] + y) + x) +
+            // c;
             for (int c = 0; c < channels; ++c) {
               int index = channels * (width * (height * order[n] + y) + x) + c;
               if (!(index >= 0) ||
@@ -597,7 +679,7 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
                 std::cout << "channels = " << channels << "\n";
                 std::cout << "width = " << width << "\n";
                 std::cout << "height = " << height << "\n";
-                std::cout << "n = " <<  n << "\n";
+                std::cout << "n = " << n << "\n";
                 std::cout << "y = " << y << "\n";
                 std::cout << "x = " << x << "\n";
                 std::cout << "c = " << c << "\n";

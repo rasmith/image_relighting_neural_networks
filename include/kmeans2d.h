@@ -101,7 +101,7 @@ void compute_errors(int ensemble_size, std::vector<int>& order, float* train,
  * target - actual values
  * target_dim1 - number of target elements
  * target_dim2 - should be 3
- * total - 
+ * total -
  * total_dim1 - number of total elements
  * total_dim2 - should be 3
  */
@@ -122,3 +122,10 @@ void predictions_to_img(float* test, int test_dim1, int test_dim2,
                         float* predictions, int predictions_dim1,
                         int predictions_dim2, float* img, int img_dim1,
                         int img_dim2, int img_dim3);
+
+void predictions_to_errors(std::vector<int>& order, int ensemble_size,
+                           float* test, int test_dim1, int test_dim2,
+                           float* target, int target_dim1, int target_dim2,
+                           float* predictions, int predictions_dim1,
+                           int predictions_dim2, float* errors, int errors_dim1,
+                           int errors_dim2);

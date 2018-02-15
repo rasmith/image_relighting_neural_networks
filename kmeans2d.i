@@ -69,6 +69,12 @@
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* test, int test_dim1, int test_dim2)};
 
+/*void predictions_to_errors(std::vector<int>& order, int ensemble_size,*/
+                           /*float* test, int test_dim1, int test_dim2,*/
+                           /*float* target, int target_dim1, int target_dim2,*/
+                           /*float* predictions, int predictions_dim1,*/
+                           /*int predictions_dim2, float* errors, int errors_dim1,*/
+                           /*int errors_dim2);*/
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* target, int target_dim1, int target_dim2)};
 

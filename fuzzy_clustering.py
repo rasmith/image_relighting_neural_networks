@@ -218,7 +218,7 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
         # kmeans2d.predictions_to_images(cxx_order, test, predictions, \
                                        # predicted_images)
         kmeans2d.predictions_to_errors(cxx_order, ensemble_size,\
-            test, predictions, errors);
+            test, target, predictions, errors);
       del test
       del target
 

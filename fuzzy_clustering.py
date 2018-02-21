@@ -46,7 +46,7 @@ num_hidden_nodes = 15
 light_dim = 1
 level = 0
 ensemble_size = 5
-tolerance = 1e-3
+tolerance = float(1e-3)
 
 max_clusters =  int(\
     maximum_clusters(width, height, num_hidden_nodes, num_images))
@@ -81,7 +81,7 @@ def save_cfg(dirname, average, sampled, assignments):
     f.write("%d\n" % (height)) # write height
     f.write("%d\n" % (num_images)) # write num_images
     f.write("%d\n" % (ensemble_size)) # ensemble_size
-    f.write("%s\n" % (' '.join([str(i) for i in x]))) # sampled images
+    f.write("%s\n" % (' '.join([str(i) for i in sampled]))) # sampled images
     for x in range(0, height):
       for y in range(0, width):
           for i in range(0, assignment_size):
@@ -241,9 +241,10 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
     for y in range(0, height):
       if flagged[y, x]:
         assignments[y, x, 0] = level
-        assignments[y, x, 1:ensemble_size] = closest[x, y]
+        assignments[y, x, 1:ensemble_size + 1] = closest[y, x, :]
         
   # Save pixel assignments to file.
+  sampled = np.argwhere(indices != -1)
   save_cfg(dirname, average, sampled, assignments)
 
   del train_data

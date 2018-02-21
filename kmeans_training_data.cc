@@ -122,14 +122,14 @@ void GetTrainingData(const std::vector<image::Image>& images,
                      int* train_data_dim2, float** train_labels,
                      int* train_labels_dim1, int* train_labels_dim2,
                      std::vector<int>& batch_sizes) {
-  std::cout << "GetTrainingData:images.size()  = " << images.size() << "\n";
-  std::cout << "GetTrainingData:indices.size() = " << indices.size() << "\n";
-  std::cout << "GetTrainingData:min_index = "
-            << *std::min_element(indices.begin(),
-                                 indices.begin() + indices.size()) << "\n";
-  std::cout << "GetTrainingData:max_index = "
-            << *std::max_element(indices.begin(),
-                                 indices.begin() + indices.size()) << "\n";
+  //std::cout << "GetTrainingData:images.size()  = " << images.size() << "\n";
+  //std::cout << "GetTrainingData:indices.size() = " << indices.size() << "\n";
+  //std::cout << "GetTrainingData:min_index = "
+            //<< *std::min_element(indices.begin(),
+                                 //indices.begin() + indices.size()) << "\n";
+  //std::cout << "GetTrainingData:max_index = "
+            //<< *std::max_element(indices.begin(),
+                                 //indices.begin() + indices.size()) << "\n";
   const uint32_t coord_dim = 2;
   const uint32_t light_dim = 1;
   const uint32_t pixel_dim = 3;
@@ -147,9 +147,9 @@ void GetTrainingData(const std::vector<image::Image>& images,
   *train_labels = new float[(*train_labels_dim1) * (*train_labels_dim2)];
   std::vector<uint32_t> cluster_sizes(num_centers, 0);
   std::vector<uint32_t> cluster_counts(num_centers, 0);
-  std::cout << "GetTrainingData:width  = " << width << "\n";
-  std::cout << "GetTrainingData:height  = " << height << "\n";
-  std::cout << "GetTrainingData:labels.size= " << labels.size() << "\n";
+  //std::cout << "GetTrainingData:width  = " << width << "\n";
+  //std::cout << "GetTrainingData:height  = " << height << "\n";
+  //std::cout << "GetTrainingData:labels.size= " << labels.size() << "\n";
   // Count pixels per cluster.
   for (int i = 0; i < labels.size(); ++i) ++cluster_sizes[labels[i]];
   batch_sizes.clear();

@@ -75,6 +75,8 @@ def save_cfg(dirname, average, sampled, assignments):
   cfg = dirname + '/cfg/relighting.cfg'
   height, width, assignment_size = assignments.shape
   ensemble_size = assignment_size - 1
+  print("save_cfg: height = %d, width = %d, assignment_size = %d\n" %
+      (height, width, assignment_size))
   # Open file.
   with open(cfg, "w") as f:
     f.write("%d\n" % (width)) # write width
@@ -82,8 +84,8 @@ def save_cfg(dirname, average, sampled, assignments):
     f.write("%d\n" % (num_images)) # write num_images
     f.write("%d\n" % (ensemble_size)) # ensemble_size
     f.write("%s\n" % (' '.join([str(i) for i in sampled]))) # sampled images
-    for x in range(0, height):
-      for y in range(0, width):
+    for x in range(0, width):
+      for y in range(0, height):
           for i in range(0, assignment_size):
             f.write("%d" % assignments[y,x,i])
   mpimg.imsave(cfg + '/average.png', average)
@@ -168,10 +170,13 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   print ("len(batch_sizes) = %d\n" % len(batch_sizes))
   cluster_ids = get_flagged_clusters(range(0, len(centers)), closest, flagged)
 
+  once = True
   for cluster_id in cluster_ids:
     checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
-    print("[%d] %d/%d checkpoint_file = %s" %
-          (level, cluster_id, len(centers) - 1, checkpoint_file))
+    if once:
+      print("[%d] %d/%d checkpoint_file = %s" %
+            (level, cluster_id, len(centers) - 1, checkpoint_file))
+      once = False
     if not os.path.exists(checkpoint_file):
       start = time.time()
       with tf.device('/cpu:0'):
@@ -210,11 +215,11 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
         model.compile()
         model.load_weights()
         predictions = model.predict(test, target, batch_size) 
-        print("cxx_order = %s" % type(cxx_order))
-        print("test = %s, %s" % (type(test), test.dtype))
-        print("predictions = %s, %s" % (type(predictions), predictions.dtype))
-        print("predicted_images = %s, %s"  %   (type(predicted_images), \
-          predicted_images.dtype))
+        # print("cxx_order = %s" % type(cxx_order))
+        # print("test = %s, %s" % (type(test), test.dtype))
+        # print("predictions = %s, %s" % (type(predictions), predictions.dtype))
+        # print("predicted_images = %s, %s"  %   (type(predicted_images), \
+          # predicted_images.dtype))
         # kmeans2d.predictions_to_images(cxx_order, test, predictions, \
                                        # predicted_images)
         kmeans2d.predictions_to_errors(cxx_order, ensemble_size,\
@@ -244,8 +249,7 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
         assignments[y, x, 1:ensemble_size + 1] = closest[y, x, :]
         
   # Save pixel assignments to file.
-  sampled = np.argwhere(indices != -1)
-  save_cfg(dirname, average, sampled, assignments)
+  save_cfg(dirname, average, indices, assignments)
 
   del train_data
   del train_labels

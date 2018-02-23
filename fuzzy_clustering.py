@@ -77,6 +77,7 @@ def save_cfg(dirname, average, sampled, assignments):
   ensemble_size = assignment_size - 1
   print("save_cfg: height = %d, width = %d, assignment_size = %d\n" %
       (height, width, assignment_size))
+  print ("save_cfg:file = %s" % (cfg + '/average.png'))
   # Open file.
   with open(cfg, "w") as f:
     f.write("%d\n" % (width)) # write width
@@ -88,7 +89,7 @@ def save_cfg(dirname, average, sampled, assignments):
       for y in range(0, height):
           for i in range(0, assignment_size):
             f.write("%d" % assignments[y,x,i])
-  mpimg.imsave(cfg + '/average.png', average)
+  mpimg.imsave(dirname + '/average.png', average)
 
 def load_cfg(dirname):
   cfg = dirname + '/cfg/relighting.cfg'
@@ -170,13 +171,10 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   print ("len(batch_sizes) = %d\n" % len(batch_sizes))
   cluster_ids = get_flagged_clusters(range(0, len(centers)), closest, flagged)
 
-  once = True
   for cluster_id in cluster_ids:
     checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
-    if once:
-      print("[%d] %d/%d checkpoint_file = %s" %
-            (level, cluster_id, len(centers) - 1, checkpoint_file))
-      once = False
+    print("[%d] %d/%d checkpoint_file = %s" %
+          (level, cluster_id, len(centers) - 1, checkpoint_file))
     if not os.path.exists(checkpoint_file):
       start = time.time()
       with tf.device('/cpu:0'):
@@ -192,54 +190,37 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
           (level, cluster_id, len(centers), end - start))
   
   channels = 3
-  predicted_images = np.zeros((channels, height, width, num_samples), \
-                    dtype = np.float32) 
 
   # Compute all of the predicted images.
   for cluster_id in cluster_ids:
     batch_size = batch_sizes[cluster_id]
     print("batch_size = %d\n" % (batch_size))
     for k in range(0, ensemble_size):
-      print("train_data.shape = %s" % str(train_data.shape))
-      print("train_labels.shape = %s" % str(train_labels.shape))
+      checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
       test, target = kmeans2d.closest_k_test_target(int(k), int(cluster_id),\
                                               closest, train_data, train_labels) 
+      print("[%d] %d/%d checkpoint_file = %s, ensemble %d" %
+            (level, cluster_id, len(centers) - 1, checkpoint_file, k))
+      print("train_data.shape = %s" % str(train_data.shape))
+      print("train_labels.shape = %s" % str(train_labels.shape))
       print("test.shape = %s" % str(test.shape))
       print("target.shape = %s" % str(target.shape))
-      checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
-      print("[%d] %d/%d checkpoint_file = %s" %
-            (level, cluster_id, len(centers) - 1, checkpoint_file))
       with tf.device('/cpu:0'):
         model = ModelMaker(light_dim, num_hidden_nodes)
         model.set_checkpoint_file(checkpoint_file)
         model.compile()
         model.load_weights()
         predictions = model.predict(test, target, batch_size) 
-        # print("cxx_order = %s" % type(cxx_order))
-        # print("test = %s, %s" % (type(test), test.dtype))
-        # print("predictions = %s, %s" % (type(predictions), predictions.dtype))
-        # print("predicted_images = %s, %s"  %   (type(predicted_images), \
-          # predicted_images.dtype))
-        # kmeans2d.predictions_to_images(cxx_order, test, predictions, \
-                                       # predicted_images)
         kmeans2d.predictions_to_errors(cxx_order, ensemble_size,\
             test, target, predictions, errors);
       del test
       del target
 
-  print("compute errors\n")
-  # Compute error.
-  # kmeans2d.compute_errors(ensemble_size, cxx_order, train_data, train_labels, \
-      # predicted_images, errors)
+  # TODO: need to update flagged and propagate already flagged clusters
+  # flagged = errors > tolerance
+  current_flagged = errors > tolerance
+  flagged = np.logical_and(flagged, current_flagged)
 
-  print("compute relative error\n")
-  # Compute relative error.
-  # totals = np.zeros((height, width), dtype = np.float32)
-  # kmeans2d.compute_total_values(train_data, train_labels, totals)
-  # relative_error = errors / totals
-
-  # Assign pixels that are approximated well enough.
-  flagged = errors > tolerance
 
   # Update assignments.
   for x in range(0, width):

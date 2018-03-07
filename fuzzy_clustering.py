@@ -69,45 +69,6 @@ def get_flagged_clusters(cluster_ids, closest, flagged):
   flagged_ids.sort()
   return flagged_ids
 
-def get_flagged_pixels(relative_error, tolerance):
-  return relative_error > tolerance
-  
-def predict_images(dirname, dest_dir):
-  model_dir, img_dir, width, height, num_images, sampled, assignments = \
-    load_cfg(dirname)
-  img = mpimg.imread(cfg_dir + "/average.png")
-  for i in range(0, images):
-    image = predict_image(i, average, model_dir, assignments)
-    img_name = "%03d_out.png" % ((i))
-    mpimpg.imsave(img_name, image)
-    
-def predict_img(i, average, model_dir, assignments):
-  with tf.device('/cpu:0'):
-    test, batch_sizes,  levels, cluster_ids = \
-      kmeans2d.assignments_to_predict_data(num_images, assignments)
-    starts = np.zeros(len(batch_sizes), dtype=np.int32)
-    ends = np.zeros(len(batch_sizes), dtype=np.int32)
-    for i in range(0, len(batch_sizes)):
-      if i > 0:
-        starts[i] = batch_sizes[i] * num_samples + starts[i-1]
-    ends = starts + np.array(batch_sizes) * num_samples
-    height, width, channels = average.shape;
-    predict_img = np.zeros((height, width, channels), np.float)
-    for i in range(0, len(cluster_ids)):
-      level = level[i]
-      cluster_id = cluster_ids[i]
-      batch_size = batch_size[i]
-      start = starts[i]
-      end = ends[i]
-      checkpoint_file = model_dir+'/model_'\
-                      +str(level)+'-'+str(cluster_id)+'.hdf5'
-      model = ModelMaker(light_dim, num_hidden_nodes)
-      model.set_checkpoint_file(checkpoint_file)
-      model.compile()
-      model.load_weights()
-      predictions = model.predict(test[start:end], batch_size) 
-      kmeans2d.predictions_to_img(test[start:end], predictions, predicted_img)
-
 # y  x level clusters 
 assignments = np.zeros((height, width, ensemble_size + 1), dtype = 'int')
 
@@ -200,4 +161,3 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
 # Predict all images.
 if not destdir == '':
   predict_images(dirname, destdir)
-

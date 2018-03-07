@@ -13,9 +13,8 @@ import matplotlib.image as mpimg
 from cluster import *
 
 dirname = sys.argv[1]
-if len(sys.argv) > 2:
-  destdir = sys.argv[2]
-else:
-  destdir = ''
+
+(model_dir, img_dir, width, height, num_images, sampled, assignments) \
+    = config.load_cfg(dirname)
 
 

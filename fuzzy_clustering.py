@@ -60,7 +60,6 @@ pixel_clusters = \
 flagged = np.ones((height, width), dtype  = bool)
 errors = np.ndarray((height, width), dtype = np.float32, order='C')
 
-
 init(dirname)
 
 def get_flagged_clusters(cluster_ids, closest, flagged):
@@ -140,7 +139,6 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   current_flagged = errors > tolerance
   flagged = np.logical_and(flagged, current_flagged)
 
-
   # Update assignments.
   for x in range(0, width):
     for y in range(0, height):
@@ -149,7 +147,7 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
         assignments[y, x, 1:ensemble_size + 1] = closest[y, x, :]
         
   # Save pixel assignments to file.
-  config.save_cfg(dirname, average, indices, assignments)
+  config.save_cfg(dirname, average, indices, assignments, level)
 
   del train_data
   del train_labels
@@ -157,7 +155,3 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   del average
   
   level = level + 1
-
-# Predict all images.
-if not destdir == '':
-  predict_images(dirname, destdir)

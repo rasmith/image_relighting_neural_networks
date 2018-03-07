@@ -2,7 +2,7 @@ from scipy import misc
 import numpy as np
 import matplotlib.image as mpimg
 
-def save_cfg(dirname, average, sampled, assignments):
+def save_cfg(dirname, average, sampled, assignments, max_levels):
   cfg = dirname + '/cfg/relighting.cfg'
   height, width, assignment_size = assignments.shape
   ensemble_size = assignment_size - 1
@@ -15,6 +15,7 @@ def save_cfg(dirname, average, sampled, assignments):
     f.write("%d\n" % (height)) # write height
     f.write("%d\n" % (num_images)) # write num_images
     f.write("%d\n" % (ensemble_size)) # ensemble_size
+    f.write("%d\n" % (max_levels)) # max_levels
     f.write("%s\n" % (' '.join([str(i) for i in sampled]))) # sampled images
     for x in range(0, width):
       for y in range(0, height):
@@ -33,10 +34,11 @@ def load_cfg(dirname):
     height = int(lines[1])
     num_images = int(lines[2])
     ensemble_size = int(lines[3])
-    sampled = [int(i) for i in lines[4].split(' ')]
+    max_levels = int(lines[4])
+    sampled = [int(i) for i in lines[5].split(' ')]
     assignment_size = ensemble_size + 1
     assignments = np.zeros((height, width, assignment_size))
-    j = 5
+    j = 6 
     for y in range(0, height):
      for x in range(0, width):
         values = np.array(lines[j].split(" ")).astype(np.int)

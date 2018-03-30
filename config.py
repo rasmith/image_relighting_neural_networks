@@ -2,8 +2,8 @@ from scipy import misc
 import numpy as np
 import matplotlib.image as mpimg
 
-def save_cfg(dirname, average, sampled, assignments, max_levels):
-  cfg = dirname + '/cfg/relighting.cfg'
+def save_cfg(cfg_dir, average, sampled, assignments, num_images, max_levels):
+  cfg = cfg_dir + '/relighting.cfg'
   height, width, assignment_size = assignments.shape
   ensemble_size = assignment_size - 1
   print("save_cfg: height = %d, width = %d, assignment_size = %d\n" %
@@ -24,10 +24,10 @@ def save_cfg(dirname, average, sampled, assignments, max_levels):
             if i < assignment_size - 1:
               f.write(" ")  
           f.write("\n")
-  mpimg.imsave(dirname + '/average.png', average)
+  mpimg.imsave(cfg_dir + '/average.png', average)
 
-def load_cfg(dirname):
-  cfg = dirname + '/cfg/relighting.cfg'
+def load_cfg(cfg_dir):
+  cfg = cfg_dir + '/relighting.cfg'
   with open(cfg, "r") as f:
     lines = f.readlines()
     width = int(lines[0])
@@ -47,5 +47,10 @@ def load_cfg(dirname):
         j = j + 1
   img_dir = dirname + '/img'
   model_dir= dirname + '/models'
-  return model_dir, img_dir, width, height, num_images, sampled, assignments
+  return model_dir, img_dir, width, height, num_images, ensemble_size, \
+      max_levels, sampled, assignments, average_img
 
+def get_checkpoint_file_info(models_dir, level, cluster_id):
+  checkpoint_file_name = ('model_%05d-%05d.hdf5' % (level, cluster_id))
+  checkpoint_file = models_dir+ '/' + checkpoint_file_name 
+  return (checkpoint_file_name, checkpoint_file)

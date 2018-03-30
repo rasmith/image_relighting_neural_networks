@@ -32,12 +32,15 @@ def init(dirname):
     os.mkdir(models_dir) 
   if not os.path.exists(cfg_dir):
     os.mkdir(cfg_dir) 
+  return (models_dir, cfg_dir)
+
+def get_flagged_clusters(cluster_ids, closest, flagged):
+  flagged_ids = closest[np.where(flagged)]
+  flagged_ids = np.unique(flagged_ids)
+  flagged_ids.sort()
+  return flagged_ids
 
 dirname = sys.argv[1]
-if len(sys.argv) > 2:
-  destdir = sys.argv[2]
-else:
-  destdir = ''
 
 width, height, num_images = get_parameters(dirname)
 
@@ -60,13 +63,9 @@ pixel_clusters = \
 flagged = np.ones((height, width), dtype  = bool)
 errors = np.ndarray((height, width), dtype = np.float32, order='C')
 
-init(dirname)
-
-def get_flagged_clusters(cluster_ids, closest, flagged):
-  flagged_ids = closest[np.where(flagged)]
-  flagged_ids = np.unique(flagged_ids)
-  flagged_ids.sort()
-  return flagged_ids
+(models_dir, cfg_dir) = init(dirname)
+print ("models_dir = %s\n" % (models_dir))
+print ("cfg_dir = %s\n" % (cfg_dir))
 
 # y  x level clusters 
 assignments = np.zeros((height, width, ensemble_size + 1), dtype = 'int')
@@ -90,7 +89,8 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   cluster_ids = get_flagged_clusters(range(0, len(centers)), closest, flagged)
 
   for cluster_id in cluster_ids:
-    checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
+    (checkpoint_file_name, checkpoint_file) = \
+        config.get_checkpoint_file_info(models_dir, level, cluster_id)
     print("[%d] %d/%d checkpoint_file = %s" %
           (level, cluster_id, len(centers) - 1, checkpoint_file))
     if not os.path.exists(checkpoint_file):
@@ -114,7 +114,8 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
     batch_size = batch_sizes[cluster_id]
     print("batch_size = %d\n" % (batch_size))
     for k in range(0, ensemble_size):
-      checkpoint_file = 'models/model_'+str(level)+'-'+str(cluster_id)+'.hdf5'
+      (checkpoint_file_name, checkpoint_file) = \
+          config.get_checkpoint_file_info(models_dir, level, cluster_id)
       test, target = kmeans2d.closest_k_test_target(int(k), int(cluster_id),\
                                               closest, train_data, train_labels) 
       print("[%d] %d/%d checkpoint_file = %s, ensemble %d" %
@@ -147,7 +148,7 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
         assignments[y, x, 1:ensemble_size + 1] = closest[y, x, :]
         
   # Save pixel assignments to file.
-  config.save_cfg(dirname, average, indices, assignments, level)
+  config.save_cfg(cfg_dir, average, indices, assignments, num_images, level)
 
   del train_data
   del train_labels

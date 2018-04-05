@@ -26,7 +26,10 @@ def save_cfg(cfg_dir, average, sampled, assignments, num_images, max_levels):
           f.write("\n")
   mpimg.imsave(cfg_dir + '/average.png', average)
 
-def load_cfg(cfg_dir):
+def load_cfg(dirname):
+  img_dir = dirname 
+  cfg_dir = dirname + '/cfg'
+  model_dir= dirname + '/models'
   cfg = cfg_dir + '/relighting.cfg'
   with open(cfg, "r") as f:
     lines = f.readlines()
@@ -45,8 +48,7 @@ def load_cfg(cfg_dir):
         for i in range(0, assignment_size):
           assignments[y, x, i] = int(values[i])
         j = j + 1
-  img_dir = dirname + '/img'
-  model_dir= dirname + '/models'
+  average_img = mpimg.imread(cfg_dir + '/average.png', dtype = float32)
   return model_dir, img_dir, width, height, num_images, ensemble_size, \
       max_levels, sampled, assignments, average_img
 

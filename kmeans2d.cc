@@ -8,6 +8,8 @@
 #include <dirent.h>
 #include <functional>
 #include <iterator>
+#include <map>
+#include <memory>
 #include <random>
 #include <string>
 #include <thread>
@@ -581,50 +583,63 @@ void assignment_data_to_test_data(
     int* assignment_data, int assignment_data_dim_1, int assignment_data_dim_2,
     int assignment_data_dim_3, int image_number, int num_images,
     float* average_image, int average_image_dim_1, int average_image_dim_2,
-    float* test_data, int test_data_dim_1, int test_data_dim_2,
-    float* ensemble_data, int ensemble_data_dim_1, int ensemble_data_dim_2) {
+    float** test_data, int* test_data_dim_1, int* test_data_dim_2,
+    int** ensemble_data, int* ensemble_data_dim_1, int* ensemble_data_dim_2) {
   const int num_threads = 8;
   int width = assignment_data_dim_1;
   int height = assignment_data_dim_2;
-  int ensemble_size = assignment_data_dim_2;
-  std::vector<int> level_counts(ensemble_size, 0);
-  std::vector<std::thread> threads(num_threads);
-
-  // Count number of pixels assigned to this level.
-  int num_pixels = width * height;
-  int* pos = &assignment_data[0];
-  for (int i = 0; i < num_pixels; ++i) {
-    ++level_counts[*pos];
-    pos += ensemble_size + 1;
+  int ensemble_size = assignment_data_dim_3 - 1;
+  int num_ensembles = 0;
+  typedef std::vector<std::pair<int, int>> PairSet;
+  typedef std::unordered_map<int, std::unique_ptr<PairSet>> CoordsMap;
+  std::map<int, std::unique_ptr<CoordsMap>> level_map;
+  int* pos = assignment_data;
+  --pos;
+  // Iterate over all pixels and get levels and assigned ensembles.
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      int level = *++pos;
+      if (level_map.find(level) == level_map.end())
+        level_map.insert(
+            std::make_pair(level, std::unique_ptr<CoordsMap>(new CoordsMap())));
+      std::unique_ptr<CoordsMap>& coords_map = level_map.find(level)->second;
+      for (int e = 0; e < ensemble_size; ++e) {
+        int id = *++pos;
+        if (coords_map->find(id) == coords_map->end())
+          coords_map->insert(
+              std::make_pair(id, std::unique_ptr<PairSet>(new PairSet())));
+        std::unique_ptr<PairSet>& pair_set = coords_map->find(id)->second;
+        pair_set->push_back(std::make_pair(x, y));
+      }
+    }
   }
-
-  // Initialize counts.
-  int* local_level_counts = new int[num_threads * ensemble_size];
-  for (int i = 0; i < num_threads * ensemble_size; ++i)
-    local_level_counts[i] = 0;
-
-  // Count pixels per thread on a per ensemble basis.
-  for (int t = 0; t < num_threads; ++t) {
-    threads[t] =
-        std::thread([&assignment_data, &num_pixels, &ensemble_size,
-                     &local_level_counts, &num_threads](int tid) {
-                      int block_size = num_pixels / num_threads + 1,
-                          start = block_size * tid,
-                          end = std::min(num_pixels, start + block_size);
-                      int* pos = &assignment_data[(ensemble_size + 1) * start],
-                           *counts = &local_level_counts[tid * ensemble_size];
-                      for (int i = start; i < end; ++i)
-                        counts[(ensemble_size + 1) * i] += ensemble_size + 1
-                    },
-                    t);
-  }
-
-  for (int t = 0; t < num_threads; ++t) thread[t].join();
-
-  for (int t = 1; t < num_threads; ++t) {
-    for (int i = 0; i < ensemble_size; ++i) {
-      local_level_counts[ensemble_size * t + i] +=
-          local_level_counts[ensemble_size * (t - 1) + i];
+  // Write out to test data and ensemble data arrays.
+  const int test_data_size = 6;
+  *test_data = new float[width * height * test_data_size];
+  *test_data_dim_1 = width * height;
+  *test_data_dim_2 = test_data_size;
+  float* test_pos = *test_data;
+  const int ensemble_data_size = 3;
+  *ensemble_data = new int[num_ensembles * ensemble_data_size];
+  *ensemble_data_dim_1 = num_ensembles;
+  *ensemble_data_dim_2 = ensemble_data_size;
+  int* ensemble_pos = *ensemble_data;
+  for (auto lit = level_map.begin(); lit != level_map.end(); ++lit) {
+    auto& map = lit->second;
+    for (auto mit = map->begin(); mit != map->end(); ++mit) {
+      auto& v = mit->second;
+      *++ensemble_pos = lit->first;
+      *++ensemble_pos = mit->first;
+      *++ensemble_pos = v->size();
+      for (auto vit = v->begin(); vit != v->end(); ++vit) {
+        int x = vit->first, y = vit->second;
+        *++test_pos = vit->first / static_cast<float>(width);
+        *++test_pos = vit->second / static_cast<float>(height);
+        *++test_pos = image_number / static_cast<float>(num_images);
+        *++test_pos = average_image[y * width + x];
+        *++test_pos = average_image[y * width + x + 1];
+        *++test_pos = average_image[y * width + x + 2];
+      }
     }
   }
 }

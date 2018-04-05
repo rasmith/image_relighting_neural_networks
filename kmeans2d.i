@@ -35,31 +35,12 @@
 %apply (int* INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {\
 (int* closest, int closest_dim1, int closest_dim2, int closest_dim3)};
 
-/*void closest_k_test_target(int k, int cluster_id, */
-      /*int* closest, int closest_dim1, int closest_dim2, int closest_dim3,*/
-      /*float* train_data, int train_data_dim1, int train_data_dim2,*/
-      /*float* target_data, int target_data_dim1, int target_data_dim2,*/
-      /*float** test, int* test_dim1, int* test_dim2,*/
-      /*float** target, int* target_dim1, int* target_dim2);*/
-
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* train_data, int train_data_dim1, int train_data_dim2)};
 
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* target_data, int target_data_dim1, int target_data_dim2)};
 
-/*void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,*/
-                           /*int test_dim2, float* predictions,*/
-                           /*int predictions_dim1, int predictions_dim2,*/
-                           /*float* predicted_images, int predicted_images_dim1,*/
-                           /*int predicted_images_dim2, int predicted_images_dim3,*/
-                           /*int predicted_images_dim4) {*/
-/*void compute_errors(int ensemble_size, std::vector<int>& order, float* train,*/
-                    /*int train_dim1, int train_dim2, float* target,*/
-                    /*int target_dim1, int target_dim2, float* predicted_images,*/
-                    /*int predicted_images_dim1, int predicted_images_dim2,*/
-                    /*int predicted_images_dim3, int predicted_images_dim4,*/
-                    /*float* errors, int errors_dim1, int errors_dim2) {*/
 %apply (float** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
 (float** test, int* test_dim1, int* test_dim2)};
 
@@ -69,12 +50,6 @@
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* test, int test_dim1, int test_dim2)};
 
-/*void predictions_to_errors(std::vector<int>& order, int ensemble_size,*/
-                           /*float* test, int test_dim1, int test_dim2,*/
-                           /*float* target, int target_dim1, int target_dim2,*/
-                           /*float* predictions, int predictions_dim1,*/
-                           /*int predictions_dim2, float* errors, int errors_dim1,*/
-                           /*int errors_dim2);*/
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* target, int target_dim1, int target_dim2)};
 
@@ -100,20 +75,25 @@ int predicted_images_dim3, int predicted_images_dim4)};
 %apply (uint8_t* INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {\
 (uint8_t* average, int average_dim1, int average_dim2, int average_dim3)};
 
-%apply (float** ARGOUTVIEWM_ARRAY2, int DIM1, int DIM2) {\
-(float** test, int* test_dim1, int* test_dim2)};
-
-%apply (int** ARGOUTVIEWM_ARRAY1, int DIM1) {\
-(int** batch_sizes, int* batch_sizes_dim1 ) };
-
-%apply (int** ARGOUTVIEWM_ARRAY1, int DIM1) {\
-(int** cluster_ids, int* cluster_ids_dim1) };
-
-%apply (int** ARGOUTVIEWM_ARRAY1, int DIM1) {\
-(int** levels, int* levels_dim1) };
-
 %apply (float* INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {\
 (float* img, int img_dim1, int img_dim2, int img_dim3)};
+
+/*void assignment_data_to_test_data(*/
+    /*int* assignment_data, int assignment_data_dim_1, int assignment_data_dim_2,*/
+    /*int assignment_data_dim_3, int image_number, int num_images,*/
+    /*float* average_image, int average_image_dim_1, int average_image_dim_2,*/
+    /*float** test_data, int* test_data_dim_1, int* test_data_dim_2,*/
+    /*int** ensemble_data, int* ensemble_data_dim_1, int* ensemble_data_dim_2);*/
+
+%apply (int* INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {\
+(int* assignment_data, int assignment_data_dim1, int assignment_data_dim2,\
+ int assignment_data_dim3)};
+
+%apply (float** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
+(float** test_data, int* test_data_dim1, int* test_data_dim2)};
+
+%apply (float** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
+(int** ensemble_data, int* ensemble_data_dim1, int* ensemble_data_dim2)};
 
 namespace std {
    %template(VectorInt) vector<int>;

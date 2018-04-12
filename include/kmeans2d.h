@@ -68,13 +68,6 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
 // predicted_images_dim2 - should be the width
 // predicted_images_dim4 - number of sampled images
 
-void predictions_to_images(std::vector<int>& order, float* test, int test_dim1,
-                           int test_dim2, float* predictions,
-                           int predictions_dim1, int predictions_dim2,
-                           float* predicted_images, int predicted_images_dim1,
-                           int predicted_images_dim2, int predicted_images_dim3,
-                           int predicted_images_dim4);
-
 void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                            float* test, int test_dim1, int test_dim2,
                            float* target, int target_dim1, int target_dim2,
@@ -105,8 +98,16 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
 //  Given image_number, generate test data to feed to models in assignment data
 //  output as test data
 void assignment_data_to_test_data(
-    int* assignment_data, int assignment_data_dim_1, int assignment_data_dim_2,
-    int assignment_data_dim_3, int image_number, int num_images,
-    float* average_image, int average_image_dim_1, int average_image_dim_2,
-    float** test_data, int* test_data_dim_1, int* test_data_dim_2,
-    int** ensemble_data, int* ensemble_data_dim_1, int* ensemble_data_dim_2);
+    int* assignment_data, int assignment_data_dim1, int assignment_data_dim2,
+    int assignment_data_dim3, int image_number, int num_images,
+    float* average_image, int average_image_dim1, int average_image_dim2,
+    int average_image_dim3, float** test_data, int* test_data_dim1,
+    int* test_data_dim2, int** ensemble_data, int* ensemble_data_dim1,
+    int* ensemble_data_dim2);
+
+void predictions_to_errors(std::vector<int>& order, int ensemble_size,
+                           float* test, int test_dim1, int test_dim2,
+                           float* target, int target_dim1, int target_dim2,
+                           float* predictions, int predictions_dim1,
+                           int predictions_dim2, float* errors, int errors_dim1,
+                           int errors_dim2);

@@ -40,7 +40,7 @@ def load_cfg(dirname):
     max_levels = int(lines[4])
     sampled = [int(i) for i in lines[5].split(' ')]
     assignment_size = ensemble_size + 1
-    assignments = np.zeros((height, width, assignment_size))
+    assignments = np.zeros((height, width, assignment_size), dtype = np.int32)
     j = 6 
     for y in range(0, height):
      for x in range(0, width):
@@ -48,7 +48,7 @@ def load_cfg(dirname):
         for i in range(0, assignment_size):
           assignments[y, x, i] = int(values[i])
         j = j + 1
-  average_img = mpimg.imread(cfg_dir + '/average.png', dtype = float32)
+  average_img = mpimg.imread(cfg_dir + '/average.png')
   return model_dir, img_dir, width, height, num_images, ensemble_size, \
       max_levels, sampled, assignments, average_img
 

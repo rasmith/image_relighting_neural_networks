@@ -78,21 +78,26 @@ int predicted_images_dim3, int predicted_images_dim4)};
 %apply (float* INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {\
 (float* img, int img_dim1, int img_dim2, int img_dim3)};
 
-/*void assignment_data_to_test_data(*/
-    /*int* assignment_data, int assignment_data_dim_1, int assignment_data_dim_2,*/
-    /*int assignment_data_dim_3, int image_number, int num_images,*/
-    /*float* average_image, int average_image_dim_1, int average_image_dim_2,*/
-    /*float** test_data, int* test_data_dim_1, int* test_data_dim_2,*/
-    /*int** ensemble_data, int* ensemble_data_dim_1, int* ensemble_data_dim_2);*/
-
 %apply (int* INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {\
 (int* assignment_data, int assignment_data_dim1, int assignment_data_dim2,\
  int assignment_data_dim3)};
 
+%apply (float* INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {\
+(float* average_image, int average_image_dim1, int average_image_dim2,\
+ int average_image_dim3)};
+
+/*void assignment_data_to_test_data(*/
+    /*int* assignment_data, int assignment_data_dim_1, int assignment_data_dim_2,*/
+    /*int assignment_data_dim_3, int image_number, int num_images,*/
+    /*float* average_image, int average_image_dim_1, int average_image_dim_2,*/
+    /*int average_image_dim_3, float** test_data, int* test_data_dim_1,*/
+    /*int* test_data_dim_2, int** ensemble_data, int* ensemble_data_dim_1,*/
+    /*int* ensemble_data_dim_2);*/
+
 %apply (float** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
 (float** test_data, int* test_data_dim1, int* test_data_dim2)};
 
-%apply (float** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
+%apply (int** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
 (int** ensemble_data, int* ensemble_data_dim1, int* ensemble_data_dim2)};
 
 namespace std {

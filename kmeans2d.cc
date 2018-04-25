@@ -591,15 +591,13 @@ void assignment_data_to_test_data(
   int height = assignment_data_dim2;
   int ensemble_size = assignment_data_dim3 - 1;
   int num_ensembles = 0;
+  // std::cout << "assignment_data_to_test_data: width = " << width << "\n";
+  // std::cout << "assignment_data_to_test_data: height = " << height << "\n";
   typedef std::vector<std::pair<int, int>> PairSet;
   typedef std::unordered_map<int, std::unique_ptr<PairSet>> CoordsMap;
   std::map<int, std::unique_ptr<CoordsMap>> level_map;
   int* pos = assignment_data;
   --pos;
-  //std::cout << "assignment_data_to_test_data:width = " << width << "\n";
-  //std::cout << "assignment_data_to_test_data:height = " << height << "\n";
-  //std::cout << "assignment_data_to_test_data:ensemble_size = " << ensemble_size
-            //<< "\n";
   // Iterate over all pixels and get levels and assigned ensembles.
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
@@ -612,56 +610,89 @@ void assignment_data_to_test_data(
         int id = *++pos;
         if (coords_map->find(id) == coords_map->end()) {
           coords_map->insert(
-              std::make_pair(id, std::unique_ptr<PairSet>(new PairSet())));
+              std::make_pair(id, std::unique_ptr<PairSet>(new PairSet(0))));
           ++num_ensembles;
         }
-        std::unique_ptr<PairSet>& pair_set = coords_map->find(id)->second;
-        pair_set->push_back(std::make_pair(x, y));
+        coords_map->find(id)->second->push_back(std::make_pair(x, y));
       }
     }
   }
-  //std::cout << "assignment_data_to_test_data:num_ensembles= " << num_ensembles
-            //<< "\n";
   // Write out to test data and ensemble data arrays.
   const int test_data_size = 6;
   *test_data = new float[width * height * test_data_size * ensemble_size];
-  //std::cout << "assignment_data_to_test_data:test_data_alloc= "
-            //<< width* height* test_data_size * ensemble_size << "\n";
-  *test_data_dim1 = width * height;
+  *test_data_dim1 = width * height * ensemble_size;
   *test_data_dim2 = test_data_size;
+  // std::cout << "assignment_data_to_test_data: test_data_dim1 = "
+  //<< *test_data_dim1 << "\n";
+  // std::cout << "assignment_data_to_test_data: test_data_dim2 = "
+  //<< *test_data_dim2 << "\n";
   float* test_pos = *test_data;
-  const int ensemble_data_size = 3;
+  --test_pos;
+  const int ensemble_data_size = 5;
   *ensemble_data = new int[num_ensembles * ensemble_data_size];
   *ensemble_data_dim1 = num_ensembles;
   *ensemble_data_dim2 = ensemble_data_size;
   int* ensemble_pos = *ensemble_data;
-  int num_ensembles_out = 0;
-  int num_test_out = 0;
   --ensemble_pos;
+  int current = 0;
   for (auto lit = level_map.begin(); lit != level_map.end(); ++lit) {
     auto& map = lit->second;
     for (auto mit = map->begin(); mit != map->end(); ++mit) {
       auto& v = mit->second;
-      *++ensemble_pos = lit->first;
-      *++ensemble_pos = mit->first;
-      *++ensemble_pos = v->size();
-      ++num_ensembles_out;
+      *++ensemble_pos = lit->first;           // level
+      *++ensemble_pos = mit->first;           // ensemble id
+      *++ensemble_pos = current;              // start
+      *++ensemble_pos = current + v->size();  // end
+      *++ensemble_pos = v->size();            // count
+      current += v->size();
       for (auto vit = v->begin(); vit != v->end(); ++vit) {
         int x = vit->first, y = vit->second;
-        if (x < 0 || x >= width || y < 0 || y >= height)
-          //std::cout << "x = " << x << " y = " << y << "\n";
+        // if (x < 0 || x >= width || y < 0 || y >= height) {
+        // std::cout << "assignment_data_to_test_data: x = " << x << "\n";
+        // std::cout << "assignment_data_to_test_data: y = " << y << "\n";
+        // assert(!(x < 0 || x >= width || y < 0 || y >= height));
+        //}
         *++test_pos = vit->first / static_cast<float>(width);
         *++test_pos = vit->second / static_cast<float>(height);
         *++test_pos = image_number / static_cast<float>(num_images);
         *++test_pos = average_image[y * width + x];
         *++test_pos = average_image[y * width + x + 1];
         *++test_pos = average_image[y * width + x + 2];
-        //++num_test_out;
       }
     }
   }
-  //std::cout << "assignment_data_to_test_data: num_ensembles_out = "
-            //<< num_ensembles_out << "\n";
-  //std::cout << "assignment_data_to_test_data: num_test_out = " << num_test_out
+}
+
+void predictions_to_image(float* image_out, int image_out_dim1,
+                          int image_out_dim2, int image_out_dim3, float* test,
+                          int test_dim1, int test_dim2, float* predictions,
+                          int predictions_dim1, int predictions_dim2) {
+  int height = image_out_dim1;
+  int width = image_out_dim2;
+  int channels = image_out_dim3;
+  float* test_pos = test;
+  //std::cout << "predictions_to_image:height = " << height << "\n";
+  //std::cout << "predictions_to_image:width = " << width << "\n";
+  //std::cout << "predictions_to_image:channels = " << channels << "\n";
+  //std::cout << "predictions_to_image:predictions_dim1 = " << predictions_dim1
             //<< "\n";
+  //std::cout << "predictions_to_image:predictions_dim2 = " << predictions_dim2
+            //<< "\n";
+  //std::cout << "test_to_image:test_dim1 = " << test_dim1 << "\n";
+  //std::cout << "test_to_image:test_dim2 = " << test_dim2 << "\n";
+
+  for (float* predictions_pos = predictions;
+       predictions_pos < predictions + predictions_dim1 * predictions_dim2;
+       predictions_pos += predictions_dim2) {
+    int x = width * (*test_pos);
+    int y = height * (*(test_pos + 1));
+    //if (!(x >= 0 && x < width && y >= 0 && y < height)) {
+      //std::cout << "predictions_to_image: x = " << x << " y = " << y
+                //<< " width = " << width << " height = " << height << "\n";
+    //}
+    image_out[3 * (y * width + x)] = *predictions_pos;
+    image_out[3 * (y * width + x) + 1] = *(predictions_pos + 1);
+    image_out[3 * (y * width + x) + 2] = *(predictions_pos + 2);
+    test_pos += test_dim2;
+  }
 }

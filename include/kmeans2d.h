@@ -111,3 +111,8 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                            float* predictions, int predictions_dim1,
                            int predictions_dim2, float* errors, int errors_dim1,
                            int errors_dim2);
+
+void predictions_to_image(float* image_out, int image_out_dim1,
+                          int image_out_dim2, int image_out_dim3, float* test,
+                          int test_dim1, int test_dim2, float* predictions,
+                          int predictions_dim1, int predictions_dim2);

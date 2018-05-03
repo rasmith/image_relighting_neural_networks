@@ -40,7 +40,16 @@ void GenerateTestData(int width, int height, int channels, int num_samples,
   }
 }
 
-void TestPredictionsToImage(int width, int height, int channels,
+std::string PixelToString(float* p) {
+  return "[" + std::to_string(p[0]) + "," + std::to_string(p[1]) + "," +
+         std::to_string(p[2]) + "]";
+}
+
+bool EqualsPixel(float* p, float* q) {
+  return p[0] == q[0] && p[1] == q[1] && p[2] == q[2];
+}
+
+bool TestPredictionsToImage(int width, int height, int channels,
                             int num_samples, uint8_t* bytes) {
   // Generate a random image to test against.
   std::vector<float> image;
@@ -62,6 +71,19 @@ void TestPredictionsToImage(int width, int height, int channels,
   predictions_to_image(&image_out[0], width, height, channels, &test[0],
                        num_samples, channels + 3, &predictions[0], num_samples,
                        channels);
+  for (int i = 0; i < num_samples * test_data_size; i += test_data_size) {
+    int x = test[i];
+    int y = test[i + 1];
+    float* target_pixel = &image[channels * (y * width + x)];
+    float* test_pixel = &image[channels * (y * width + x)];
+    if (!EqualsPixel(target_pixel, test_pixel)) {
+      std::cout << "TestPredictionsToImage: (" << x << "," << y
+                << ") does not match. Target = " << PixelToString(target_pixel)
+                << ". Test = " << PixelToString(test_pixel) << "\n";
+      return false;
+    }
+  }
+  return true;
 }
 
 int main(int argc, char** argv) { return 0; }

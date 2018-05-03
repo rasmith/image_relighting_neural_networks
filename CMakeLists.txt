@@ -59,6 +59,11 @@ target_link_libraries (kdtree_test ${CMAKE_THREAD_LIBS_INIT})
 add_executable(quickselect_test quickselect_test.cc)
 target_link_libraries (quickselect_test ${CMAKE_THREAD_LIBS_INIT})
 
+# Compile and link quickselect_test executable.
+add_executable(kmeans2d_test kmeans2d_test.cc kmeans2d.cc kdtree.cc
+    image.cc kmeans_training_data.cc lodepng.cc)
+target_link_libraries (kmeans2d_test ${CMAKE_THREAD_LIBS_INIT})
+
 find_package(SWIG REQUIRED)
 include(${SWIG_USE_FILE})
 

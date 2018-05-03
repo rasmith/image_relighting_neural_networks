@@ -75,6 +75,8 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                            int predictions_dim2, float* errors, int errors_dim1,
                            int errors_dim2);
 
+// assignment_data_to_test_data
+//
 // Assignment data : [[L, i0, i1, i2, i3, i4], ...]
 //  shape = W x H x (E + 1)
 //  L = level assigned to
@@ -105,6 +107,22 @@ void assignment_data_to_test_data(
     int* test_data_dim2, int** ensemble_data, int* ensemble_data_dim1,
     int* ensemble_data_dim2);
 
+// predictions_to_errors
+// 
+// order - 
+// ensemble_size - size of each ensemble
+// test - test data
+// test_data_dim1 - num test values
+// test_data_dim2 - size of each test value
+// target - known values
+// target_dim1 - num target values
+// target_dim2 -  size of target value
+// predictions - known values
+// predictions_dim1 - num predicted  values
+// predictions_dim2 -  size of each predicted value
+// errors - known values
+// errors_dim1 - num predicted  values
+// errors_dim2 -  size of each predicted value
 void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                            float* test, int test_dim1, int test_dim2,
                            float* target, int target_dim1, int target_dim2,
@@ -112,6 +130,18 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                            int predictions_dim2, float* errors, int errors_dim1,
                            int errors_dim2);
 
+// predictions_to_image
+//
+//  image_out - image out
+//  image_out_dim1 - width
+//  image_out_dim2 - height
+//  image_out_dim3 - channels
+//  test - test data
+//  test_dim1 - num test values
+//  test_dim2 - test value size
+//  predictions - predictions to put into image out
+//  predictions_dim1 - num predictions
+//  predictions_dim2 - prediction size
 void predictions_to_image(float* image_out, int image_out_dim1,
                           int image_out_dim2, int image_out_dim3, float* test,
                           int test_dim1, int test_dim2, float* predictions,

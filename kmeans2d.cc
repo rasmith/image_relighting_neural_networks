@@ -667,20 +667,21 @@ void predictions_to_image(float* image_out, int image_out_dim1,
                           int image_out_dim2, int image_out_dim3, float* test,
                           int test_dim1, int test_dim2, float* predictions,
                           int predictions_dim1, int predictions_dim2) {
+  std::cout << "predictions_to_image:enter\n";
   int height = image_out_dim1;
   int width = image_out_dim2;
   int channels = image_out_dim3;
   float* test_pos = test;
   assert(predictions_dim2 == image_out_dim3);
-  // std::cout << "predictions_to_image:height = " << height << "\n";
-  // std::cout << "predictions_to_image:width = " << width << "\n";
-  // std::cout << "predictions_to_image:channels = " << channels << "\n";
-  // std::cout << "predictions_to_image:predictions_dim1 = " << predictions_dim1
-  //<< "\n";
-  // std::cout << "predictions_to_image:predictions_dim2 = " << predictions_dim2
-  //<< "\n";
-  // std::cout << "test_to_image:test_dim1 = " << test_dim1 << "\n";
-  // std::cout << "test_to_image:test_dim2 = " << test_dim2 << "\n";
+  std::cout << "predictions_to_image:height = " << height << "\n";
+  std::cout << "predictions_to_image:width = " << width << "\n";
+  std::cout << "predictions_to_image:channels = " << channels << "\n";
+  std::cout << "predictions_to_image:predictions_dim1 = " << predictions_dim1
+            << "\n";
+  std::cout << "predictions_to_image:predictions_dim2 = " << predictions_dim2
+            << "\n";
+  std::cout << "test_to_image:test_dim1 = " << test_dim1 << "\n";
+  std::cout << "test_to_image:test_dim2 = " << test_dim2 << "\n";
 
   for (float* predictions_pos = predictions;
        predictions_pos < predictions + predictions_dim1 * predictions_dim2;

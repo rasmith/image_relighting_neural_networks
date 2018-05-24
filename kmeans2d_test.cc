@@ -5,10 +5,6 @@
 
 #include "kmeans2d.h"
 
-// void predictions_to_image(float* image_out, int image_out_dim1,
-// int image_out_dim2, int image_out_dim3, float* test,
-// int test_dim1, int test_dim2, float* predictions,
-// int predictions_dim1, int predictions_dim2);
 void GenerateRandomImage(int width, int height, int channels,
                          std::vector<float>& image) {
   image.resize(width * height * channels);
@@ -49,17 +45,66 @@ std::string PixelToString(float* p) {
 bool EqualsPixel(float* p, float* q) {
   return p[0] == q[0] && p[1] == q[1] && p[2] == q[2];
 }
+// void assignment_data_to_test_data(
+// int* assignment_data, int assignment_data_dim1, int assignment_data_dim2,
+// int assignment_data_dim3, int image_number, int num_images,
+// float* average_image, int average_image_dim1, int average_image_dim2,
+// int average_image_dim3, float** test_data, int* test_data_dim1,
+// int* test_data_dim2, int** ensemble_data, int* ensemble_data_dim1,
+// int* ensemble_data_dim2) {
+
+void GenerateTestAndAssignmentData(int width, int height, int channels,
+                                   int ensemble_size,
+                                   std::vector<float>& test_data,
+                                   std::vector<float>& assignment_data) {
+
+  int num_samples = width * height;
+  std::priority_queue<uint64_t> random_pixels;
+  // Generate a random permutation.
+  srand(0);
+  for (int i = 0; i < width * height; ++i)
+    random_pixels.push((static_cast<uint64_t>(std::rand()) << 32) &
+                       static_cast<uint64_t>(i));
+  // Populate assignments.
+  std::vector<int> assignments(width * height * ensemble_size);
+  for (int i = 0; i < width * height; ++i) {
+    int xy = static_cast<int>(0x0000FFFF & random_pixels.top()), x = xy % width,
+        y = xy / width;
+    random_pixels.pop();
+    assignments[ensemble_size * (y * width + x)] = std::rand() % ensemble_size;
+    for (int j = 0; j < ensemble_size; ++j)
+      assignments[ensemble_size * (y * width + x) + j + 1] =
+          std::rand() % ensemble_size;
+  }
+}
+
+void TestAssignmentDataToTestData(int width, int height, int channels,
+                                  int num_ensembles, int data_size) {
+  // Make random average image.
+  std::vector<float> average_image;
+  GenerateRandomImage(width, height, channels, average_image);
+  // Make random image.
+  std::vector<float> image;
+  GenerateRandomImage(width, height, channels, image);
+  // Generate random test data.
+  std::vector<float> test_data;
+  std::vector<float> assignment_data;
+  GenerateTestAndAssignmentData(width, height, channels, num_ensembles,
+                                test_data, assignment_data);
+}
+
+// void predictions_to_image(float* image_out, int image_out_dim1,
+// int image_out_dim2, int image_out_dim3, float* test,
+// int test_dim1, int test_dim2, float* predictions,
+// int predictions_dim1, int predictions_dim2);
 
 bool TestPredictionsToImage(int width, int height, int channels,
                             int num_samples) {
-  // std::cout << "TestPredictionsToImage\n";
   // Generate a random image to test against.
   std::vector<float> image;
-  // std::cout << "GenerateRandomImage\n";
   GenerateRandomImage(width, height, channels, image);
   // Make some test data
   std::vector<float> test;
-  // std::cout << "GenerateTestData\n";
   GenerateTestData(width, height, channels, num_samples, image, test);
   // Generate the "predictions".
   int test_data_size = channels + 3;
@@ -70,17 +115,11 @@ bool TestPredictionsToImage(int width, int height, int channels,
     for (int j = 0; j < channels; ++j)
       predictions[i + j] = image[channels * (y * width + x) + j];
   }
-  // std::cout << "predictions_to_image\n";
   // Run the target function to test.
-  // std::cout << "width = " << width << "\n";
-  // std::cout << "height = " << height << "\n";
-  // std::cout << "channels = " << channels << "\n";
   std::vector<float> image_out(width * height * channels);
-  // std::cout << "predictions_to_image ---\n";
   predictions_to_image(&image_out[0], width, height, channels, &test[0],
                        num_samples, channels + 3, &predictions[0], num_samples,
                        channels);
-  // std::cout << "done\n";
   for (int i = 0; i < num_samples * test_data_size; i += test_data_size) {
     int x = test[i];
     int y = test[i + 1];
@@ -125,9 +164,10 @@ int main(int argc, char** argv) {
                               {3840, 2160}};
 
   for (auto r : resolutions) {
-    for (int i = 1; i < r.width * r.height; i *= r.width) {
+    int step = r.width * r.height / 10;
+    for (int i = 1; i < r.width * r.height; i += step) {
       std::cout << "-------- TestPredictionsToImage ------ (" << r.width << ","
-                << r.height << ") - " << i << "-----\n";
+                << r.height << ") - " << i << " -----\n";
       if (!TestPredictionsToImage(r.width, r.height, c, i)) {
         exit(0);
       }

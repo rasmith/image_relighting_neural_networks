@@ -84,6 +84,8 @@ void GenerateTestAndAssignmentData(int width, int height, int channels,
 
 void TestAssignmentDataToTestData(int width, int height, int channels,
                                   int num_ensembles, int data_size) {
+  const int coord_size = 3;
+  const int light_size = 1;
   // Generate random test data.
   std::vector<float> average_image;
   std::vector<float> test_data;
@@ -93,6 +95,24 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
   GenerateTestAndAssignmentData(width, height, channels, num_ensembles,
                                 &num_images, &image_number, average_image,
                                 test_data, assignment_data);
+  int* ensemble_data = nullptr;
+  int ensemble_data_dim1 = -1;
+  int ensemble_data_dim2 = -1;
+  float* test_data_out = nullptr;
+  int test_data_dim1 = -1;
+  int test_data_dim2 = -1;
+  // void assignment_data_to_test_data(
+  // int* assignment_data, int assignment_data_dim1, int assignment_data_dim2,
+  // int assignment_data_dim3, int image_number, int num_images,
+  // float* average_image, int average_image_dim1, int average_image_dim2,
+  // int average_image_dim3, float** test_data, int* test_data_dim1,
+  // int* test_data_dim2, int** ensemble_data, int* ensemble_data_dim1,
+  // int* ensemble_data_dim2) {
+  assignment_data_to_test_data(&assignment_data[0], height, width, channels,
+                               image_number, num_images, &average_image[0],
+                               height, width, channels, &test_data_out,
+                               &test_data_dim1, &test_data_dim2, &ensemble_data,
+                               &ensemble_data_dim1, &ensemble_data_dim2);
 }
 
 // void predictions_to_image(float* image_out, int image_out_dim1,

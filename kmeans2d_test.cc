@@ -1,7 +1,10 @@
-#include <utility>
-#include <queue>
-#include <vector>
+#include <algorithm>
+#include <cassert>
 #include <iostream>
+#include <queue>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "kmeans2d.h"
 
@@ -45,6 +48,22 @@ std::string PixelToString(float* p) {
 bool EqualsPixel(float* p, float* q) {
   return p[0] == q[0] && p[1] == q[1] && p[2] == q[2];
 }
+
+void GenerateUniqueValues(int count, int max_value, std::vector<int>& values) {
+  std::unordered_set<int> value_set;
+  while (value_set.size() < count) value_set.insert(std::rand() % max_value);
+  values.clear();
+  for (int i : values) values.push_back(i);
+  std::sort(values.begin(), values.end());
+}
+
+void GenerateRandomPermutation(int n, std::vector<int> values) {
+  values.resize(n);
+  for (int i = 0; i < n; ++i) values[i] = i;
+  for (int i = 0; i < n; ++i)
+    int k = (i < n - 1 ? n - 1 : std::rand() % (n - i - 1) + 1);
+}
+
 // void assignment_data_to_test_data(
 // int* assignment_data, int assignment_data_dim1, int assignment_data_dim2,
 // int assignment_data_dim3, int image_number, int num_images,
@@ -52,18 +71,53 @@ bool EqualsPixel(float* p, float* q) {
 // int average_image_dim3, float** test_data, int* test_data_dim1,
 // int* test_data_dim2, int** ensemble_data, int* ensemble_data_dim1,
 // int* ensemble_data_dim2) {
-void GenerateTestAndAssignmentData(int width, int height, int channels,
-                                   int ensemble_size, int* num_images,
-                                   int* image_number,
-                                   std::vector<float>& average,
-                                   std::vector<float>& test_data,
-                                   std::vector<int>& assignments) {
+void GenerateTestAndAssignmentData(
+    int width, int height, int channels, int ensemble_size, int num_levels,
+    int num_ensembles, int* num_images, int* image_number,
+    std::vector<float>& average, std::vector<float>& test_data,
+    std::vector<int>& assignments, std::vector<int>& ensemble_data) {
 
   srand(0);
+  int num_pixels = width * height;
   *num_images = std::rand() % 1000 + 100;
   *image_number = std::rand() % *num_images;
-  average.resize(width * height * channels);
+  average.resize(num_pixels * channels);
   assignments.resize(width * height * (ensemble_size + 1));
+  // Choose start values randomly for each ensemble.
+  std::vector<int> start_values;
+  GenerateUniqueValues(num_ensembles, num_pixels, start_values);
+  // Choose random pixels.
+  std::vector<int> random_pixels;
+  GenerateRandomPermutation(num_pixels, random_pixels);
+  // Populate values.
+  int current_pixel = -1;
+  for (int i = 0; i < num_ensembles; ++i) {
+    ensemble_data.push_back(std::rand() % num_levels);  // level
+    ensemble_data.push_back(std::rand());               // ensemble_id
+    int start = start_values[i];
+    int end = (i < num_levels - 1 ? start_values[i + 1] : num_pixels);
+    int count = end - start + 1;
+    ensemble_data.push_back(start);  // start
+    ensemble_data.push_back(end);    // end
+    ensemble_data.push_back(count);  // count
+    // Generate the test data for this ensemble.
+    for (int j = 0; j < count; ++j) {
+      int p = random_pixels[++current_pixel];
+      int x = p % width;
+      int y = p / width;
+      test_data.push_back(x / static_cast<float>(width));
+      test_data.push_back(y / static_cast<float>(height));
+      test_data.push_back(image_number / static_cast<float>(*num_images));
+      for (int c = 0; c < channels; ++c)
+        test_data.push_back(average[width * y + x + c]);
+    }
+  }
+  // Algorithm to generate test data:
+  // for i to num_ensembles
+  //   pick a new level, l, for ensemble
+  //   pick ensemble id, id
+  //   pick n_l_id count of pixels, pick that many pixels
+  //   add the pixels to test data and ensemble data
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       // Add the test data.
@@ -95,6 +149,7 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
   GenerateTestAndAssignmentData(width, height, channels, num_ensembles,
                                 &num_images, &image_number, average_image,
                                 test_data, assignment_data);
+  // Call assignment_data_to_test_data
   int* ensemble_data = nullptr;
   int ensemble_data_dim1 = -1;
   int ensemble_data_dim2 = -1;
@@ -113,6 +168,15 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
                                height, width, channels, &test_data_out,
                                &test_data_dim1, &test_data_dim2, &ensemble_data,
                                &ensemble_data_dim1, &ensemble_data_dim2);
+  // Test the result.
+  assert(test_data_dim1 == width * height);
+  assert(test_data_dim2 == channels + 3);
+  assert(ensemble_data_dim1 == height);
+  assert(ensemble_data_dim2 == width);
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+    }
+  }
 }
 
 // void predictions_to_image(float* image_out, int image_out_dim1,

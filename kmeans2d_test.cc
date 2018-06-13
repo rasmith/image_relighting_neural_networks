@@ -64,6 +64,54 @@ void GenerateRandomPermutation(int n, std::vector<int> values) {
     int k = (i < n - 1 ? n - 1 : std::rand() % (n - i - 1) + 1);
 }
 
+struct EnsembleData {
+  EnsembleData() : level(-1), id(-1), start(-1), end(-1) {}
+  EnsembleData(int l, int i, int s, int c)
+      : level(l), id(i), start(s), count(c) {}
+  int level;
+  int id;
+  int start;
+  int count;
+};
+
+void ComputeEnsembleDataAndOffsets(int num_levels, int total_networks,
+                                   int num_pixels, int ensemble_size,
+                                   std::vector<EnsembleData>& ensemble_data) {
+  std::vector<int> networks_per_level(num_levels);
+  // Compute number of ensembles per level.
+  for (int i = 0; i < num_levels; ++i) {
+    networks_per_level[i] =
+        std::min(total_networks - i * (total_networks / num_levels + 1),
+                 total_networks / num_levels + 1);
+    assert(networks_per_level[i] > 0);
+  }
+  // Allocate for ensemble_data.
+  ensemble_data.resize(total_networks);
+  // Count occurences for each (level, id) pair.
+  int current_base = 0;
+  int current = 0;
+  for (int level = 0; level < num_levels; ++level) {
+    int num_networks = networks_per_level[level];
+    int current_id = 0;
+    // Initialize ensemble data.
+    for (int id = 0; id < networks_per_level[i]; ++id)
+      ensemble_data[current_base + id] = EnsembleData(level, id, 0, 0);
+    // Iterate over pixels.
+    for (int pixel_index = 0; pixel_index < num_pixels; ++pixel_index) {
+      // Tag each network-id.
+      for (int e = 0; e < ensemble_size; ++e) {
+        ++ensemble_data[current_id].count;
+        current_id = (current_id + 1) % current_base;
+      }
+    }
+    current_base += num_networks;
+  }
+  // Compute starts values for each (level, id) pair.
+  for (int i = 1; i < ensemble_data.size(); ++i)
+    ensemble_data[i].start +=
+        ensemble_data[i - 1].start + ensemble_data[i - 1].count;
+}
+
 // void assignment_data_to_test_data(
 // int* assignment_data, int assignment_data_dim1, int assignment_data_dim2,
 // int assignment_data_dim3, int image_number, int num_images,
@@ -78,60 +126,52 @@ void GenerateTestAndAssignmentData(
     std::vector<int>& assignments, std::vector<int>& ensemble_data) {
 
   srand(0);
-  int num_pixels = width * height;
-  *num_images = std::rand() % 1000 + 100;
-  *image_number = std::rand() % *num_images;
-  average.resize(num_pixels * channels);
-  assignments.resize(width * height * (ensemble_size + 1));
-  // Choose start values randomly for each ensemble.
-  std::vector<int> start_values;
-  GenerateUniqueValues(num_ensembles, num_pixels, start_values);
-  // Choose random pixels.
-  std::vector<int> random_pixels;
-  GenerateRandomPermutation(num_pixels, random_pixels);
-  // Populate values.
-  int current_pixel = -1;
-  for (int i = 0; i < num_ensembles; ++i) {
-    ensemble_data.push_back(std::rand() % num_levels);  // level
-    ensemble_data.push_back(std::rand());               // ensemble_id
-    int start = start_values[i];
-    int end = (i < num_levels - 1 ? start_values[i + 1] : num_pixels);
-    int count = end - start + 1;
-    ensemble_data.push_back(start);  // start
-    ensemble_data.push_back(end);    // end
-    ensemble_data.push_back(count);  // count
-    // Generate the test data for this ensemble.
-    for (int j = 0; j < count; ++j) {
-      int p = random_pixels[++current_pixel];
-      int x = p % width;
-      int y = p / width;
-      test_data.push_back(x / static_cast<float>(width));
-      test_data.push_back(y / static_cast<float>(height));
-      test_data.push_back(image_number / static_cast<float>(*num_images));
-      for (int c = 0; c < channels; ++c)
-        test_data.push_back(average[width * y + x + c]);
+  int num_pixels = width * height;            // number of pixels
+  *num_images = std::rand() % 1000 + 100;     // set number of images randomly
+  *image_number = std::rand() % *num_images;  // set image number randomly
+  const int pixel_size = 3;                   // set pixel size
+  const int light_size = 1;                   // set light size
+  const int coord_size = 2;                   // set coord size
+  const int data_size = pixel_size + light_size + coord_size;  // set data size
+  test_data.resize(num_pixels * ensemble_size * test_data_size);  // allocate
+
+  std::vector<int> pixels;
+  GenerateRandomPermutation(num_pixels, pixels);
+  for (int l = 0; l < num_levels; ++l) {
+    // 1. Assign pixels to this level.
+    int count = std::min(num_pixels / num_levels, pixels.size());
+    std::vector<int> local_pixels;
+    std::copy(pixels.end() - count, pixels.end(),
+              std::back_inserter(local_pixels));
+    pixels.erase(pixels.end() - count, pixels.end());
+    // 2. Assign to ensembles.
+    std::vector<int> local_ensembles;
+    int num_local_ensembles = num_ensembles / num_levels;
+    int current = 0;
+    // Count first.
+    for (int i = 0; i < local_pixels.size(); ++i) {
+      ++local_ensembles[current];
+      current = (current + 1) % num_local_ensembles;
     }
-  }
-  // Algorithm to generate test data:
-  // for i to num_ensembles
-  //   pick a new level, l, for ensemble
-  //   pick ensemble id, id
-  //   pick n_l_id count of pixels, pick that many pixels
-  //   add the pixels to test data and ensemble data
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      // Add the test data.
-      test_data.push_back(static_cast<float>(x) / width);
-      test_data.push_back(static_cast<float>(y) / height);
-      test_data.push_back(static_cast<float>(*image_number) / *num_images);
-      // Average image data.
-      for (int c = 0; c < channels; ++c) {
-        average.push_back(static_cast<float>(std::rand()) / RAND_MAX);
-        test_data.push_back(average.back());
-      }
-      // Assignment data.
-      for (int e = 0; e < ensemble_size + 1; ++e)
-        assignments.push_back(std::rand());
+    for (int i = 1; i < local_ensembles.size(); ++i)
+      local_ensembles[i] += local_ensembles[i - 1];
+    for (int i = 1; i < local_ensembles.size(); ++i)
+      local_ensembles[i] = local_ensembles[i - 1];
+    local_ensembles[i] = 0;
+    int offset;  // TODO
+    for (int i = 0; i < local_ensembles.size(); ++i)
+      local_ensembles[i] += offset;
+    // Output.
+    for (int i = 0; i < local_pixels.size(); ++i) {
+      float x, y, j, r, g, b;  // TODO
+      test_data[local_ensembles[current] * data_size] = x;
+      test_data[local_ensembles[current] * data_size + 1] = y;
+      test_data[local_ensembles[current] * data_size + 2] = j;
+      test_data[local_ensembles[current] * data_size + 3] = r;
+      test_data[local_ensembles[current] * data_size + 4] = g;
+      test_data[local_ensembles[current] * data_size + 5] = b;
+      ++local_ensembles[current];
+      current = (current + 1) % num_local_ensembles;
     }
   }
 }

@@ -133,18 +133,42 @@ void GenerateTestAndAssignmentData(
   const int light_size = 1;                   // set light size
   const int coord_size = 2;                   // set coord size
   const int data_size = pixel_size + light_size + coord_size;  // set data size
-  test_data.resize(num_pixels * ensemble_size * data_size);    // allocate
 
+  int ensembles_per_level = num_ensembles / num_levels;
   std::vector<int> pixels;
   GenerateRandomPermutation(num_pixels, pixels);
-  for (int l = 0; l < num_levels; ++l) {
+  int pixels_per_level =
+      std::min(num_pixels / num_levels, static_cast<int>(pixels.size()));
+  int pixels_per_ensemble = pixels_per_level / ensembles_per_level;
+  int max_pixels =
+      std::ceil(static_cast<float>(ensemble_size * pixels_per_level) /
+                ensembles_per_level);
+  test_data.resize(num_pixels * ensemble_size * data_size);  // allocate
+  for (int level = 0; level < num_levels; ++level) {
     // 1. Assign pixels to this level.
-    int count =
-        std::min(num_pixels / num_levels, static_cast<int>(pixels.size()));
     std::vector<int> local_pixels;
-    std::copy(pixels.end() - count, pixels.end(),
+    std::copy(pixels.end() - pixels_per_level, pixels.end(),
               std::back_inserter(local_pixels));
-    pixels.erase(pixels.end() - count, pixels.end());
+    pixels.erase(pixels.end() - pixels_per_level, pixels.end());
+    // 2. Assign ensembles to pixels.
+    std::vector<int> ensemble_counts(ensembles_per_level);
+    int current_ensemble = 0;
+    for (int i = 0; i < pixels_per_level; ++i) {
+      int offset =
+          (level * pixels_per_level + current_ensemble * pixels_per_ensemble +
+           ensemble_counts[current_ensemble]) *
+          data_size;
+      int pixel_index = local_pixels[i];
+      int x = pixel_index % width;
+      int y = pixel_index % height;
+      test_data[offset] = static_cast<float>(x) / width;
+      test_data[offset + 1] = static_cast<float>(y) / height;
+      test_data[offset + 2] = static_cast<float>(*image_number) / *num_images;
+      test_data[offset + 3] = average[width * y + x];
+      test_data[offset + 4] = average[width * y + x + 1];
+      test_data[offset + 5] = average[width * y + x + 2];
+      current_ensemble = (current_ensemble + 1) % ensembles_per_level;
+    }
   }
 }
 

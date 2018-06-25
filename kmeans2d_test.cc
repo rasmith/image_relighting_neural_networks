@@ -64,158 +64,133 @@ void GenerateRandomPermutation(int n, std::vector<int> values) {
     int k = (i < n - 1 ? n - 1 : std::rand() % (n - i - 1) + 1);
 }
 
-struct EnsembleData {
-  EnsembleData() : level(-1), id(-1), start(-1), count(-1) {}
-  EnsembleData(int l, int i, int s, int c)
-      : level(l), id(i), start(s), count(c) {}
-  int level;
-  int id;
-  int start;
-  int count;
-};
-
-void ComputeEnsembleDataAndOffsets(int num_levels, int total_networks,
-                                   int num_pixels, int ensemble_size,
-                                   std::vector<EnsembleData>& ensemble_data) {
-  std::vector<int> networks_per_level(num_levels);
-  // Compute number of ensembles per level.
-  for (int i = 0; i < num_levels; ++i) {
-    networks_per_level[i] =
-        std::min(total_networks - i * (total_networks / num_levels + 1),
-                 total_networks / num_levels + 1);
-    assert(networks_per_level[i] > 0);
-  }
-  // Allocate for ensemble_data.
-  ensemble_data.resize(total_networks);
-  // Count occurences for each (level, id) pair.
-  int current_base = 0;
-  int current = 0;
-  for (int level = 0; level < num_levels; ++level) {
-    int num_networks = networks_per_level[level];
-    int current_id = 0;
-    // Initialize ensemble data.
-    for (int id = 0; id < num_networks; ++id)
-      ensemble_data[current_base + id] = EnsembleData(level, id, 0, 0);
-    // Iterate over pixels.
-    for (int pixel_index = 0; pixel_index < num_pixels; ++pixel_index) {
-      // Tag each network-id.
-      for (int e = 0; e < ensemble_size; ++e) {
-        ++ensemble_data[current_id].count;
-        current_id = (current_id + 1) % current_base;
-      }
-    }
-    current_base += num_networks;
-  }
-  // Compute starts values for each (level, id) pair.
-  for (int i = 1; i < ensemble_data.size(); ++i)
-    ensemble_data[i].start +=
-        ensemble_data[i - 1].start + ensemble_data[i - 1].count;
-}
-
-// void assignment_data_to_test_data(
-// int* assignment_data, int assignment_data_dim1, int assignment_data_dim2,
-// int assignment_data_dim3, int image_number, int num_images,
-// float* average_image, int average_image_dim1, int average_image_dim2,
-// int average_image_dim3, float** test_data, int* test_data_dim1,
-// int* test_data_dim2, int** ensemble_data, int* ensemble_data_dim1,
-// int* ensemble_data_dim2) {
 void GenerateTestAndAssignmentData(
     int width, int height, int channels, int ensemble_size, int num_levels,
-    int num_ensembles, int* num_images, int* image_number,
+    int num_networks, int* num_images, int* image_number,
     std::vector<float>& average, std::vector<float>& test_data,
-    std::vector<int>& assignments, std::vector<EnsembleData>& ensemble_data) {
-
-  srand(0);
-  int num_pixels = width * height;            // number of pixels
-  *num_images = std::rand() % 1000 + 100;     // set number of images randomly
-  *image_number = std::rand() % *num_images;  // set image number randomly
-  const int pixel_size = 3;                   // set pixel size
-  const int light_size = 1;                   // set light size
-  const int coord_size = 2;                   // set coord size
+    std::vector<int>& assignments, std::vector<int>& network_data) {
+  const int pixel_size = 3;                                    // set pixel size
+  const int light_size = 1;                                    // set light size
+  const int coord_size = 2;                                    // set coord size
   const int data_size = pixel_size + light_size + coord_size;  // set data size
+  const int network_data_size = 4;  // level, id, start, count
+  const int assignment_data_size = network_data_size + 1;
+  int num_pixels = width * height;  // number of pixels
 
-  int ensembles_per_level = num_ensembles / num_levels;
+  // Get a random order of pixels.
   std::vector<int> pixels;
   GenerateRandomPermutation(num_pixels, pixels);
-  int pixels_per_level =
-      std::min(num_pixels / num_levels, static_cast<int>(pixels.size()));
-  int pixels_per_ensemble = pixels_per_level / ensembles_per_level;
-  int max_pixels =
-      std::ceil(static_cast<float>(ensemble_size * pixels_per_level) /
-                ensembles_per_level);
+
+  // Allocate test_data, network_data, and assignments.
   test_data.resize(num_pixels * ensemble_size * data_size);  // allocate
+  network_data.resize(num_networks * network_data_size);
+  assignments.resize(num_pixels * assignment_data_size);
+
+  // Set the num_images and image_number randomly.
+  *num_images = std::rand() % 1000 + 100;     // set number of images randomly
+  *image_number = std::rand() % *num_images;  // set image number randomly
+
+  int networks_left = num_networks;
+  float* test_pos = &test_data[0];
+  int* network_data_pos = &network_data[0];
   for (int level = 0; level < num_levels; ++level) {
+    // 0. Compute number of neural networks, pixels to use, and limits on
+    // maximum pixels any neural network can be assigned.
+    int networks_per_level =
+        std::min(num_networks / num_levels + 1, networks_left);
+    int pixels_per_level =
+        std::min(num_pixels / num_levels + 1, static_cast<int>(pixels.size()));
+    int pixels_per_network = std::min(pixels_per_level / networks_per_level + 1,
+                                      static_cast<int>(pixels.size()));
+    int max_pixels =
+        std::ceil(static_cast<float>(network_data_size * pixels_per_level) /
+                  networks_per_level);
+    networks_left -= networks_per_level;
+    for (int i = 0; i < networks_per_level; ++i) {
+      int offset = test_pos - &test_data[0];
+      network_data[network_data_size * i] = level;
+      network_data[network_data_size * i + 1] = i;
+      network_data[network_data_size * i + 2] =
+          offset + pixels_per_network * networks_per_level;
+      network_data[network_data_size * i + 3] = 0;
+    }
     // 1. Assign pixels to this level.
     std::vector<int> local_pixels;
     std::copy(pixels.end() - pixels_per_level, pixels.end(),
               std::back_inserter(local_pixels));
     pixels.erase(pixels.end() - pixels_per_level, pixels.end());
-    // 2. Assign ensembles to pixels.
-    std::vector<int> ensemble_counts(ensembles_per_level);
-    int current_ensemble = 0;
-    for (int i = 0; i < pixels_per_level; ++i) {
-      int offset =
-          (level * pixels_per_level + current_ensemble * pixels_per_ensemble +
-           ensemble_counts[current_ensemble]) *
-          data_size;
+    // 2. Assign networks to pixels.
+    std::vector<int> network_counts(networks_per_level, 0);
+    int current_network = 0;
+    for (int i = 0; i < local_pixels.size(); ++i) {
       int pixel_index = local_pixels[i];
       int x = pixel_index % width;
-      int y = pixel_index % height;
-      test_data[offset] = static_cast<float>(x) / width;
-      test_data[offset + 1] = static_cast<float>(y) / height;
-      test_data[offset + 2] = static_cast<float>(*image_number) / *num_images;
-      test_data[offset + 3] = average[width * y + x];
-      test_data[offset + 4] = average[width * y + x + 1];
-      test_data[offset + 5] = average[width * y + x + 2];
-      current_ensemble = (current_ensemble + 1) % ensembles_per_level;
+      int y = pixel_index / width;
+      assignments[assignment_data_size * (width * x + y)] = level;
+      for (int j = 0; j < ensemble_size; ++j) {
+        int offset =
+            (current_network * pixels_per_network +
+             network_data_pos[current_network * network_data_size + 3]) *
+            data_size;
+        test_pos[offset] = static_cast<float>(x) / width;
+        test_pos[offset + 1] = static_cast<float>(y) / height;
+        test_pos[offset + 2] = static_cast<float>(*image_number) / *num_images;
+        test_pos[offset + 3] = average[width * y + x];
+        test_pos[offset + 4] = average[width * y + x + 1];
+        test_pos[offset + 5] = average[width * y + x + 2];
+        ++network_counts[current_network * network_data_size + 3];
+        assignments[assignment_data_size * (width * x + y) + j + 1] =
+            current_network;
+        current_network = (current_network + 1) % networks_per_level;
+      }
     }
+    test_pos += data_size * pixels_per_level;
+    network_data_pos += network_data_size * networks_per_level;
   }
 }
 
 void TestAssignmentDataToTestData(int width, int height, int channels,
-                                  int num_ensembles, int data_size) {
+                                  int num_levels, int num_networks,
+                                  int ensemble_size, int data_size) {
   const int coord_size = 3;
   const int light_size = 1;
   // Generate random test data.
   std::vector<float> average_image;
   std::vector<float> test_data;
+  std::vector<int> network_data;
   std::vector<int> assignment_data;
   int image_number = -1;
   int num_images = -1;
   // Call assignment_data_to_test_data
-  int* ensemble_data = nullptr;
-  int ensemble_data_dim1 = -1;
-  int ensemble_data_dim2 = -1;
+  int* network_data_out = nullptr;
+  int network_data_dim1 = -1;
+  int network_data_dim2 = -1;
   float* test_data_out = nullptr;
   int test_data_dim1 = -1;
   int test_data_dim2 = -1;
-  // void assignment_data_to_test_data(
-  // int* assignment_data, int assignment_data_dim1, int assignment_data_dim2,
-  // int assignment_data_dim3, int image_number, int num_images,
-  // float* average_image, int average_image_dim1, int average_image_dim2,
-  // int average_image_dim3, float** test_data, int* test_data_dim1,
-  // int* test_data_dim2, int** ensemble_data, int* ensemble_data_dim1,
-  // int* ensemble_data_dim2) {
-  assignment_data_to_test_data(&assignment_data[0], height, width, channels,
-                               image_number, num_images, &average_image[0],
-                               height, width, channels, &test_data_out,
-                               &test_data_dim1, &test_data_dim2, &ensemble_data,
-                               &ensemble_data_dim1, &ensemble_data_dim2);
+
+  GenerateTestAndAssignmentData(width, height, channels, ensemble_size,
+                                num_levels, num_networks, &num_images,
+                                &image_number, average_image, test_data,
+                                assignment_data, network_data);
+
+  assignment_data_to_test_data(
+      &assignment_data[0], height, width, channels, image_number, num_images,
+      &average_image[0], height, width, channels, &test_data_out,
+      &test_data_dim1, &test_data_dim2, &network_data_out, &network_data_dim1,
+      &network_data_dim2);
+
   // Test the result.
   assert(test_data_dim1 == width * height);
   assert(test_data_dim2 == channels + 3);
-  assert(ensemble_data_dim1 == height);
-  assert(ensemble_data_dim2 == width);
+  assert(network_data_dim1 == height);
+  assert(network_data_dim2 == width);
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
     }
   }
 }
 
-// void predictions_to_image(float* image_out, int image_out_dim1,
-// int image_out_dim2, int image_out_dim3, float* test,
-// int test_dim1, int test_dim2, float* predictions,
-// int predictions_dim1, int predictions_dim2);
 bool TestPredictionsToImage(int width, int height, int channels,
                             int num_samples) {
   // Generate a random image to test against.

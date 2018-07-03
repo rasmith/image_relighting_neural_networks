@@ -32,6 +32,9 @@ struct NetworkData {
   bool operator!=(const NetworkData& a) { return !((*this) == a); }
 };
 
+static_assert(sizeof(NetworkData) == 4 * sizeof(int),
+              "NetworkData size is too large.");
+
 std::ostream& operator<<(std::ostream& out, const NetworkData& d) {
   std::cout << "{level:" << d.level << ", id:" << d.id << ", start:" << d.start
             << ", count:" << d.count << "}\n";
@@ -50,7 +53,6 @@ struct CompareNetworkData {
 
 void CopyNetworkData(const int* to_pos, std::vector<NetworkData>& data) {
   const int step_size = sizeof(NetworkData) / sizeof(int);
-  assert(sizeof(NetworkData) / sizeof(int) == 4);
   const int* pos = to_pos;
   for (int i = 0; i < data.size(); ++i) {
     data[i] = *reinterpret_cast<const NetworkData*>(pos);

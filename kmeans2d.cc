@@ -586,7 +586,6 @@ void assignment_data_to_test_data(
     int average_image_dim3, float** test_data, int* test_data_dim1,
     int* test_data_dim2, int** ensemble_data, int* ensemble_data_dim1,
     int* ensemble_data_dim2) {
-  const int num_threads = 8;
   int width = assignment_data_dim1;
   int height = assignment_data_dim2;
   int ensemble_size = assignment_data_dim3 - 1;

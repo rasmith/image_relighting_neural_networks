@@ -8,6 +8,48 @@
 
 #include "kmeans2d.h"
 
+struct TestData {
+  int a[6];
+};
+
+struct CompareTestData {
+  bool operator()(const TestData& a, const TestData& b) {
+    for (int i = 0; i < 6; ++i)
+      if (a.a[i] < b.a[i]) return true;
+    return false;
+  }
+};
+
+struct NetworkData {
+  int level;
+  int id;
+  int start;
+  int count;
+  bool operator==(const NetworkData& a) {
+    return (this == &a) || (level == a.level && id == a.id && start == a.start &&
+           count == a.count);
+  }
+  bool operator!=(const NetworkData& a) {
+    return !((*this) == a);
+  }
+};
+
+std::ostream& operator<<(std::ostream& out, const NetworkData& d) {
+  std::cout << "{level:" << d.level << ", id:" << d.id << ", start:" << d.start
+            << ", count:" << d.count << "}\n";
+  return out;
+}
+
+struct CompareNetworkData {
+  bool operator()(const NetworkData& a, const NetworkData& b) {
+    if (a.level < b.level) return true;
+    if (a.id < b.id) return true;
+    if (a.start < b.start) return true;
+    if (a.count < b.count) return true;
+    return false;
+  }
+};
+
 void GenerateRandomImage(int width, int height, int channels,
                          std::vector<float>& image) {
   image.resize(width * height * channels);
@@ -181,12 +223,26 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
       &network_data_dim2);
 
   // Test the result.
-  assert(test_data_dim1 == width * height);
+  assert(test_data_dim1 == width * height * 4);
   assert(test_data_dim2 == channels + 3);
   assert(network_data_dim1 == height);
   assert(network_data_dim2 == width);
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
+
+  std::vector<NetworkData> network_data_check;
+  std::vector<NetworkData> network_data_test;
+
+  // Sort so a comparison can be made.
+  std::sort(network_data_check.begin(), network_data_check.end(),
+            CompareNetworkData());
+  std::sort(network_data_test.begin(), network_data_test.end(),
+            CompareNetworkData());
+
+  assert(network_data_check.size() == network_data_test.size());
+  for (int i = 0; i < network_data_test.size(); ++i) {
+    if (network_data_test[i] != network_data_check[i]) {
+      std::cout << "Test value " << i << " does not match check value "
+                << network_data_test[i] << " " << network_data_check[i] << "\n";
+      assert(network_data_test[i] == network_data_check[i]);
     }
   }
 }

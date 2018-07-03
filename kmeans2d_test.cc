@@ -26,12 +26,10 @@ struct NetworkData {
   int start;
   int count;
   bool operator==(const NetworkData& a) {
-    return (this == &a) || (level == a.level && id == a.id && start == a.start &&
-           count == a.count);
+    return (this == &a) || (level == a.level && id == a.id &&
+                            start == a.start && count == a.count);
   }
-  bool operator!=(const NetworkData& a) {
-    return !((*this) == a);
-  }
+  bool operator!=(const NetworkData& a) { return !((*this) == a); }
 };
 
 std::ostream& operator<<(std::ostream& out, const NetworkData& d) {
@@ -49,6 +47,16 @@ struct CompareNetworkData {
     return false;
   }
 };
+
+void CopyNetworkData(const int* to_pos, std::vector<NetworkData>& data) {
+  const int step_size = sizeof(NetworkData) / sizeof(int);
+  assert(sizeof(NetworkData) / sizeof(int) == 4);
+  const int* pos = to_pos;
+  for (int i = 0; i < data.size(); ++i) {
+    data[i] = *reinterpret_cast<const NetworkData*>(pos);
+    pos += step_size;
+  }
+}
 
 void GenerateRandomImage(int width, int height, int channels,
                          std::vector<float>& image) {
@@ -228,8 +236,12 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
   assert(network_data_dim1 == height);
   assert(network_data_dim2 == width);
 
-  std::vector<NetworkData> network_data_check;
-  std::vector<NetworkData> network_data_test;
+  std::vector<NetworkData> network_data_check(network_data_dim1);
+  std::vector<NetworkData> network_data_test(network_data_dim1);
+
+  // Copy in data.
+  CopyNetworkData(network_data_out, network_data_test);
+  CopyNetworkData(&network_data[0], network_data_check);
 
   // Sort so a comparison can be made.
   std::sort(network_data_check.begin(), network_data_check.end(),

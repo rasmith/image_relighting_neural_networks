@@ -9,13 +9,20 @@
 #include "kmeans2d.h"
 
 struct TestData {
-  int a[6];
+  float a0;
+  float a1;
+  float a2;
+  float a3;
+  float a4;
+  float a5;
 };
 
 struct CompareTestData {
   bool operator()(const TestData& a, const TestData& b) {
+    const float* aa = &(a.a0);
+    const float* ab = &(b.a0);
     for (int i = 0; i < 6; ++i)
-      if (a.a[i] < b.a[i]) return true;
+      if (aa[i] < ab[i]) return true;
     return false;
   }
 };
@@ -31,9 +38,6 @@ struct NetworkData {
   }
   bool operator!=(const NetworkData& a) { return !((*this) == a); }
 };
-
-static_assert(sizeof(NetworkData) == 4 * sizeof(int),
-              "NetworkData size is too large.");
 
 std::ostream& operator<<(std::ostream& out, const NetworkData& d) {
   std::cout << "{level:" << d.level << ", id:" << d.id << ", start:" << d.start
@@ -51,13 +55,26 @@ struct CompareNetworkData {
   }
 };
 
-void CopyNetworkData(const int* to_pos, std::vector<NetworkData>& data) {
-  const int step_size = sizeof(NetworkData) / sizeof(int);
-  const int* pos = to_pos;
+template <typename PrimitiveType, typename StructType, int StructMultipleSize>
+void CopyFromPrimitiveArrayToStructArray(const PrimitiveType* to_pos,
+                                         std::vector<StructType>& data) {
+  constexpr int sizeof_struct = sizeof(StructType);
+  constexpr int sizeof_mult = StructMultipleSize * sizeof(PrimitiveType);
+  static_assert(sizeof_struct == sizeof_mult, "StructType size is incorrect.");
+  const int step_size = sizeof(StructType) / sizeof(PrimitiveType);
+  const PrimitiveType* pos = to_pos;
   for (int i = 0; i < data.size(); ++i) {
-    data[i] = *reinterpret_cast<const NetworkData*>(pos);
+    data[i] = *reinterpret_cast<const StructType*>(pos);
     pos += step_size;
   }
+}
+
+void CopyNetworkData(const int* to_pos, std::vector<NetworkData>& data) {
+  CopyFromPrimitiveArrayToStructArray<int, NetworkData, 4>(to_pos, data);
+}
+
+void CopyTestData(const float* to_pos, std::vector<TestData>& data) {
+  CopyFromPrimitiveArrayToStructArray<float, TestData, 6>(to_pos, data);
 }
 
 void GenerateRandomImage(int width, int height, int channels,
@@ -232,11 +249,9 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
       &test_data_dim1, &test_data_dim2, &network_data_out, &network_data_dim1,
       &network_data_dim2);
 
-  // Test the result.
-  assert(test_data_dim1 == width * height * 4);
-  assert(test_data_dim2 == channels + 3);
-  assert(network_data_dim1 == height);
-  assert(network_data_dim2 == width);
+  // Test network data results.
+  assert(network_data_dim1 == network_data.size());
+  assert(network_data_dim2 == 4);
 
   std::vector<NetworkData> network_data_check(network_data_dim1);
   std::vector<NetworkData> network_data_test(network_data_dim1);
@@ -257,6 +272,30 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
       std::cout << "Test value " << i << " does not match check value "
                 << network_data_test[i] << " " << network_data_check[i] << "\n";
       assert(network_data_test[i] == network_data_check[i]);
+    }
+  }
+
+  // Test "test data" results.
+  assert(test_data_dim1 == width * height * 4);
+  assert(test_data_dim2 == channels + 3);
+
+  for (int i = 0; i < network_data_check.size(); ++i) {
+    NetworkData data_check = network_data_test[i];
+    NetworkData data_test = network_data_check[i];
+    if (data_test.start + data_test.count >= test_data_dim1) {
+      std::cout << "data_test.start + data_test.count out of bounds at network "
+                << i << "\n";
+    }
+    if (data_check.start + data_check.count >= test_data_dim1) {
+      std::cout
+          << "data_check.start + data_check.count out of bounds at network "
+          << i << "\n";
+    }
+    std::vector<TestData> test(data_check.count);
+    std::vector<TestData> check(data_check.count);
+    for (int i = 0; i < network_data_check.size(); ++i) {
+      CopyTestData(&test_data_out[data_test.start], test);
+      CopyTestData(&test_data[data_check.start], check);
     }
   }
 }

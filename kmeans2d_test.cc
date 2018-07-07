@@ -9,18 +9,23 @@
 #include "kmeans2d.h"
 
 struct TestData {
-  float a0;
-  float a1;
-  float a2;
-  float a3;
-  float a4;
-  float a5;
+  float x;
+  float y;
+  float i;
+  float r;
+  float g;
+  float b;
+  bool operator==(const TestData& a) {
+    return (this == &a) || (x == a.x && y == a.y && i == a.i && r == a.r &&
+                            g == a.g && b == a.b);
+  }
+  bool operator!=(const TestData& a) { return !((*this) == a); }
 };
 
 struct CompareTestData {
   bool operator()(const TestData& a, const TestData& b) {
-    const float* aa = &(a.a0);
-    const float* ab = &(b.a0);
+    const float* aa = &(a.x);
+    const float* ab = &(b.x);
     for (int i = 0; i < 6; ++i)
       if (aa[i] < ab[i]) return true;
     return false;
@@ -42,6 +47,12 @@ struct NetworkData {
 std::ostream& operator<<(std::ostream& out, const NetworkData& d) {
   std::cout << "{level:" << d.level << ", id:" << d.id << ", start:" << d.start
             << ", count:" << d.count << "}\n";
+  return out;
+}
+
+std::ostream& operator<<(std::ostream& out, const TestData& d) {
+  std::cout << "{x:" << d.x << ", y:" << d.y << ", i:" << d.i << ", r:" << d.r
+            << ", g:" << d.g << ", b:" << d.b << "}\n";
   return out;
 }
 
@@ -296,6 +307,15 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
     for (int i = 0; i < network_data_check.size(); ++i) {
       CopyTestData(&test_data_out[data_test.start], test);
       CopyTestData(&test_data[data_check.start], check);
+      std::sort(test.begin(), test.end(), CompareTestData());
+      std::sort(check.begin(), check.end(), CompareTestData());
+      for (int j = 0; j < test.size(); ++j) {
+        if (test[j] != check[j]) {
+          std::cout << "Match failed at j = " << j << "\n";
+          std::cout << "Test = " << test[j] << "\n";
+          std::cout << "Check = " << check[j] << "\n";
+        }
+      }
     }
   }
 }

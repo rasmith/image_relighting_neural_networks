@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 #include "kmeans2d.h"
+#include "logger.h"
 
 #define CHECK_BOUNDS(x, i, n)                                            \
   {                                                                      \
@@ -71,14 +72,14 @@ struct NetworkData {
 };
 
 std::ostream& operator<<(std::ostream& out, const NetworkData& d) {
-  std::cout << "{level:" << d.level << ", id:" << d.id << ", start:" << d.start
-            << ", count:" << d.count << "}\n";
+  LOG(DEBUG) << "{level:" << d.level << ", id:" << d.id << ", start:" << d.start
+             << ", count:" << d.count << "}\n";
   return out;
 }
 
 std::ostream& operator<<(std::ostream& out, const TestData& d) {
-  std::cout << "{x:" << d.x << ", y:" << d.y << ", i:" << d.i << ", r:" << d.r
-            << ", g:" << d.g << ", b:" << d.b << "}\n";
+  LOG(DEBUG) << "{x:" << d.x << ", y:" << d.y << ", i:" << d.i << ", r:" << d.r
+             << ", g:" << d.g << ", b:" << d.b << "}\n";
   return out;
 }
 
@@ -163,11 +164,12 @@ void GenerateUniqueValues(int count, int max_value, std::vector<int>& values) {
   std::sort(values.begin(), values.end());
 }
 
-void GenerateRandomPermutation(int n, std::vector<int> values) {
+void GenerateRandomPermutation(int n, std::vector<int>& values) {
+  LOG(DEBUG) << "GenerateRandomPermutation\n";
   values.resize(n);
   for (int i = 0; i < n; ++i) values[i] = i;
-  for (int i = 0; i < n; ++i)
-    int k = (i < n - 1 ? n - 1 : std::rand() % (n - i - 1) + 1);
+  for (int i = 0; i < n - 1; ++i)
+    std::swap(values[i], values[std::rand() % (i + 1)]);
 }
 
 void GenerateTestAndAssignmentData(
@@ -175,27 +177,41 @@ void GenerateTestAndAssignmentData(
     int num_networks, int* num_images, int* image_number,
     std::vector<float>& average, std::vector<TestData>& test_data,
     std::vector<int>& assignments, std::vector<NetworkData>& network_data) {
-  std::cout << "GenerateTestAndAssignmentData\n";
+  LOG(DEBUG) << "GenerateTestAndAssignmentData\n";
   const int assignment_data_size = ensemble_size + 1;
   int num_pixels = width * height;  // number of pixels
+  LOG(DEBUG) << "GenerateTestAndAssignmentData: assignment_data_size = "
+             << assignment_data_size << " num_pixels = " << num_pixels
+             << " width = " << width << " height = " << height << "\n";
 
   // Get a random order of pixels.
   std::vector<int> pixels;
   GenerateRandomPermutation(num_pixels, pixels);
 
   // Allocate test_data, network_data, and assignments.
+  LOG(DEBUG) << "GenerateTestAndAssignmentData: allocate\n";
   test_data.clear();
   network_data.resize(num_networks);
   assignments.resize(num_pixels * assignment_data_size);
 
+  // Generate random average image.
+  GenerateRandomImage(width, height, channels, average);
+  LOG(DEBUG) << "GenerateTestAndAssignmentData: average.size = "
+             << average.size() << "\n";
+
   // Set the num_images and image_number randomly.
+  LOG(DEBUG) << "GenerateTestAndAssignmentData: set random num_images and "
+                "image_number\n";
   *num_images = std::rand() % 1000 + 100;     // set number of images randomly
   *image_number = std::rand() % *num_images;  // set image number randomly
 
+  LOG(DEBUG) << "GenerateTestAndAssignmentData: initialize for main loop\n";
   int networks_left = num_networks;
   NetworkData* network_pos = &network_data[0];
   TestData* test_pos = &test_data[0];
   for (int level = 0; level < num_levels; ++level) {
+    LOG(DEBUG) << " ---------------------------------------------- \n";
+    LOG(DEBUG) << "GenerateTestAndAssignmentData: level = " << level << "\n";
     // 0. Compute number of neural networks, pixels to use, and limits on
     // maximum pixels any neural network can be assigned.
     int networks_at_level =
@@ -205,10 +221,22 @@ void GenerateTestAndAssignmentData(
     int pixels_per_network =
         std::ceil(static_cast<float>(ensemble_size * pixels_at_level) /
                   networks_at_level);
+    LOG(DEBUG)
+        << "GenerateTestAndAssignmentData: num_pixels / num_levels + 1 = "
+        << num_pixels / num_levels + 1 << " pixels.size() = " << pixels.size()
+        << "\n";
+    LOG(DEBUG) << "GenerateTestAndAssignmentData: networks_at_level= "
+               << networks_at_level << " pixels_at_level = " << pixels_at_level
+               << " pixels_per_network = " << pixels_per_network << "\n";
+    LOG(DEBUG) << " GenerateTestAndAssignmentData: networks_left = "
+               << networks_left << "\n";
     networks_left -= networks_at_level;
+    // LOG(DEBUG) << " GenerateTestAndAssignmentData: fill\n";
+    int offset = test_pos - &test_data[0];
     std::fill_n(std::back_inserter(test_data),
-                pixels_per_network * networks_at_level, TestData());
-    int offset = test_pos - &test_pos[0];
+                networks_at_level * pixels_per_network, TestData());
+    test_pos = &test_data[0] + offset;
+    LOG(DEBUG) << " GenerateTestAndAssignmentData: populate network data\n";
     for (int i = 0; i < networks_at_level; ++i)
       network_pos[i] =
           NetworkData(level, i, offset + pixels_per_network * i, 0);
@@ -219,18 +247,37 @@ void GenerateTestAndAssignmentData(
     pixels.erase(pixels.end() - pixels_at_level, pixels.end());
     // 2. Assign networks to pixels.
     int current_network = 0;
+    LOG(DEBUG) << " GenerateTestAndAssignmentData: assign networks to pixels\n";
     for (int i = 0; i < local_pixels.size(); ++i) {
       int pixel_index = local_pixels[i], x = pixel_index % width,
           y = pixel_index / width;
       assignments[assignment_data_size * pixel_index] = level;
+      LOG(DEBUG) << "GenerateTestAndAssignmentData: assign networks to (" << x
+                 << "," << y << ")\n";
       for (int j = 0; j < ensemble_size; ++j) {
+        LOG(DEBUG) << "GenerateTestAndAssignmentData: assign network "
+                   << current_network << " to (" << x << "," << y << ")\n";
         NetworkData* network = &network_pos[current_network];
-        test_pos[current_network * pixels_per_network + network->count] =
-            TestData(x, y, *image_number, &average[pixel_index], width, height,
-                     *num_images);
+        int index = current_network * pixels_per_network + network->count;
+        LOG(DEBUG) << "GenerateTestAndAssignmentData: add to test data\n";
+        LOG(DEBUG) << "GenerateTestAndAssignmentData: current_network = "
+                   << current_network
+                   << " pixels_per_network = " << pixels_per_network
+                   << " network->count = " << network->count
+                   << " index = " << index << " pixel_index = " << pixel_index
+                   << "\n";
+        float* rgb = &average[pixel_index * channels];
+        LOG(DEBUG) << "GenerateTestAndAssignmentData: get rgb values: r = "
+                   << rgb[0] << " g = " << rgb[1] << " b = " << rgb[2] << "\n";
+        TestData test_data(x, y, *image_number, rgb, width, height,
+                           *num_images);
+        LOG(DEBUG) << "GenerateTestAndAssignmentData: assign to test_pos\n";
+        test_pos[index] = test_data;
         ++network->count;
+        LOG(DEBUG) << "GenerateTestAndAssignmentData: add assignment\n";
         assignments[assignment_data_size * pixel_index + j + 1] =
             current_network;
+        LOG(DEBUG) << "GenerateTestAndAssignmentData: next current_network\n";
         current_network = (current_network + 1) % networks_at_level;
       }
     }
@@ -292,9 +339,10 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
     bool equals_level_id_count =
         network_data_check[i].EqualsLevelIdCount(network_data_check[i]);
     if (!equals_level_id_count) {
-      std::cout << "Test value " << i
-                << " does not match check value for level, id, and count"
-                << network_data_test[i] << " " << network_data_check[i] << "\n";
+      LOG(DEBUG) << "Test value " << i
+                 << " does not match check value for level, id, and count"
+                 << network_data_test[i] << " " << network_data_check[i]
+                 << "\n";
       assert(equals_level_id_count);
     }
   }
@@ -319,9 +367,9 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
       std::sort(check.begin(), check.end(), CompareTestData());
       for (int j = 0; j < test.size(); ++j) {
         if (test[j] != check[j]) {
-          std::cout << "Match failed at j = " << j << "\n";
-          std::cout << "Test = " << test[j] << "\n";
-          std::cout << "Check = " << check[j] << "\n";
+          LOG(DEBUG) << "Match failed at j = " << j << "\n";
+          LOG(DEBUG) << "Test = " << test[j] << "\n";
+          LOG(DEBUG) << "Check = " << check[j] << "\n";
         }
       }
     }
@@ -356,9 +404,9 @@ bool TestPredictionsToImage(int width, int height, int channels,
     float* target_pixel = &image[channels * (y * width + x)];
     float* test_pixel = &image[channels * (y * width + x)];
     if (!EqualsPixel(target_pixel, test_pixel)) {
-      std::cout << "TestPredictionsToImage: (" << x << "," << y
-                << ") does not match. Target = " << PixelToString(target_pixel)
-                << ". Test = " << PixelToString(test_pixel) << "\n";
+      LOG(DEBUG) << "TestPredictionsToImage: (" << x << "," << y
+                 << ") does not match. Target = " << PixelToString(target_pixel)
+                 << ". Test = " << PixelToString(test_pixel) << "\n";
       return false;
     }
   }
@@ -371,7 +419,6 @@ struct Resolution {
 };
 
 enum CommandLineOption {
-  kRunAll = 0,
   kTestPredictionsToImage,
   kTestAssignmentDataToTestData
 };
@@ -400,10 +447,10 @@ int main(int argc, char** argv) {
                               {3440, 1440},
                               {3840, 2160}};
 
-  CommandLineOption option = kRunAll;
+  CommandLineOption option;
   if (argc > 1) {
     char c = argv[1][0];
-    if (c == 'a') c = '0';
+    LOG(DEBUG) << "c=" << c << "\n";
     option = static_cast<CommandLineOption>(c - '0');
   }
 
@@ -412,8 +459,8 @@ int main(int argc, char** argv) {
       for (auto r : resolutions) {
         int step = r.width * r.height / 10;
         for (int i = 1; i < r.width * r.height; i += step) {
-          std::cout << "-------- TestPredictionsToImage ------ (" << r.width
-                    << "," << r.height << ") - " << i << " -----\n";
+          LOG(DEBUG) << "TestPredictionsToImage: (" << r.width << ","
+                     << r.height << ") - " << i << "\n";
           if (!TestPredictionsToImage(r.width, r.height, c, i)) {
             exit(0);
           }
@@ -425,16 +472,16 @@ int main(int argc, char** argv) {
         int num_levels = 5;
         int num_networks = 900;
         int ensemble_size = 5;
-        std::cout << "-------- TestAssignmentDataToTestData ------ (" << r.width
-                  << "," << r.height << ") - "
-                  << " num_levels = " << num_levels
-                  << " num_networks = " << num_networks << " -----\n";
+        LOG(DEBUG) << "TestAssignmentDataToTestData: (" << r.width << ","
+                   << r.height << ") - "
+                   << " num_levels = " << num_levels
+                   << " num_networks = " << num_networks << "\n";
         TestAssignmentDataToTestData(r.width, r.height, c, num_levels,
                                      num_networks, ensemble_size);
       }
       break;
     default:
-      std::cout << "Invalid option " << argv[1] << "\n";
+      LOG(DEBUG) << "Invalid option " << argv[1] << "\n";
   }
 
   return 0;

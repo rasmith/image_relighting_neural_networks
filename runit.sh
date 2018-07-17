@@ -1,2 +1,4 @@
 #!/usr/bin/env bash
-build/bin/$1
+EXE=$1
+shift
+build/bin/${EXE} $@

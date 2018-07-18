@@ -1,13 +1,17 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
+#include <functional>
 #include <iostream>
 #include <queue>
+#include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "kmeans2d.h"
 #include "logger.h"
+#include "types.h"
 
 #define CHECK_BOUNDS(x, i, n)                                            \
   {                                                                      \
@@ -20,78 +24,6 @@
     }                                                                    \
   }
 
-struct TestData {
-  float x;
-  float y;
-  float i;
-  float r;
-  float g;
-  float b;
-  TestData() : x(0.0f), y(0.0f), i(0.0f), r(0.0f), g(0.0f), b(0.0f) {}
-  TestData(int ix, int iy, int in, const float* rgb, int width, int height,
-           int num_images)
-      : x(static_cast<float>(ix) / width),
-        y(static_cast<float>(iy) / height),
-        i(static_cast<float>(in) / num_images),
-        r(rgb[0]),
-        g(rgb[1]),
-        b(rgb[2]) {}
-  bool operator==(const TestData& a) {
-    return (this == &a) || (x == a.x && y == a.y && i == a.i && r == a.r &&
-                            g == a.g && b == a.b);
-  }
-  bool operator!=(const TestData& a) { return !((*this) == a); }
-};
-
-struct CompareTestData {
-  bool operator()(const TestData& a, const TestData& b) {
-    const float* aa = &(a.x);
-    const float* ab = &(b.x);
-    for (int i = 0; i < 6; ++i)
-      if (aa[i] < ab[i]) return true;
-    return false;
-  }
-};
-
-struct NetworkData {
-  int level;
-  int id;
-  int start;
-  int count;
-  NetworkData() : level(0), id(0), start(0), count(0) {}
-  NetworkData(int l, int i, int s, int c)
-      : level(l), id(i), start(s), count(c) {}
-  bool EqualsLevelIdCount(const NetworkData& d) {
-    return (this == &d) || (level == d.level && id == d.id && count == d.count);
-  }
-  bool operator==(const NetworkData& a) {
-    return (this == &a) || (level == a.level && id == a.id &&
-                            start == a.start && count == a.count);
-  }
-  bool operator!=(const NetworkData& a) { return !((*this) == a); }
-};
-
-std::ostream& operator<<(std::ostream& out, const NetworkData& d) {
-  LOG(DEBUG) << "{level:" << d.level << ", id:" << d.id << ", start:" << d.start
-             << ", count:" << d.count << "}\n";
-  return out;
-}
-
-std::ostream& operator<<(std::ostream& out, const TestData& d) {
-  LOG(DEBUG) << "{x:" << d.x << ", y:" << d.y << ", i:" << d.i << ", r:" << d.r
-             << ", g:" << d.g << ", b:" << d.b << "}\n";
-  return out;
-}
-
-struct CompareNetworkData {
-  bool operator()(const NetworkData& a, const NetworkData& b) {
-    if (a.level < b.level) return true;
-    if (a.id < b.id) return true;
-    if (a.start < b.start) return true;
-    if (a.count < b.count) return true;
-    return false;
-  }
-};
 
 template <typename PrimitiveType, typename StructType, int StructMultipleSize>
 void CopyFromPrimitiveArrayToStructArray(const PrimitiveType* to_pos,
@@ -113,6 +45,16 @@ void CopyNetworkData(const int* to_pos, std::vector<NetworkData>& data) {
 
 void CopyTestData(const float* to_pos, std::vector<TestData>& data) {
   CopyFromPrimitiveArrayToStructArray<float, TestData, 6>(to_pos, data);
+}
+
+bool ContainsDuplicates(const NetworkData* network_data, int count) {
+  std::unordered_set<NetworkData, HashNetworkData, CompareNetworkData>
+      network_set;
+  for (int i = 0; i < count; ++i) {
+    if (network_set.find(network_data[i]) != network_set.end()) return true;
+    network_set.insert(network_data[i]);
+  }
+  return false;
 }
 
 void GenerateRandomImage(int width, int height, int channels,
@@ -269,10 +211,16 @@ void GenerateTestAndAssignmentData(
         float* rgb = &average[pixel_index * channels];
         LOG(DEBUG) << "GenerateTestAndAssignmentData: get rgb values: r = "
                    << rgb[0] << " g = " << rgb[1] << " b = " << rgb[2] << "\n";
-        TestData test_data(x, y, *image_number, rgb, width, height,
-                           *num_images);
+        TestData data(x, y, *image_number, rgb, width, height, *num_images);
         LOG(DEBUG) << "GenerateTestAndAssignmentData: assign to test_pos\n";
-        test_pos[index] = test_data;
+        TestData* pos = test_pos + index;
+        if (pos - &test_data[0] >= test_data.size()) {
+          LOG(ERROR) << "GenerateTestAndAssignmentData: pos out of bounds pos: "
+                     << pos - &test_data[0]
+                     << " test_data.size = " << test_data.size() << "\n";
+          assert(pos - &test_data[0] < test_data.size());
+        }
+        test_pos[index] = data;
         ++network->count;
         LOG(DEBUG) << "GenerateTestAndAssignmentData: add assignment\n";
         assignments[assignment_data_size * pixel_index + j + 1] =
@@ -283,6 +231,13 @@ void GenerateTestAndAssignmentData(
     }
     test_pos += networks_at_level * pixels_per_network;
     network_pos += networks_at_level;
+  }
+  bool contains_duplicates =
+      ContainsDuplicates(&network_data[0], network_data.size());
+  if (contains_duplicates) {
+    LOG(ERROR)
+        << "GenerateTestAndAssignmentData: network_data contains duplicates.\n";
+    assert(!contains_duplicates);
   }
 }
 
@@ -317,7 +272,21 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
       &test_data_dim1, &test_data_dim2, &network_data_out, &network_data_dim1,
       &network_data_dim2);
 
+  bool contains_duplicates = ContainsDuplicates(
+      reinterpret_cast<NetworkData*>(network_data_out), network_data_dim1);
+  if (contains_duplicates) {
+    LOG(ERROR)
+        << "GenerateTestAndAssignmentData: network_data contains duplicates.\n";
+    assert(!contains_duplicates);
+  }
+
   // Test network data results.
+  if (network_data_dim1 != network_data.size()) {
+    LOG(ERROR) << "TestAssignmentDataToTestData: network_data_dim1 = "
+               << network_data_dim1
+               << " and network_data.size() = " << network_data.size()
+               << " do not match.\n";
+  }
   assert(network_data_dim1 == network_data.size());
   assert(network_data_dim2 == 4);
 

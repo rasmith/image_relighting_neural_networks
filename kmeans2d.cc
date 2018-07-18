@@ -584,12 +584,12 @@ void assignment_data_to_test_data(
     int assignment_data_dim3, int image_number, int num_images,
     float* average_image, int average_image_dim1, int average_image_dim2,
     int average_image_dim3, float** test_data, int* test_data_dim1,
-    int* test_data_dim2, int** ensemble_data, int* ensemble_data_dim1,
-    int* ensemble_data_dim2) {
+    int* test_data_dim2, int** network_data, int* network_data_dim1,
+    int* network_data_dim2) {
   int width = assignment_data_dim1;
   int height = assignment_data_dim2;
   int ensemble_size = assignment_data_dim3 - 1;
-  int num_ensembles = 0;
+  int num_networks = 0;
   // std::cout << "assignment_data_to_test_data: width = " << width << "\n";
   // std::cout << "assignment_data_to_test_data: height = " << height << "\n";
   typedef std::vector<std::pair<int, int>> PairSet;
@@ -597,7 +597,7 @@ void assignment_data_to_test_data(
   std::map<int, std::unique_ptr<CoordsMap>> level_map;
   int* pos = assignment_data;
   --pos;
-  // Iterate over all pixels and get levels and assigned ensembles.
+  // Iterate over all pixels and get levels and assigned networks.
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       int level = *++pos;
@@ -610,13 +610,13 @@ void assignment_data_to_test_data(
         if (coords_map->find(id) == coords_map->end()) {
           coords_map->insert(
               std::make_pair(id, std::unique_ptr<PairSet>(new PairSet(0))));
-          ++num_ensembles;
+          ++num_networks;
         }
         coords_map->find(id)->second->push_back(std::make_pair(x, y));
       }
     }
   }
-  // Write out to test data and ensemble data arrays.
+  // Write out to test data and network data arrays.
   const int test_data_size = 6;
   *test_data = new float[width * height * test_data_size * ensemble_size];
   *test_data_dim1 = width * height * ensemble_size;
@@ -628,10 +628,10 @@ void assignment_data_to_test_data(
   float* test_pos = *test_data;
   --test_pos;
   const int ensemble_data_size = 5;
-  *ensemble_data = new int[num_ensembles * ensemble_data_size];
-  *ensemble_data_dim1 = num_ensembles;
-  *ensemble_data_dim2 = ensemble_data_size;
-  int* ensemble_pos = *ensemble_data;
+  *network_data= new int[num_networks* ensemble_data_size];
+  *network_data_dim1 = num_networks;
+  *network_data_dim2 = network_data_size;
+  int* network_pos = *network_data;
   --ensemble_pos;
   int current = 0;
   for (auto lit = level_map.begin(); lit != level_map.end(); ++lit) {

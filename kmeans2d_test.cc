@@ -206,6 +206,9 @@ void GenerateTestAndAssignmentData(
       //<< "," << y << ")\n";
       float* rgb = &average[pixel_index * channels];
       TestData data(x, y, *image_number, rgb, width, height, *num_images);
+      // if (pixel_index <= 10)
+      // std::cout << "GenerateTestAndAssignmentData: level = " << level
+      //<< " pixel_index = " << pixel_index << " " << data << "\n";
       for (int j = 0; j < ensemble_size; ++j) {
         // LOG(DEBUG) << "GenerateTestAndAssignmentData: assign network "
         //<< current_network << " to (" << x << "," << y << ")\n";
@@ -255,6 +258,7 @@ void GenerateTestAndAssignmentData(
     network_pos += networks_at_level;
   }
   assert(network_data.size() == num_networks);
+  assert(pixels.size() == 0);
   // return;
   // bool contains_duplicates =
   // ContainsDuplicates(&network_data[0], network_data.size());
@@ -294,6 +298,17 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
       num_images, &average_image[0], height, width, channels, &test_data_out,
       &test_data_dim1, &test_data_dim2, &network_data_out, &network_data_dim1,
       &network_data_dim2);
+
+  const TestData* test_data_pos =
+      reinterpret_cast<const TestData*>(&test_data[0]);
+  const TestData* location = std::find_if(
+      test_data_pos, test_data_pos + test_data_dim1,
+      [](const TestData & t)->bool { return t.equalsXy(0.0f, 0.0f); });
+  if (location == test_data_pos + test_data_dim1) {
+    LOG(ERROR) << "Did not find (0, 0, 0) anywwhere!";
+  } else {
+    LOG(ERROR) << "Found (0, 0, 0) at " << location << "\n";
+  }
 
   bool contains_duplicates = ContainsDuplicates(
       reinterpret_cast<NetworkData*>(network_data_out), network_data_dim1);
@@ -369,8 +384,8 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
       std::sort(check.begin(), check.end(), CompareTestData());
       for (int j = 0; j < test.size(); ++j) {
         if (test[j] != check[j]) {
-          PrintValues(test_data.begin(), test_data.begin() + 10, LOG(ERROR));
-          PrintValues(test_data_out_pos, test_data_out_pos + 10, LOG(ERROR));
+          PrintValues(test.begin(), test.begin() + 10, LOG(ERROR));
+          PrintValues(check.begin(), check.begin() + 10, LOG(ERROR));
           LOG(ERROR) << "Match failed at j = " << j << "\n";
           LOG(ERROR) << "Test = " << test[j] << "\n";
           LOG(ERROR) << "Check = " << check[j] << "\n";

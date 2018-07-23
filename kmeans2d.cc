@@ -617,9 +617,8 @@ void assignment_data_to_test_data(
   for (const auto& entry : network_map) {
     networks.push_back(entry.first);
     networks.back().count = entry.second.size();
-    networks.back().start =
-        (index == 0 ? 0 : *test_data_dim2 * (networks[index - 1].count +
-                                             networks[index - 1].start));
+    networks.back().start = (index == 0 ? 0 : networks[index - 1].count +
+                                                  networks[index - 1].start);
     for (int i = 0; i < entry.second.size(); ++i) {
       int pixel_index = entry.second[i], x = entry.second[i] % width,
           y = entry.second[i] / width;
@@ -627,6 +626,7 @@ void assignment_data_to_test_data(
                              &average_image[pixel_index * average_image_dim3],
                              width, height, num_images);
     }
+    ++index;
   }
   // 4. Write back network data.
   *network_data_dim1 = networks.size();
@@ -634,8 +634,7 @@ void assignment_data_to_test_data(
   *network_data = new int[(*network_data_dim1) * (*network_data_dim2)];
   NetworkData* network_pos = reinterpret_cast<NetworkData*>(*network_data);
   --network_pos;
-  for (int i = 0; i < networks.size(); ++i) 
-    *++network_pos = networks[i];
+  for (int i = 0; i < networks.size(); ++i) *++network_pos = networks[i];
 }
 
 void predictions_to_image(float* image_out, int image_out_dim1,

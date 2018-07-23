@@ -37,6 +37,9 @@ struct TestData {
                             g == a.g && b == a.b);
   }
   bool operator!=(const TestData& a) { return !((*this) == a); }
+  bool equalsXy(float xx, float yy) const {
+    return xx == x && yy == y;
+  }
 };
 static_assert(sizeof(TestData) == 6 * sizeof(float),
               "TestData size should be  6 * sizeof(float) but was not.");

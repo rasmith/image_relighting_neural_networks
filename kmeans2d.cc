@@ -1,6 +1,7 @@
 #include "image.h"
 #include "kdtree.h"
 #include "kmeans_training_data.h"
+#include "types.h"
 
 #include <algorithm>
 #include <chrono>
@@ -570,7 +571,7 @@ void kmeans_training_data(const std::string& directory, int num_centers,
 //  i = image number
 //  r, g, b = average rgb value at (x, y) across all images
 //
-// Ensemble data: [[L, i, s, n], ... ]
+// Network data: [[L, i, s, n], ... ]
 //  shape = W * H x 4
 //  L = level assigned to
 //  i = model # at this level
@@ -588,78 +589,53 @@ void assignment_data_to_test_data(
     int* network_data_dim2) {
   int width = assignment_data_dim1;
   int height = assignment_data_dim2;
+  int num_pixels = width * height;
   int ensemble_size = assignment_data_dim3 - 1;
   int num_networks = 0;
-  // std::cout << "assignment_data_to_test_data: width = " << width << "\n";
-  // std::cout << "assignment_data_to_test_data: height = " << height << "\n";
-  typedef std::vector<std::pair<int, int>> PairSet;
-  typedef std::unordered_map<int, std::unique_ptr<PairSet>> CoordsMap;
-  std::map<int, std::unique_ptr<CoordsMap>> level_map;
-  int* pos = assignment_data;
-  --pos;
-  // Iterate over all pixels and get levels and assigned networks.
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      int level = *++pos;
-      if (level_map.find(level) == level_map.end())
-        level_map.insert(
-            std::make_pair(level, std::unique_ptr<CoordsMap>(new CoordsMap())));
-      std::unique_ptr<CoordsMap>& coords_map = level_map.find(level)->second;
-      for (int e = 0; e < ensemble_size; ++e) {
-        int id = *++pos;
-        if (coords_map->find(id) == coords_map->end()) {
-          coords_map->insert(
-              std::make_pair(id, std::unique_ptr<PairSet>(new PairSet(0))));
-          ++num_networks;
-        }
-        coords_map->find(id)->second->push_back(std::make_pair(x, y));
-      }
+  // 1. Put all assignment data into vectors for each network.
+  std::unordered_map<NetworkData, std::vector<int>, HashNetworkData>
+      network_map;
+  AssignmentData* pos = reinterpret_cast<AssignmentData*>(&assignment_data[0]);
+  for (int i = 0; i < num_pixels; ++i) {
+    for (int j = 0; j < ensemble_size; ++j) {
+      NetworkData query(pos->level, (*pos)[j]);
+      if (network_map.find(query) == network_map.end())
+        network_map.insert(std::make_pair(query, std::vector<int>()));
+      network_map.find(query)->second.push_back(i);
     }
+    ++pos;
   }
-  // Write out to test data and network data arrays.
-  const int test_data_size = 6;
-  *test_data = new float[width * height * test_data_size * ensemble_size];
-  *test_data_dim1 = width * height * ensemble_size;
-  *test_data_dim2 = test_data_size;
-  // std::cout << "assignment_data_to_test_data: test_data_dim1 = "
-  //<< *test_data_dim1 << "\n";
-  // std::cout << "assignment_data_to_test_data: test_data_dim2 = "
-  //<< *test_data_dim2 << "\n";
-  float* test_pos = *test_data;
+  // 2. Allocate test data.
+  *test_data_dim1 = num_pixels * ensemble_size;
+  *test_data_dim2 = sizeof(TestData) / sizeof(float);
+  *test_data = new float[(*test_data_dim1) * (*test_data_dim2)];
+  // 3. Transform assignment data into test data.
+  TestData* test_pos = reinterpret_cast<TestData*>(*test_data);
   --test_pos;
-  const int ensemble_data_size = 5;
-  *network_data= new int[num_networks* ensemble_data_size];
-  *network_data_dim1 = num_networks;
-  *network_data_dim2 = network_data_size;
-  int* network_pos = *network_data;
-  --ensemble_pos;
-  int current = 0;
-  for (auto lit = level_map.begin(); lit != level_map.end(); ++lit) {
-    auto& map = lit->second;
-    for (auto mit = map->begin(); mit != map->end(); ++mit) {
-      auto& v = mit->second;
-      *++ensemble_pos = lit->first;           // level
-      *++ensemble_pos = mit->first;           // ensemble id
-      *++ensemble_pos = current;              // start
-      *++ensemble_pos = current + v->size();  // end
-      *++ensemble_pos = v->size();            // count
-      current += v->size();
-      for (auto vit = v->begin(); vit != v->end(); ++vit) {
-        int x = vit->first, y = vit->second;
-        // if (x < 0 || x >= width || y < 0 || y >= height) {
-        // std::cout << "assignment_data_to_test_data: x = " << x << "\n";
-        // std::cout << "assignment_data_to_test_data: y = " << y << "\n";
-        // assert(!(x < 0 || x >= width || y < 0 || y >= height));
-        //}
-        *++test_pos = vit->first / static_cast<float>(width);
-        *++test_pos = vit->second / static_cast<float>(height);
-        *++test_pos = image_number / static_cast<float>(num_images);
-        *++test_pos = average_image[y * width + x];
-        *++test_pos = average_image[y * width + x + 1];
-        *++test_pos = average_image[y * width + x + 2];
-      }
+  std::vector<NetworkData> networks;
+  int index = 0;
+  for (const auto& entry : network_map) {
+    networks.push_back(entry.first);
+    networks.back().count = entry.second.size();
+    networks.back().start =
+        (index == 0 ? 0 : *test_data_dim2 * (networks[index - 1].count +
+                                             networks[index - 1].start));
+    for (int i = 0; i < entry.second.size(); ++i) {
+      int pixel_index = entry.second[i], x = entry.second[i] % width,
+          y = entry.second[i] / width;
+      *++test_pos = TestData(x, y, image_number,
+                             &average_image[pixel_index * average_image_dim3],
+                             width, height, num_images);
     }
   }
+  // 4. Write back network data.
+  *network_data_dim1 = networks.size();
+  *network_data_dim2 = sizeof(NetworkData) / sizeof(int);
+  *network_data = new int[(*network_data_dim1) * (*network_data_dim2)];
+  NetworkData* network_pos = reinterpret_cast<NetworkData*>(*network_data);
+  --network_pos;
+  for (int i = 0; i < networks.size(); ++i) 
+    *++network_pos = networks[i];
 }
 
 void predictions_to_image(float* image_out, int image_out_dim1,

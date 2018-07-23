@@ -13,39 +13,18 @@
 #include "logger.h"
 #include "types.h"
 
-#define CHECK_BOUNDS(x, i, n)                                            \
-  {                                                                      \
-    auto& d = (x)[(i)];                                                  \
-    int extent = d.start + d.count;                                      \
-    bool bounds_check = extent < (n);                                    \
-    if (!bounds_check) {                                                 \
-      std::cout << __LINE__ << ": Bounds check failed at " << (i)        \
-                << ". Limit is " << (n) << " but got " << extent << "."; \
-    }                                                                    \
+// Ensure x[i].start + x[i].count <= n
+#define CHECK_BOUNDS(x, i, n)                                             \
+  {                                                                       \
+    auto& d = (x)[(i)];                                                   \
+    int extent = d.start + d.count;                                       \
+    bool bounds_check = extent < (n);                                     \
+    if (!bounds_check) {                                                  \
+      LOG(ERROR) << __LINE__ << ": Bounds check failed at " << (i)        \
+                 << ". Limit is " << (n) << " but got " << extent << "."; \
+      assert(bounds_check);                                               \
+    }                                                                     \
   }
-
-
-template <typename PrimitiveType, typename StructType, int StructMultipleSize>
-void CopyFromPrimitiveArrayToStructArray(const PrimitiveType* to_pos,
-                                         std::vector<StructType>& data) {
-  constexpr int sizeof_struct = sizeof(StructType);
-  constexpr int sizeof_mult = StructMultipleSize * sizeof(PrimitiveType);
-  static_assert(sizeof_struct == sizeof_mult, "StructType size is incorrect.");
-  const int step_size = sizeof(StructType) / sizeof(PrimitiveType);
-  const PrimitiveType* pos = to_pos;
-  for (int i = 0; i < data.size(); ++i) {
-    data[i] = *reinterpret_cast<const StructType*>(pos);
-    pos += step_size;
-  }
-}
-
-void CopyNetworkData(const int* to_pos, std::vector<NetworkData>& data) {
-  CopyFromPrimitiveArrayToStructArray<int, NetworkData, 4>(to_pos, data);
-}
-
-void CopyTestData(const float* to_pos, std::vector<TestData>& data) {
-  CopyFromPrimitiveArrayToStructArray<float, TestData, 6>(to_pos, data);
-}
 
 bool ContainsDuplicates(const NetworkData* network_data, int count) {
   std::unordered_set<NetworkData, HashNetworkData, CompareNetworkData>
@@ -57,11 +36,19 @@ bool ContainsDuplicates(const NetworkData* network_data, int count) {
   return false;
 }
 
+template <class Iterator>
+void PrintValues(Iterator begin, Iterator end, std::ostream& out) {
+  int j = 0;
+  for (Iterator i = begin; i != end; ++i, ++j) out << j << " " << *i << "\n";
+}
+
 void GenerateRandomImage(int width, int height, int channels,
                          std::vector<float>& image) {
   image.resize(width * height * channels);
-  for (int i = 0; i < width * height * channels; ++i)
+  for (int i = 0; i < width * height * channels; ++i) {
     image[i] = std::rand() / static_cast<float>(RAND_MAX);
+    assert(i >= 0 && i < width * height * channels);
+  }
 }
 
 void GenerateTestData(int width, int height, int channels, int num_samples,
@@ -98,20 +85,17 @@ bool EqualsPixel(float* p, float* q) {
   return p[0] == q[0] && p[1] == q[1] && p[2] == q[2];
 }
 
-void GenerateUniqueValues(int count, int max_value, std::vector<int>& values) {
-  std::unordered_set<int> value_set;
-  while (value_set.size() < count) value_set.insert(std::rand() % max_value);
-  values.clear();
-  for (int i : values) values.push_back(i);
-  std::sort(values.begin(), values.end());
-}
-
 void GenerateRandomPermutation(int n, std::vector<int>& values) {
   LOG(DEBUG) << "GenerateRandomPermutation\n";
   values.resize(n);
   for (int i = 0; i < n; ++i) values[i] = i;
-  for (int i = 0; i < n - 1; ++i)
-    std::swap(values[i], values[std::rand() % (i + 1)]);
+  // for (int i = 0; i < n - 1; ++i) {
+  // int j = std::rand() % (i + 1);
+  // assert(j >= 0 && j < n);
+  // std::swap(values[i], values[j]);
+  //}
+  // for (int i = 0; i < n; ++i)
+  // assert(values[i] >= 0 && values[i] < values.size());
 }
 
 void GenerateTestAndAssignmentData(
@@ -134,6 +118,7 @@ void GenerateTestAndAssignmentData(
   LOG(DEBUG) << "GenerateTestAndAssignmentData: allocate\n";
   test_data.clear();
   network_data.resize(num_networks);
+  std::fill(network_data.begin(), network_data.end(), NetworkData());
   assignments.resize(num_pixels * assignment_data_size);
 
   // Generate random average image.
@@ -152,8 +137,8 @@ void GenerateTestAndAssignmentData(
   NetworkData* network_pos = &network_data[0];
   TestData* test_pos = &test_data[0];
   for (int level = 0; level < num_levels; ++level) {
-    LOG(DEBUG) << " ---------------------------------------------- \n";
-    LOG(DEBUG) << "GenerateTestAndAssignmentData: level = " << level << "\n";
+    // LOG(DEBUG) << " ---------------------------------------------- \n";
+    // LOG(DEBUG) << "GenerateTestAndAssignmentData: level = " << level << "\n";
     // 0. Compute number of neural networks, pixels to use, and limits on
     // maximum pixels any neural network can be assigned.
     int networks_at_level =
@@ -163,82 +148,121 @@ void GenerateTestAndAssignmentData(
     int pixels_per_network =
         std::ceil(static_cast<float>(ensemble_size * pixels_at_level) /
                   networks_at_level);
-    LOG(DEBUG)
-        << "GenerateTestAndAssignmentData: num_pixels / num_levels + 1 = "
-        << num_pixels / num_levels + 1 << " pixels.size() = " << pixels.size()
-        << "\n";
-    LOG(DEBUG) << "GenerateTestAndAssignmentData: networks_at_level= "
-               << networks_at_level << " pixels_at_level = " << pixels_at_level
-               << " pixels_per_network = " << pixels_per_network << "\n";
-    LOG(DEBUG) << " GenerateTestAndAssignmentData: networks_left = "
-               << networks_left << "\n";
+    int current_network = 0;
+    // LOG(DEBUG)
+    //<< "GenerateTestAndAssignmentData: num_pixels / num_levels + 1 = "
+    //<< num_pixels / num_levels + 1 << " pixels.size() = " << pixels.size()
+    //<< "\n";
+    LOG(STATUS) << "GenerateTestAndAssignmentData: networks_at_level= "
+                << networks_at_level << " pixels_at_level = " << pixels_at_level
+                << " pixels_per_network = " << pixels_per_network
+        //<< " max_count = " << *max_count
+                << " pixels.size=" << pixels.size() << "\n";
+    // LOG(DEBUG) << " GenerateTestAndAssignmentData: networks_left = "
+    //<< networks_left << "\n";
     networks_left -= networks_at_level;
+    assert(networks_left >= 0);
     // LOG(DEBUG) << " GenerateTestAndAssignmentData: fill\n";
+    assert(test_pos >= &test_data[0]);
+    assert(test_pos - &test_data[0] == test_data.size());
     int offset = test_pos - &test_data[0];
     std::fill_n(std::back_inserter(test_data),
                 networks_at_level * pixels_per_network, TestData());
     test_pos = &test_data[0] + offset;
-    LOG(DEBUG) << " GenerateTestAndAssignmentData: populate network data\n";
-    for (int i = 0; i < networks_at_level; ++i)
+    assert(test_pos >= &test_data[0]);
+    assert(test_pos - &test_data[0] < test_data.size());
+    // LOG(DEBUG) << " GenerateTestAndAssignmentData: populate network data\n";
+    for (int i = 0; i < networks_at_level; ++i) {
+      assert(network_pos >= &network_data[0]);
+      assert((network_pos - &network_data[0]) + i < network_data.size());
       network_pos[i] =
           NetworkData(level, i, offset + pixels_per_network * i, 0);
+      assert(network_pos[i].start + network_pos[i].count < test_data.size());
+      assert(network_pos[i].start >= 0 && network_pos[i].count >= 0);
+    }
     // 1. Assign pixels to this level.
     std::vector<int> local_pixels;
-    std::copy(pixels.end() - pixels_at_level, pixels.end(),
-              std::back_inserter(local_pixels));
-    pixels.erase(pixels.end() - pixels_at_level, pixels.end());
+    assert(pixels_at_level >= 0);
+    assert(pixels_at_level <= pixels.size());
+    for (int i = 0; i < pixels_at_level; ++i) {
+      local_pixels.push_back(pixels.back());
+      pixels.pop_back();
+    }
+    assert(local_pixels.size() == pixels_at_level);
     // 2. Assign networks to pixels.
-    int current_network = 0;
+    current_network = 0;
     LOG(DEBUG) << " GenerateTestAndAssignmentData: assign networks to pixels\n";
     for (int i = 0; i < local_pixels.size(); ++i) {
       int pixel_index = local_pixels[i], x = pixel_index % width,
           y = pixel_index / width;
+      assert(x >= 0 && y >= 0);
+      assert(x < width && y < height);
+      assert(assignment_data_size * pixel_index >= 0);
+      assert(assignment_data_size * pixel_index <
+             assignment_data_size * width * height);
       assignments[assignment_data_size * pixel_index] = level;
-      LOG(DEBUG) << "GenerateTestAndAssignmentData: assign networks to (" << x
-                 << "," << y << ")\n";
+      // LOG(DEBUG) << "GenerateTestAndAssignmentData: assign networks to (" <<
+      // x
+      //<< "," << y << ")\n";
+      float* rgb = &average[pixel_index * channels];
+      TestData data(x, y, *image_number, rgb, width, height, *num_images);
       for (int j = 0; j < ensemble_size; ++j) {
-        LOG(DEBUG) << "GenerateTestAndAssignmentData: assign network "
-                   << current_network << " to (" << x << "," << y << ")\n";
+        // LOG(DEBUG) << "GenerateTestAndAssignmentData: assign network "
+        //<< current_network << " to (" << x << "," << y << ")\n";
+        assert(network_pos >= &network_data[0] &&
+               ((network_pos - &network_data[0]) + current_network <
+                network_data.size()));
+        assert(current_network >= 0 && current_network < networks_at_level);
         NetworkData* network = &network_pos[current_network];
         int index = current_network * pixels_per_network + network->count;
-        LOG(DEBUG) << "GenerateTestAndAssignmentData: add to test data\n";
-        LOG(DEBUG) << "GenerateTestAndAssignmentData: current_network = "
-                   << current_network
-                   << " pixels_per_network = " << pixels_per_network
-                   << " network->count = " << network->count
-                   << " index = " << index << " pixel_index = " << pixel_index
-                   << "\n";
-        float* rgb = &average[pixel_index * channels];
-        LOG(DEBUG) << "GenerateTestAndAssignmentData: get rgb values: r = "
-                   << rgb[0] << " g = " << rgb[1] << " b = " << rgb[2] << "\n";
-        TestData data(x, y, *image_number, rgb, width, height, *num_images);
-        LOG(DEBUG) << "GenerateTestAndAssignmentData: assign to test_pos\n";
-        TestData* pos = test_pos + index;
-        if (pos - &test_data[0] >= test_data.size()) {
-          LOG(ERROR) << "GenerateTestAndAssignmentData: pos out of bounds pos: "
-                     << pos - &test_data[0]
-                     << " test_data.size = " << test_data.size() << "\n";
-          assert(pos - &test_data[0] < test_data.size());
-        }
+        // LOG(DEBUG) << "GenerateTestAndAssignmentData: add to test data\n";
+        // LOG(DEBUG) << "GenerateTestAndAssignmentData: current_network = "
+        //<< current_network
+        //<< " pixels_per_network = " << pixels_per_network
+        //<< " network->count = " << network->count
+        //<< " index = " << index << " pixel_index = " << pixel_index
+        //<< "\n";
+        assert(pixel_index >= 0 && pixel_index < num_pixels);
+        assert(pixel_index * channels <= width * height * channels);
+        assert(pixel_index >= 0);
+        // LOG(DEBUG) << "GenerateTestAndAssignmentData: get rgb values: r = "
+        //<< rgb[0] << " g = " << rgb[1] << " b = " << rgb[2] << "\n";
+        //// LOG(DEBUG) << "GenerateTestAndAssignmentData: assign to
+        /// test_pos\n";
+        // assert(index >= 0);
+        // assert(test_pos >= &test_data[0] &&
+        //((test_pos - &test_data[0]) + index < test_data.size()));
         test_pos[index] = data;
+        //++network->count;
         ++network->count;
-        LOG(DEBUG) << "GenerateTestAndAssignmentData: add assignment\n";
+        if (!(network->count >= 0 && network->count <= pixels_per_network)) {
+          LOG(ERROR) << "network->count is bad, " << network->count
+                     << " and limit is " << pixels_per_network << "\n";
+        }
+        assert(network->count >= 0 && network->count <= pixels_per_network);
+        // LOG(DEBUG) << "GenerateTestAndAssignmentData: add assignment\n";
+        assert(assignment_data_size * pixel_index + j + 1 <=
+               width * height * assignment_data_size);
         assignments[assignment_data_size * pixel_index + j + 1] =
             current_network;
-        LOG(DEBUG) << "GenerateTestAndAssignmentData: next current_network\n";
+        // LOG(DEBUG) << "GenerateTestAndAssignmentData: next
+        // current_network\n";
         current_network = (current_network + 1) % networks_at_level;
+        assert(current_network >= 0 && current_network < networks_at_level);
       }
     }
     test_pos += networks_at_level * pixels_per_network;
     network_pos += networks_at_level;
   }
-  bool contains_duplicates =
-      ContainsDuplicates(&network_data[0], network_data.size());
-  if (contains_duplicates) {
-    LOG(ERROR)
-        << "GenerateTestAndAssignmentData: network_data contains duplicates.\n";
-    assert(!contains_duplicates);
-  }
+  assert(network_data.size() == num_networks);
+  // return;
+  // bool contains_duplicates =
+  // ContainsDuplicates(&network_data[0], network_data.size());
+  // if (contains_duplicates) {
+  // LOG(ERROR)
+  //<< "GenerateTestAndAssignmentData: network_data contains duplicates.\n";
+  // assert(!contains_duplicates);
+  //}
 }
 
 void TestAssignmentDataToTestData(int width, int height, int channels,
@@ -259,7 +283,6 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
   float* test_data_out = nullptr;
   int test_data_dim1 = -1;
   int test_data_dim2 = -1;
-
   GenerateTestAndAssignmentData(width, height, channels, ensemble_size,
                                 num_levels, num_networks, &num_images,
                                 &image_number, average_image, test_data,
@@ -267,8 +290,8 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
 
   // Call assignment_data_to_test_data
   assignment_data_to_test_data(
-      &assignment_data[0], height, width, channels, image_number, num_images,
-      &average_image[0], height, width, channels, &test_data_out,
+      &assignment_data[0], height, width, ensemble_size + 1, image_number,
+      num_images, &average_image[0], height, width, channels, &test_data_out,
       &test_data_dim1, &test_data_dim2, &network_data_out, &network_data_dim1,
       &network_data_dim2);
 
@@ -280,7 +303,7 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
     assert(!contains_duplicates);
   }
 
-  // Test network data results.
+  //// Test network data results.
   if (network_data_dim1 != network_data.size()) {
     LOG(ERROR) << "TestAssignmentDataToTestData: network_data_dim1 = "
                << network_data_dim1
@@ -288,47 +311,57 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
                << " do not match.\n";
   }
   assert(network_data_dim1 == network_data.size());
-  assert(network_data_dim2 == 4);
+  assert(network_data_dim2 == sizeof(NetworkData) / sizeof(int));
 
   std::vector<NetworkData> network_data_check(network_data_dim1);
   std::vector<NetworkData> network_data_test(network_data_dim1);
 
   // Copy in data.
-  CopyNetworkData(network_data_out, network_data_test);
-  CopyNetworkData(reinterpret_cast<int*>(&network_data[0]), network_data_check);
-
-  // Sort so a comparison can be made.
-  std::sort(network_data_check.begin(), network_data_check.end(),
-            CompareNetworkData());
-  std::sort(network_data_test.begin(), network_data_test.end(),
-            CompareNetworkData());
+  const NetworkData* network_data_out_pos =
+      reinterpret_cast<const NetworkData*>(network_data_out);
+  std::copy(network_data_out_pos, network_data_out_pos + network_data_dim1,
+            network_data_test.begin());
+  std::copy(network_data.begin(), network_data.end(),
+            network_data_check.begin());
 
   assert(network_data_check.size() == network_data_test.size());
+  // Sort so a comparison can be made.
+  CompareNetworkData cmp;
+  std::sort(network_data_check.begin(), network_data_check.end(), cmp);
+  std::sort(network_data_test.begin(), network_data_test.end(), cmp);
+
   for (int i = 0; i < network_data_test.size(); ++i) {
     bool equals_level_id_count =
-        network_data_check[i].EqualsLevelIdCount(network_data_check[i]);
+        network_data_check[i].EqualsLevelIdCount(network_data_test[i]);
     if (!equals_level_id_count) {
-      LOG(DEBUG) << "Test value " << i
+      LOG(ERROR) << "Test value " << i
                  << " does not match check value for level, id, and count"
                  << network_data_test[i] << " " << network_data_check[i]
                  << "\n";
+      PrintValues(network_data_test.begin(), network_data_test.begin() + 10,
+                  LOG(ERROR));
+      PrintValues(network_data_check.begin(), network_data_check.begin() + 10,
+                  LOG(ERROR));
       assert(equals_level_id_count);
     }
   }
 
   // Test "test data" results.
-  assert(test_data_dim1 == width * height * 4);
-  assert(test_data_dim2 == channels + 3);
+  assert(test_data_dim1 == width * height * ensemble_size);
+  assert(test_data_dim2 == sizeof(TestData) / sizeof(int));
 
   for (int i = 0; i < network_data_check.size(); ++i) {
-    CHECK_BOUNDS(network_data_check, i, test_data.size() / test_data_dim2);
+    CHECK_BOUNDS(network_data_check, i, test_data.size());
     CHECK_BOUNDS(network_data_test, i, test_data_dim1);
     const NetworkData& data_check = network_data_check[i];
     const NetworkData& data_test = network_data_test[i];
     std::vector<TestData> test(data_check.count);
     std::vector<TestData> check(data_check.count);
     for (int i = 0; i < network_data_check.size(); ++i) {
-      CopyTestData(&test_data_out[data_test.start], test);
+      const TestData* test_data_out_pos =
+          reinterpret_cast<const TestData*>(&test_data_out[data_test.start]);
+      std::copy(test_data_out_pos, test_data_out_pos + data_test.count,
+                test.begin());
       std::copy(test_data.begin() + data_check.start,
                 test_data.begin() + data_check.start + data_check.count,
                 check.begin());
@@ -336,9 +369,12 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
       std::sort(check.begin(), check.end(), CompareTestData());
       for (int j = 0; j < test.size(); ++j) {
         if (test[j] != check[j]) {
-          LOG(DEBUG) << "Match failed at j = " << j << "\n";
-          LOG(DEBUG) << "Test = " << test[j] << "\n";
-          LOG(DEBUG) << "Check = " << check[j] << "\n";
+          PrintValues(test_data.begin(), test_data.begin() + 10, LOG(ERROR));
+          PrintValues(test_data_out_pos, test_data_out_pos + 10, LOG(ERROR));
+          LOG(ERROR) << "Match failed at j = " << j << "\n";
+          LOG(ERROR) << "Test = " << test[j] << "\n";
+          LOG(ERROR) << "Check = " << check[j] << "\n";
+          assert(test[j] == check[j]);
         }
       }
     }
@@ -428,8 +464,8 @@ int main(int argc, char** argv) {
       for (auto r : resolutions) {
         int step = r.width * r.height / 10;
         for (int i = 1; i < r.width * r.height; i += step) {
-          LOG(DEBUG) << "TestPredictionsToImage: (" << r.width << ","
-                     << r.height << ") - " << i << "\n";
+          LOG(STATUS) << "TestPredictionsToImage: (" << r.width << ","
+                      << r.height << ") - " << i << "\n";
           if (!TestPredictionsToImage(r.width, r.height, c, i)) {
             exit(0);
           }
@@ -441,16 +477,16 @@ int main(int argc, char** argv) {
         int num_levels = 5;
         int num_networks = 900;
         int ensemble_size = 5;
-        LOG(DEBUG) << "TestAssignmentDataToTestData: (" << r.width << ","
-                   << r.height << ") - "
-                   << " num_levels = " << num_levels
-                   << " num_networks = " << num_networks << "\n";
+        LOG(STATUS) << "TestAssignmentDataToTestData: (" << r.width << ","
+                    << r.height << ") - "
+                    << " num_levels = " << num_levels
+                    << " num_networks = " << num_networks << "\n";
         TestAssignmentDataToTestData(r.width, r.height, c, num_levels,
                                      num_networks, ensemble_size);
       }
       break;
     default:
-      LOG(DEBUG) << "Invalid option " << argv[1] << "\n";
+      LOG(STATUS) << "Invalid option " << argv[1] << "\n";
   }
 
   return 0;

@@ -18,7 +18,7 @@
   {                                                                       \
     auto& d = (x)[(i)];                                                   \
     int extent = d.start + d.count;                                       \
-    bool bounds_check = extent < (n);                                     \
+    bool bounds_check = extent <= (n);                                    \
     if (!bounds_check) {                                                  \
       LOG(ERROR) << __LINE__ << ": Bounds check failed at " << (i)        \
                  << ". Limit is " << (n) << " but got " << extent << "."; \
@@ -65,14 +65,15 @@ void GenerateTestData(int width, int height, int channels, int num_samples,
   // Create test data (x, y, *, *, *, *) values.  Mainly for the x-y
   // values.
   int test_data_size = channels + 3;
+  TestData* pos = reinterpret_cast<TestData*>(&test[0]);
   test.resize(num_samples * test_data_size);
-  for (int i = 0; i < num_samples * test_data_size; i += test_data_size) {
+  for (int i = 0; i < num_samples; ++i) {
     int k = q.top().first;
     int x = k % width;
     int y = k / width;
     q.pop();
-    test[i] = x / static_cast<float>(width);
-    test[i + 1] = y / static_cast<float>(height);
+    test[i] = x / static_cast<float>(width - 1);
+    test[i + 1] = y / static_cast<float>(height - 1);
   }
 }
 
@@ -89,13 +90,13 @@ void GenerateRandomPermutation(int n, std::vector<int>& values) {
   LOG(DEBUG) << "GenerateRandomPermutation\n";
   values.resize(n);
   for (int i = 0; i < n; ++i) values[i] = i;
-  // for (int i = 0; i < n - 1; ++i) {
-  // int j = std::rand() % (i + 1);
-  // assert(j >= 0 && j < n);
-  // std::swap(values[i], values[j]);
-  //}
-  // for (int i = 0; i < n; ++i)
-  // assert(values[i] >= 0 && values[i] < values.size());
+  for (int i = 0; i < n - 1; ++i) {
+    int j = std::rand() % (i + 1);
+    assert(j >= 0 && j < n);
+    std::swap(values[i], values[j]);
+  }
+  for (int i = 0; i < n; ++i)
+    assert(values[i] >= 0 && values[i] < values.size());
 }
 
 void GenerateTestAndAssignmentData(
@@ -136,6 +137,7 @@ void GenerateTestAndAssignmentData(
   int networks_left = num_networks;
   NetworkData* network_pos = &network_data[0];
   TestData* test_pos = &test_data[0];
+  int total = 0;
   for (int level = 0; level < num_levels; ++level) {
     // LOG(DEBUG) << " ---------------------------------------------- \n";
     // LOG(DEBUG) << "GenerateTestAndAssignmentData: level = " << level << "\n";
@@ -238,6 +240,7 @@ void GenerateTestAndAssignmentData(
         test_pos[index] = data;
         //++network->count;
         ++network->count;
+        ++total;
         if (!(network->count >= 0 && network->count <= pixels_per_network)) {
           LOG(ERROR) << "network->count is bad, " << network->count
                      << " and limit is " << pixels_per_network << "\n";
@@ -267,18 +270,22 @@ void GenerateTestAndAssignmentData(
   //<< "GenerateTestAndAssignmentData: network_data contains duplicates.\n";
   // assert(!contains_duplicates);
   //}
+  if (total != num_pixels * ensemble_size) {
+    LOG(ERROR) << "Expected " << num_pixels * ensemble_size
+               << " test entries, but got  " << total << " test entries.\n";
+    assert(total == num_pixels * ensemble_size);
+  }
 }
 
 void TestAssignmentDataToTestData(int width, int height, int channels,
                                   int num_levels, int num_networks,
                                   int ensemble_size) {
-  const int coord_size = 3;
-  const int light_size = 1;
   // Generate random test data.
   std::vector<float> average_image;
   std::vector<TestData> test_data;
   std::vector<NetworkData> network_data;
   std::vector<int> assignment_data;
+  int num_pixels = width * height;
   int image_number = -1;
   int num_images = -1;
   int* network_data_out = nullptr;
@@ -293,23 +300,25 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
                                 assignment_data, network_data);
 
   // Call assignment_data_to_test_data
+  LOG(STATUS) << "TestAssignmentDataToTestData: assignment_data_to_test_data\n";
   assignment_data_to_test_data(
-      &assignment_data[0], height, width, ensemble_size + 1, image_number,
+      &assignment_data[0], width, height, ensemble_size + 1, image_number,
       num_images, &average_image[0], height, width, channels, &test_data_out,
       &test_data_dim1, &test_data_dim2, &network_data_out, &network_data_dim1,
       &network_data_dim2);
 
-  const TestData* test_data_pos =
-      reinterpret_cast<const TestData*>(&test_data[0]);
-  const TestData* location = std::find_if(
-      test_data_pos, test_data_pos + test_data_dim1,
-      [](const TestData & t)->bool { return t.equalsXy(0.0f, 0.0f); });
-  if (location == test_data_pos + test_data_dim1) {
-    LOG(ERROR) << "Did not find (0, 0, 0) anywwhere!";
-  } else {
-    LOG(ERROR) << "Found (0, 0, 0) at " << location << "\n";
-  }
+  // const TestData* test_data_pos =
+  // reinterpret_cast<const TestData*>(&test_data[0]);
+  // const TestData* location = std::find_if(
+  // test_data_pos, test_data_pos + test_data_dim1,
+  //[](const TestData & t)->bool { return t.equalsXy(0.0f, 0.0f); });
+  // if (location == test_data_pos + test_data_dim1) {
+  // LOG(ERROR) << "Did not find (0, 0, 0) anywwhere!";
+  //} else {
+  // LOG(ERROR) << "Found (0, 0, 0) at " << location << "\n";
+  //}
 
+  LOG(STATUS) << "TestAssignmentDataToTestData: contains_duplicates\n";
   bool contains_duplicates = ContainsDuplicates(
       reinterpret_cast<NetworkData*>(network_data_out), network_data_dim1);
   if (contains_duplicates) {
@@ -318,7 +327,7 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
     assert(!contains_duplicates);
   }
 
-  //// Test network data results.
+  // Test network data results.
   if (network_data_dim1 != network_data.size()) {
     LOG(ERROR) << "TestAssignmentDataToTestData: network_data_dim1 = "
                << network_data_dim1
@@ -345,6 +354,7 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
   std::sort(network_data_check.begin(), network_data_check.end(), cmp);
   std::sort(network_data_test.begin(), network_data_test.end(), cmp);
 
+  LOG(STATUS) << "TestAssignmentDataToTestData: check network data\n";
   for (int i = 0; i < network_data_test.size(); ++i) {
     bool equals_level_id_count =
         network_data_check[i].EqualsLevelIdCount(network_data_test[i]);
@@ -360,7 +370,76 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
       assert(equals_level_id_count);
     }
   }
+  LOG(STATUS) << "TestAssignmentDataToTestData: check assignments\n";
+  const AssignmentData* assignments_check =
+      reinterpret_cast<const AssignmentData*>(&assignment_data[0]);
+  std::vector<AssignmentData> assignments_test(width * height,
+                                               AssignmentData());
+  std::vector<int> assignment_counts(width * height, -1);
+  for (int j = 0; j < network_data_test.size(); ++j) {
+    const NetworkData& n = network_data_test[j];
+    for (int i = n.start; i < n.start + n.count; ++i) {
+      const TestData* t = reinterpret_cast<const TestData*>(test_data_out) + i;
+      int x = std::round(t->x * (width - 1)),
+          y = std::round(t->y * (height - 1));
+      if (!(y >= 0 && y < height)) {
+        LOG(ERROR) << " t->x = " << t->x << " t->y = " << t->y
+                   << " t->x * width = " << t->x * (width - 1)
+                   << " t->y * height = " << t->y * (height - 1) << "\n";
+        LOG(ERROR) << " x = " << x << " y = " << y << " width = " << width
+                   << " height = " << height << "\n";
+      }
+      assert(x >= 0 && x < width);
+      assert(y >= 0 && y < height);
+      int index = y * width + x;
+      if (!(n.level == assignments_check[index].level)) {
+        LOG(ERROR) << "n.level = " << n.level << " assignments_check[" << index
+                   << "].level = " << assignments_check[index].level
+                   << " j = " << j << " x = " << x << " y = " << y << "\n";
+      }
+      assert(n.level == assignments_check[index].level);
+      AssignmentData& a = assignments_test[index];
+      if (assignment_counts[index] == -1) {
+        a.level = n.level;
+        ++assignment_counts[index];
+      }
+      if (!(a.level == n.level)) {
+        LOG(ERROR) << "a.level = " << a.level << " n.level = " << n.level
+                   << " assignments_check = " << assignments_check[index].level
+                   << "\n";
+      }
+      assert(a.level == n.level);
+      a[++assignment_counts[index] - 1] = n.id;
+      if (!(assignment_counts[index] >= 1 &&
+            assignment_counts[index] <= ensemble_size)) {
+        LOG(ERROR) << "assignment_counts[" << index
+                   << "]=" << assignment_counts[index] << ".\n";
+      }
+      assert(assignment_counts[index] >= 1 &&
+             assignment_counts[index] <= ensemble_size);
+    }
+  }
 
+  for (int i = 0; i < num_pixels; ++i) {
+    if (assignment_counts[i] != ensemble_size) {
+      LOG(ERROR) << "assignment_counts[" << i << "]=" << assignment_counts[i]
+                 << "\n";
+    }
+    assert(assignment_counts[i] == ensemble_size);
+  }
+
+  const AssignmentData* a_pos = assignments_check;
+  const AssignmentData* b_pos = &assignments_test[0];
+  for (int i = 0; i < num_pixels; ++i) {
+    if (*a_pos != *b_pos) {
+      LOG(ERROR) << "a_pos = " << *a_pos << " b_pos = " << *b_pos << "\n";
+    }
+    assert(*a_pos == *b_pos);
+    ++a_pos;
+    ++b_pos;
+  }
+
+  LOG(STATUS) << "TestAssignmentDataToTestData: check test data\n";
   // Test "test data" results.
   assert(test_data_dim1 == width * height * ensemble_size);
   assert(test_data_dim2 == sizeof(TestData) / sizeof(int));
@@ -370,30 +449,30 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
     CHECK_BOUNDS(network_data_test, i, test_data_dim1);
     const NetworkData& data_check = network_data_check[i];
     const NetworkData& data_test = network_data_test[i];
+    assert(data_test.EqualsLevelIdCount(data_check));
     std::vector<TestData> test(data_check.count);
     std::vector<TestData> check(data_check.count);
-    for (int i = 0; i < network_data_check.size(); ++i) {
-      const TestData* test_data_out_pos =
-          reinterpret_cast<const TestData*>(&test_data_out[data_test.start]);
-      std::copy(test_data_out_pos, test_data_out_pos + data_test.count,
-                test.begin());
-      std::copy(test_data.begin() + data_check.start,
-                test_data.begin() + data_check.start + data_check.count,
-                check.begin());
-      std::sort(test.begin(), test.end(), CompareTestData());
-      std::sort(check.begin(), check.end(), CompareTestData());
-      for (int j = 0; j < test.size(); ++j) {
-        if (test[j] != check[j]) {
-          PrintValues(test.begin(), test.begin() + 10, LOG(ERROR));
-          PrintValues(check.begin(), check.begin() + 10, LOG(ERROR));
-          LOG(ERROR) << "Match failed at j = " << j << "\n";
-          LOG(ERROR) << "Test = " << test[j] << "\n";
-          LOG(ERROR) << "Check = " << check[j] << "\n";
-          assert(test[j] == check[j]);
-        }
+    const TestData* test_data_out_pos =
+        reinterpret_cast<const TestData*>(test_data_out) + data_test.start;
+    std::copy(test_data_out_pos, test_data_out_pos + data_test.count,
+              test.begin());
+    std::copy(test_data.begin() + data_check.start,
+              test_data.begin() + data_check.start + data_check.count,
+              check.begin());
+    std::sort(test.begin(), test.end(), CompareTestData());
+    std::sort(check.begin(), check.end(), CompareTestData());
+    for (int j = 0; j < test.size(); ++j) {
+      if (test[j] != check[j]) {
+        PrintValues(test.begin(), test.begin() + 10, LOG(ERROR));
+        PrintValues(check.begin(), check.begin() + 10, LOG(ERROR));
+        LOG(ERROR) << "Match failed at i = " << i << " j = " << j << "\n";
+        LOG(ERROR) << "Test = " << test[j] << "\n";
+        LOG(ERROR) << "Check = " << check[j] << "\n";
+        assert(test[j] == check[j]);
       }
     }
   }
+  LOG(ERROR) << "TestAssignmentDataToTestData: finished\n";
 }
 
 bool TestPredictionsToImage(int width, int height, int channels,

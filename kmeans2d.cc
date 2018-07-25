@@ -1,6 +1,7 @@
 #include "image.h"
 #include "kdtree.h"
 #include "kmeans_training_data.h"
+#include "logger.h"
 #include "types.h"
 
 #include <algorithm>
@@ -587,6 +588,11 @@ void assignment_data_to_test_data(
     int average_image_dim3, float** test_data, int* test_data_dim1,
     int* test_data_dim2, int** network_data, int* network_data_dim1,
     int* network_data_dim2) {
+  // assignment_data_to_test_data(
+  //&assignment_data[0], width, height, ensemble_size + 1, image_number,
+  // num_images, &average_image[0], height, width, channels, &test_data_out,
+  //&test_data_dim1, &test_data_dim2, &network_data_out, &network_data_dim1,
+  //&network_data_dim2);
   int width = assignment_data_dim1;
   int height = assignment_data_dim2;
   int num_pixels = width * height;
@@ -595,36 +601,63 @@ void assignment_data_to_test_data(
   // 1. Put all assignment data into vectors for each network.
   std::unordered_map<NetworkData, std::vector<int>, HashNetworkData>
       network_map;
-  AssignmentData* pos = reinterpret_cast<AssignmentData*>(&assignment_data[0]);
+  const AssignmentData* pos =
+      reinterpret_cast<const AssignmentData*>(&assignment_data[0]);
   for (int i = 0; i < num_pixels; ++i) {
+    int x = i % width, y = i / width;
+    // if (x == 131 && y == 340)
+    // LOG(STATUS) << "x = " << x << " y = " << y << " level = " << pos->level
+    //<< "\n";
     for (int j = 0; j < ensemble_size; ++j) {
       NetworkData query(pos->level, (*pos)[j]);
       if (network_map.find(query) == network_map.end())
         network_map.insert(std::make_pair(query, std::vector<int>()));
+      assert(network_map.find(query)->first.level == pos->level);
       network_map.find(query)->second.push_back(i);
     }
     ++pos;
   }
+  int count = 0;
+  for (const auto& entry : network_map) {
+    assert(entry.second.size() > 0);
+    count += entry.second.size();
+  }
+  if (count != num_pixels * ensemble_size) {
+    LOG(ERROR) << "Found." << count << " test entries but expected."
+               << num_pixels * ensemble_size << "\n";
+  }
+  assert(count == num_pixels * ensemble_size);
   // 2. Allocate test data.
   *test_data_dim1 = num_pixels * ensemble_size;
   *test_data_dim2 = sizeof(TestData) / sizeof(float);
   *test_data = new float[(*test_data_dim1) * (*test_data_dim2)];
-  // 3. Transform assignment data into test data.
   TestData* test_pos = reinterpret_cast<TestData*>(*test_data);
-  --test_pos;
+  // 3. Transform assignment data into test data.
+  std::vector<int> assignment_counts(num_pixels, 0);
   std::vector<NetworkData> networks;
   int index = 0;
+  pos = reinterpret_cast<const AssignmentData*>(&assignment_data[0]);
   for (const auto& entry : network_map) {
     networks.push_back(entry.first);
     networks.back().count = entry.second.size();
     networks.back().start = (index == 0 ? 0 : networks[index - 1].count +
                                                   networks[index - 1].start);
     for (int i = 0; i < entry.second.size(); ++i) {
-      int pixel_index = entry.second[i], x = entry.second[i] % width,
-          y = entry.second[i] / width;
-      *++test_pos = TestData(x, y, image_number,
-                             &average_image[pixel_index * average_image_dim3],
-                             width, height, num_images);
+      int pixel_index = entry.second[i], x = pixel_index % width,
+          y = pixel_index / width;
+      // if (x == 131 && y == 340)
+      // LOG(STATUS) << "x = " << x << " y = " << y
+      //<< " level = " << entry.first.level
+      //<< " n.level = " << networks.back().level
+      //<< " idx = " << networks.size() - 1 << "\n";
+      assert(entry.first.level == pos[pixel_index].level);
+      assert(pixel_index >= 0 && pixel_index < num_pixels);
+      test_pos[networks.back().start + i] = TestData(
+          x, y, image_number, &average_image[pixel_index * average_image_dim3],
+          width, height, num_images);
+      ++assignment_counts[pixel_index];
+      assert(assignment_counts[pixel_index] >= 1 &&
+             assignment_counts[pixel_index] <= ensemble_size);
     }
     ++index;
   }
@@ -634,7 +667,18 @@ void assignment_data_to_test_data(
   *network_data = new int[(*network_data_dim1) * (*network_data_dim2)];
   NetworkData* network_pos = reinterpret_cast<NetworkData*>(*network_data);
   --network_pos;
-  for (int i = 0; i < networks.size(); ++i) *++network_pos = networks[i];
+  for (int i = 0; i < networks.size(); ++i) {
+    *++network_pos = networks[i];
+    // if (i == 411 || i == 626 || i == 632 || i == 634 || i == 733)
+    // LOG(STATUS) << "i = " << i << " level = " << network_pos->level << "\n";
+  }
+  for (int i = 0; i < assignment_counts.size(); ++i) {
+    if (assignment_counts[i] != ensemble_size) {
+      LOG(ERROR) << "assignment_counts[" << i << "]=" << assignment_counts[i]
+                 << "\n";
+    }
+    assert(assignment_counts[i] == ensemble_size);
+  }
 }
 
 void predictions_to_image(float* image_out, int image_out_dim1,

@@ -273,99 +273,95 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
   std::vector<int> train_in_ends(num_threads, 0);
   std::vector<int> pixels_copied(num_threads, 0);
   for (int t = 0; t < num_threads; ++t) {
-    threads[t] =
-        std::thread([
-                      &k,
-                      &num_images,
-                      &pixel_dim,
-                      &light_dim,
-                      &coord_dim,
-                      &cluster_size,
-                      &cluster_id,
-                      &closest,
-                      &closest_dim1,
-                      &closest_dim2,
-                      &closest_dim3,
-                      &train_data,
-                      &train_data_dim1,
-                      &train_data_dim2,
-                      &target_data,
-                      &target_data_dim1,
-                      &target_data_dim2,
-                      &test,
-                      &test_dim1,
-                      &test_dim2,
-                      &target,
-                      &target_dim1,
-                      &target_dim2,
-                      &target_data_size,
-                      &train_data_size,
-                      &visited,
-                      &starts,
-                      &ends,
-                      &test_out_starts,
-                      &test_out_ends,
-                      &target_out_starts,
-                      &target_out_ends,
-                      &train_in_starts,
-                      &train_in_ends,
-                      &pixels_copied,
-                      &num_threads
-                    ](int tid)
-                         ->void {
-                      // Write out the test and target data.
-                      int num_pixels = closest_dim1 * closest_dim2;
-                      int pos = 0;
-                      int block_size = num_images / num_threads + 1;
-                      int start = tid * block_size;
-                      int end = std::min(num_images, start + block_size);
-                      // Input.
-                      int train_in_start = num_pixels * start * train_data_size;
-                      int train_in_end = num_pixels * end * train_data_size;
-                      train_in_starts[tid] = train_in_start;
-                      train_in_ends[tid] = train_in_end;
-                      int target_in_start =
-                          num_pixels * start * target_data_size;
-                      int target_in_end = num_pixels * end * target_data_size;
-                      // Output.
-                      int test_out_start =
-                          cluster_size * start * train_data_size;
-                      int test_out_end = cluster_size * end * train_data_size;
-                      test_out_starts[tid] = test_out_start;
-                      test_out_ends[tid] = test_out_end;
-                      int target_out_start =
-                          cluster_size * start * target_data_size;
-                      int target_out_end =
-                          cluster_size * end * target_data_size;
-                      target_out_starts[tid] = target_out_start;
-                      target_out_ends[tid] = target_out_end;
-                      starts[tid] = start;
-                      ends[tid] = end;
-                      float* train_in_pos = train_data + train_in_start;
-                      float* test_out_pos = *test + test_out_start;
-                      float* target_out_pos = *target + target_out_start;
-                      float* target_in_pos = target_data + target_in_start;
-                      for (int i = start; i < end; ++i) {
-                        for (int j = 0; j < num_pixels; ++j) {
-                          ++visited[tid];
-                          int x = round(closest_dim2 * *(train_in_pos));
-                          int y = round(closest_dim1 * *(train_in_pos + 1));
-                          int l = k + closest_dim3 * (y * closest_dim2 + x);
-                          if (cluster_id == closest[l]) {
-                            ++pixels_copied[tid];
-                            for (int k = 0; k < train_data_size; ++k)
-                              test_out_pos[k] = train_in_pos[k];
-                            for (int k = 0; k < target_data_size; ++k)
-                              target_out_pos[k] = target_in_pos[k];
-                            test_out_pos += train_data_size;
-                            target_out_pos += target_data_size;
-                          }
-                          train_in_pos += train_data_size;
-                          target_in_pos += target_data_size;
-                        }
-                      }
-                    },
-                    t);
+    threads[t] = std::thread(
+        [
+          &k,
+          &num_images,
+          &pixel_dim,
+          &light_dim,
+          &coord_dim,
+          &cluster_size,
+          &cluster_id,
+          &closest,
+          &closest_dim1,
+          &closest_dim2,
+          &closest_dim3,
+          &train_data,
+          &train_data_dim1,
+          &train_data_dim2,
+          &target_data,
+          &target_data_dim1,
+          &target_data_dim2,
+          &test,
+          &test_dim1,
+          &test_dim2,
+          &target,
+          &target_dim1,
+          &target_dim2,
+          &target_data_size,
+          &train_data_size,
+          &visited,
+          &starts,
+          &ends,
+          &test_out_starts,
+          &test_out_ends,
+          &target_out_starts,
+          &target_out_ends,
+          &train_in_starts,
+          &train_in_ends,
+          &pixels_copied,
+          &num_threads
+        ](int tid)
+             ->void {
+          // Write out the test and target data.
+          int num_pixels = closest_dim1 * closest_dim2;
+          int pos = 0;
+          int block_size = num_images / num_threads + 1;
+          int start = tid * block_size;
+          int end = std::min(num_images, start + block_size);
+          // Input.
+          int train_in_start = num_pixels * start * train_data_size;
+          int train_in_end = num_pixels * end * train_data_size;
+          train_in_starts[tid] = train_in_start;
+          train_in_ends[tid] = train_in_end;
+          int target_in_start = num_pixels * start * target_data_size;
+          int target_in_end = num_pixels * end * target_data_size;
+          // Output.
+          int test_out_start = cluster_size * start * train_data_size;
+          int test_out_end = cluster_size * end * train_data_size;
+          test_out_starts[tid] = test_out_start;
+          test_out_ends[tid] = test_out_end;
+          int target_out_start = cluster_size * start * target_data_size;
+          int target_out_end = cluster_size * end * target_data_size;
+          target_out_starts[tid] = target_out_start;
+          target_out_ends[tid] = target_out_end;
+          starts[tid] = start;
+          ends[tid] = end;
+          float* train_in_pos = train_data + train_in_start;
+          float* test_out_pos = *test + test_out_start;
+          float* target_out_pos = *target + target_out_start;
+          float* target_in_pos = target_data + target_in_start;
+          for (int i = start; i < end; ++i) {
+            for (int j = 0; j < num_pixels; ++j) {
+              ++visited[tid];
+              int x = round((closest_dim2 - 1) * *(train_in_pos));
+              int y = round((closest_dim1 - 1) * *(train_in_pos + 1));
+              int l = k + closest_dim3 * (y * closest_dim2 + x);
+              if (cluster_id == closest[l]) {
+                ++pixels_copied[tid];
+                for (int k = 0; k < train_data_size; ++k)
+                  test_out_pos[k] = train_in_pos[k];
+                for (int k = 0; k < target_data_size; ++k)
+                  target_out_pos[k] = target_in_pos[k];
+                test_out_pos += train_data_size;
+                target_out_pos += target_data_size;
+              }
+              train_in_pos += train_data_size;
+              target_in_pos += target_data_size;
+            }
+          }
+        },
+        t);
   }
   for (int t = 0; t < num_threads; ++t) threads[t].join();
   int total_visited = 0;
@@ -407,46 +403,46 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
   std::vector<float> totals(num_threads, 0.0f);
   std::vector<std::thread> threads(num_threads);
   for (int t = 0; t < num_threads; ++t) {
-    threads[t] = std::thread([
-                               &order,
-                               &totals,
-                               &ensemble_size,
-                               &test,
-                               &test_dim1,
-                               &test_dim2,
-                               &target,
-                               &target_dim1,
-                               &target_dim2,
-                               &predictions,
-                               &predictions_dim1,
-                               &predictions_dim2,
-                               &errors,
-                               &errors_dim1,
-                               &errors_dim2,
-                               &num_threads
-                             ](int tid)
-                                  ->void {
-                               int block_size = test_dim1 / num_threads + 1;
-                               int start = tid * block_size;
-                               int end =
-                                   std::min(start + block_size, test_dim1);
-                               float* test_pos = test + test_dim2 * start;
-                               float* target_pos = target + target_dim2 * start;
-                               float* predictions_pos =
-                                   predictions + predictions_dim2 * start;
-                               for (int i = start; i < end; ++i) {
-                                 int x = round(*(test_pos) * errors_dim2);
-                                 int y = round(*(test_pos + 1) * errors_dim1);
-                                 for (int c = 0; c < 3; ++c) {
-                                   errors[y * test_dim2 + x] +=
-                                       predictions_pos[c] - target_pos[c];
-                                   totals[tid] += predictions_pos[c];
-                                 }
-                                 target_pos += target_dim2;
-                                 predictions_pos += predictions_dim2;
-                               }
-                             },
-                             t);
+    threads[t] =
+        std::thread([
+                      &order,
+                      &totals,
+                      &ensemble_size,
+                      &test,
+                      &test_dim1,
+                      &test_dim2,
+                      &target,
+                      &target_dim1,
+                      &target_dim2,
+                      &predictions,
+                      &predictions_dim1,
+                      &predictions_dim2,
+                      &errors,
+                      &errors_dim1,
+                      &errors_dim2,
+                      &num_threads
+                    ](int tid)
+                         ->void {
+                      int block_size = test_dim1 / num_threads + 1;
+                      int start = tid * block_size;
+                      int end = std::min(start + block_size, test_dim1);
+                      float* test_pos = test + test_dim2 * start;
+                      float* target_pos = target + target_dim2 * start;
+                      float* predictions_pos =
+                          predictions + predictions_dim2 * start;
+                      for (int i = start; i < end; ++i) {
+                        int x = round(*(test_pos) * (errors_dim2 - 1));
+                        int y = round(*(test_pos + 1) * (errors_dim1 - 1));
+                        for (int c = 0; c < 3; ++c) {
+                          errors[y * test_dim2 + x] +=
+                              predictions_pos[c] - target_pos[c];
+                          totals[tid] += predictions_pos[c];
+                        }
+                        target_pos += target_dim2;
+                        predictions_pos += predictions_dim2;
+                      }
+                    },
+                    t);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
   float total = 0.0f;
@@ -593,8 +589,8 @@ void assignment_data_to_test_data(
   // num_images, &average_image[0], height, width, channels, &test_data_out,
   //&test_data_dim1, &test_data_dim2, &network_data_out, &network_data_dim1,
   //&network_data_dim2);
-  int width = assignment_data_dim1;
-  int height = assignment_data_dim2;
+  int width = assignment_data_dim2;
+  int height = assignment_data_dim1;
   int num_pixels = width * height;
   int ensemble_size = assignment_data_dim3 - 1;
   int num_networks = 0;
@@ -693,8 +689,8 @@ void predictions_to_image(float* image_out, int image_out_dim1,
   for (float* predictions_pos = predictions;
        predictions_pos < predictions + predictions_dim1 * predictions_dim2;
        predictions_pos += predictions_dim2) {
-    int x = width * (*test_pos);
-    int y = height * (*(test_pos + 1));
+    int x = (width - 1) * (*test_pos);
+    int y = (height - 1) * (*(test_pos + 1));
     for (int j = 0; j < image_out_dim3; ++j)
       image_out[image_out_dim3 * (y * width + x) + j] = *(predictions_pos + j);
     test_pos += test_dim2;

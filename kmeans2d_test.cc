@@ -67,7 +67,7 @@ void GenerateTestData(int width, int height, int channels, int num_samples,
   int test_data_size = channels + 3;
   TestData* pos = reinterpret_cast<TestData*>(&test[0]);
   test.resize(num_samples * test_data_size);
-  for (int i = 0; i < num_samples; ++i) {
+  for (int i = 0; i < num_samples * test_data_size; i += test_data_size) {
     int k = q.top().first;
     int x = k % width;
     int y = k / width;
@@ -277,6 +277,31 @@ void GenerateTestAndAssignmentData(
   }
 }
 
+// void predictions_to_errors(std::vector<int>& order, int ensemble_size,
+// float* test, int test_dim1, int test_dim2,
+// float* target, int target_dim1, int target_dim2,
+// float* predictions, int predictions_dim1,
+// int predictions_dim2, float* errors, int errors_dim1,
+// int errors_dim2) {
+//
+
+void TestPredictionsToErrors(int width, int height, int channels,
+                             int ensemble_size) {
+
+  int num_pixels = width * height;
+  std::vector<float> errors;
+  GenerateRandomImage(width, height, channels, errors);
+  std::vector<float> target;
+  GenerateRandomImage(width, height, channels, target);
+  std::vector<float> predictions(num_pixels);
+  for (int i = 0; i < num_pixels; ++i) predictions[i] += errors[i];
+  predictions_to_errors(
+      order, ensemble_size, &test[0], num_pixels,
+      sizeof(TestData) / sizeof(float), &target[0], num_pixels,
+      sizeof(TestData) / sizeof(float), &predictions[0], num_pixels,
+      sizeof(TestData) / sizeof(float), errors, height, width);
+}
+
 void TestAssignmentDataToTestData(int width, int height, int channels,
                                   int num_levels, int num_networks,
                                   int ensemble_size) {
@@ -302,7 +327,7 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
   // Call assignment_data_to_test_data
   LOG(STATUS) << "TestAssignmentDataToTestData: assignment_data_to_test_data\n";
   assignment_data_to_test_data(
-      &assignment_data[0], width, height, ensemble_size + 1, image_number,
+      &assignment_data[0], height, width, ensemble_size + 1, image_number,
       num_images, &average_image[0], height, width, channels, &test_data_out,
       &test_data_dim1, &test_data_dim2, &network_data_out, &network_data_dim1,
       &network_data_dim2);

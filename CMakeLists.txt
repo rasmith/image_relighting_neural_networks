@@ -13,10 +13,12 @@ find_package(Threads REQUIRED)
 # Set C++ flags.
 set(CMAKE_CXX_FLAGS
   "${CMAKE_CXX_FLAGS} -std=c++11 -g -fsanitize=address -fno-omit-frame-pointer")
-#set(CMAKE_CXX_FLAGS 
-  #"${CMAKE_CXX_FLAGS} -std=c++11 -O3 -Wno-deprecated-register")
+#set(cmake_cxx_flags 
+  #"${cmake_cxx_flags} -std=c++11 -o3 -wno-deprecated-register")
 #set(CMAKE_CXX_FLAGS 
   #"${CMAKE_CXX_FLAGS} -std=c++11 -g ")
+#set(CMAKE_CXX_FLAGS 
+  #"${CMAKE_CXX_FLAGS} -std=c++11 -O3 ")
 
 # Set the module path (mainly for FindXXX.cmake files)
 set(CMAKE_MODULE_PATH ${CMAKE_PATH}
@@ -39,6 +41,8 @@ set(NUMPY_CORE_LIBS
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 #include_directories("${NUMPY_CORE_INCLUDE}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/glm")
+ 
+#find_package(Curses REQUIRED)
 
 # Compile and link kmeans_test executable.
 add_executable(kmeans_test 

@@ -288,6 +288,7 @@ void GenerateTestAndAssignmentData(
 void TestPredictionsToErrors(int width, int height, int channels,
                              int ensemble_size) {
 
+  constexpr int test_size = sizeof(TestData) / sizeof(float);
   int num_pixels = width * height;
   std::vector<float> errors;
   GenerateRandomImage(width, height, channels, errors);
@@ -295,11 +296,25 @@ void TestPredictionsToErrors(int width, int height, int channels,
   GenerateRandomImage(width, height, channels, target);
   std::vector<float> predictions(num_pixels);
   for (int i = 0; i < num_pixels; ++i) predictions[i] += errors[i];
+  std::vector<float> errors_out(num_pixels, 0.0f);
+  std::vector<int> order;
+  std::vector<TestData> test(num_pixels);
+  float rgb[3] = {0.0f, 0.0f, 0.0f};
+  for (int i = 0; i < num_pixels; ++i) {
+    int x = num_pixels % width, y = num_pixels / width;
+    test[i] = TestData(x, y, 0.0f, rgb, height, height, 1);
+  }
   predictions_to_errors(
-      order, ensemble_size, &test[0], num_pixels,
-      sizeof(TestData) / sizeof(float), &target[0], num_pixels,
-      sizeof(TestData) / sizeof(float), &predictions[0], num_pixels,
-      sizeof(TestData) / sizeof(float), errors, height, width);
+      order, ensemble_size, reinterpret_cast<float*>(&test[0]), num_pixels,
+      test_size, &target[0], num_pixels, test_size, &predictions[0], num_pixels,
+      test_size, &errors[0], height, width);
+  for (int i = 0; i < num_pixels; ++i) {
+    if (!(errors_out[i] == errors[i])) {
+      LOG(ERROR) << "Error does not match at " << i << " got " << errors_out[i]
+                 << " but expected " << errors[i] << "\n";
+      assert(errors_out[i] == errors[i]);
+    }
+  }
 }
 
 void TestAssignmentDataToTestData(int width, int height, int channels,
@@ -544,7 +559,8 @@ struct Resolution {
 
 enum CommandLineOption {
   kTestPredictionsToImage,
-  kTestAssignmentDataToTestData
+  kTestAssignmentDataToTestData,
+  kTestPredictionsToErrors
 };
 
 int main(int argc, char** argv) {
@@ -602,6 +618,14 @@ int main(int argc, char** argv) {
                     << " num_networks = " << num_networks << "\n";
         TestAssignmentDataToTestData(r.width, r.height, c, num_levels,
                                      num_networks, ensemble_size);
+      }
+      break;
+    case kTestPredictionsToErrors:
+      for (auto r : resolutions) {
+        int ensemble_size = 5;
+        LOG(STATUS) << "TestPredictionsToErrors: (" << r.width << ","
+                    << r.height << ")\n";
+        TestPredictionsToErrors(r.width, r.height, c, ensemble_size);
       }
       break;
     default:

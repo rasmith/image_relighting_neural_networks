@@ -290,24 +290,32 @@ void TestPredictionsToErrors(int width, int height, int channels,
 
   constexpr int test_size = sizeof(TestData) / sizeof(float);
   int num_pixels = width * height;
+  // Create errors.
   std::vector<float> errors;
   GenerateRandomImage(width, height, channels, errors);
+  // Create target values.
   std::vector<float> target;
   GenerateRandomImage(width, height, channels, target);
-  std::vector<float> predictions(num_pixels);
-  for (int i = 0; i < num_pixels; ++i) predictions[i] += errors[i];
-  std::vector<float> errors_out(num_pixels, 0.0f);
-  std::vector<int> order;
+  // Create the predictions.
+  std::vector<float> predictions(num_pixels * channels, 0.0f);
+  for (int i = 0; i < num_pixels * channels; ++i)
+    predictions[i] = errors[i] + target[i];
+  // Create test data.
   std::vector<TestData> test(num_pixels);
   float rgb[3] = {0.0f, 0.0f, 0.0f};
   for (int i = 0; i < num_pixels; ++i) {
     int x = num_pixels % width, y = num_pixels / width;
     test[i] = TestData(x, y, 0.0f, rgb, height, height, 1);
   }
+  // Errors to be computed.
+  std::vector<float> errors_out(num_pixels, 0.0f);
+  // TODO: need to remove order, since it's not used.
+  // order.
+  std::vector<int> order;
   predictions_to_errors(
       order, ensemble_size, reinterpret_cast<float*>(&test[0]), num_pixels,
-      test_size, &target[0], num_pixels, test_size, &predictions[0], num_pixels,
-      test_size, &errors[0], height, width);
+      test_size, &target[0], num_pixels, channels, &predictions[0], num_pixels,
+      channels, &errors[0], height, width);
   for (int i = 0; i < num_pixels; ++i) {
     if (!(errors_out[i] == errors[i])) {
       LOG(ERROR) << "Error does not match at " << i << " got " << errors_out[i]

@@ -63,11 +63,6 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
 // predictions_dim1 - number of predictions, should match test_dim1
 //                 - of the form: rgb rgb rgb...
 // predictions_dim2 - should be 3
-// predicted_images_dim1 - should be 3
-// predicted_images_dim1 - should be the height
-// predicted_images_dim2 - should be the width
-// predicted_images_dim4 - number of sampled images
-
 void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                            float* test, int test_dim1, int test_dim2,
                            float* target, int target_dim1, int target_dim2,

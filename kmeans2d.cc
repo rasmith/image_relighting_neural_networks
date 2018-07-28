@@ -387,18 +387,16 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                            float* predictions, int predictions_dim1,
                            int predictions_dim2, float* errors, int errors_dim1,
                            int errors_dim2) {
-  // std::cout << "predictions_to_errors:ensemble_size = " << ensemble_size
-  //<< "\n";
-  // std::cout << "predictions_to_errors:test_dim1 = " << test_dim1 << "\n";
-  // std::cout << "predictions_to_errors:test_dim2 = " << test_dim2 << "\n";
-  // std::cout << "predictions_to_errors:predictions_dim1 = " <<
-  // predictions_dim1
-  //<< "\n";
-  // std::cout << "predictions_to_errors:predictions_dim2 = " <<
-  // predictions_dim2
-  //<< "\n";
-  // std::cout << "predictions_to_errors:errors_dim1 = " << errors_dim1 << "\n";
-  // std::cout << "predictions_to_errors:errors_dim2 = " << errors_dim2 << "\n";
+  std::cout << "predictions_to_errors:ensemble_size = " << ensemble_size
+            << "\n";
+  std::cout << "predictions_to_errors:test_dim1 = " << test_dim1 << "\n";
+  std::cout << "predictions_to_errors:test_dim2 = " << test_dim2 << "\n";
+  std::cout << "predictions_to_errors:predictions_dim1 = " << predictions_dim1
+            << "\n";
+  std::cout << "predictions_to_errors:predictions_dim2 = " << predictions_dim2
+            << "\n";
+  std::cout << "predictions_to_errors:errors_dim1 = " << errors_dim1 << "\n";
+  std::cout << "predictions_to_errors:errors_dim2 = " << errors_dim2 << "\n";
   const int num_threads = 8;
   std::vector<float> totals(num_threads, 0.0f);
   std::vector<std::thread> threads(num_threads);
@@ -434,8 +432,15 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                         int x = round(*(test_pos) * (errors_dim2 - 1));
                         int y = round(*(test_pos + 1) * (errors_dim1 - 1));
                         for (int c = 0; c < 3; ++c) {
-                          errors[y * test_dim2 + x] +=
-                              predictions_pos[c] - target_pos[c];
+                          assert(y * test_dim2 + x < errors_dim1 * errors_dim2);
+                          assert(y * test_dim2 + x >= 0);
+                          float* e = errors + y * test_dim2 + x;
+                          float p = predictions_pos[c];
+                          float t = target_pos[c];
+                          float diff = p - t;
+                          *e = diff;
+                          // errors[y * test_dim2 + x] +=
+                          // predictions_pos[c] - target_pos[c];
                           totals[tid] += predictions_pos[c];
                         }
                         target_pos += target_dim2;

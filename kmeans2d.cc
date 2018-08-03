@@ -428,23 +428,53 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                       float* target_pos = target + target_dim2 * start;
                       float* predictions_pos =
                           predictions + predictions_dim2 * start;
+                      int k = 0;
                       for (int i = start; i < end; ++i) {
                         int x = round(*(test_pos) * (errors_dim2 - 1));
                         int y = round(*(test_pos + 1) * (errors_dim1 - 1));
+                        int index = y * errors_dim2 + x;
+                        if (!(index >= 0 &&
+                              index < errors_dim2 * errors_dim1)) {
+                          LOG(ERROR) << "x_ = " << *test_pos
+                                     << " y_ = " << *(predictions_pos + 1)
+                                     << " x = " << x << " y = " << y
+                                     << " index = " << index << "\n";
+                          assert(index >= 0 && index < test_dim1 * test_dim2);
+                        }
+                        errors[index] = 0.0f;
+                        if (tid == 0) {
+                          if (k <= 10) {
+                            std::cout << "(" << x << ", " << y << ")"
+                                      << " p = ";
+
+                            for (int c = 0; c < 3; ++c) {
+                              std::cout << predictions_pos[c] << " ";
+                            }
+                            std::cout << "t = ";
+                            for (int c = 0; c < 3; ++c) {
+                              std::cout << target_pos[c] << " ";
+                            }
+                            std::cout << "e = ";
+                          }
+                        }
                         for (int c = 0; c < 3; ++c) {
-                          assert(y * test_dim2 + x < errors_dim1 * errors_dim2);
-                          assert(y * test_dim2 + x >= 0);
-                          float* e = errors + y * test_dim2 + x;
+                          int index = y * test_dim2 + x;
+                          if (!(index >= 0 && index < test_dim1 * test_dim2)) {
+                            LOG(ERROR) << "index = " << index << "\n";
+                            assert(index >= 0 && index < test_dim1 * test_dim2);
+                          }
                           float p = predictions_pos[c];
                           float t = target_pos[c];
-                          float diff = p - t;
-                          *e = diff;
-                          // errors[y * test_dim2 + x] +=
-                          // predictions_pos[c] - target_pos[c];
+                          errors[index] += fabs(p - t);
                           totals[tid] += predictions_pos[c];
+                          if (tid == 0 && k <= 10)
+                            std::cout << errors[y * test_dim2 + x] << " ";
                         }
                         target_pos += target_dim2;
                         predictions_pos += predictions_dim2;
+                        test_pos += test_dim2;
+                        if (tid == 0 && k <= 10) std::cout << "\n";
+                        ++k;
                       }
                     },
                     t);

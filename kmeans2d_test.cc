@@ -1,8 +1,11 @@
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <cstdlib>
+#include <fstream>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <queue>
 #include <string>
 #include <unordered_set>
@@ -25,6 +28,21 @@
       assert(bounds_check);                                               \
     }                                                                     \
   }
+
+template <typename T>
+void MatlabToC(int width, int height, int channels, std::vector<T>& data) {}
+
+template <typename T>
+void LoadBinaryMatlabData(std::string path, int width, int height, int channels,
+                          std::vector<T>& data) {
+  int count = width * height * channels;
+  std::ifstream ifs(path, std::ios::in | std::ios::binary);
+  data.resize(count);
+  if (!ifs.good()) LOG(ERROR) << path << " is bad.\n";
+  assert(ifs.good());
+  ifs.read(reinterpret_cast<char*>(&data[0]), count * sizeof(T));
+  MatlabToC(width, height, channels, data);
+}
 
 bool ContainsDuplicates(const NetworkData* network_data, int count) {
   std::unordered_set<NetworkData, HashNetworkData, CompareNetworkData>
@@ -289,37 +307,64 @@ void TestPredictionsToErrors(int width, int height, int channels,
                              int ensemble_size) {
 
   constexpr int test_size = sizeof(TestData) / sizeof(float);
+  const static char data_dir[] =
+      "/home/agrippa/projects/image_relighting_neural_networks/"
+      "predictions_to_errors_test_data/";
+  std::string error_path = std::string(data_dir) + "error-" +
+                           std::to_string(width) + "x" +
+                           std::to_string(height) + ".bin";
+  std::string prediction_path = std::string(data_dir) + "prediction-" +
+                                std::to_string(width) + "x" +
+                                std::to_string(height) + ".bin";
+  std::string target_path = std::string(data_dir) + "target-" +
+                            std::to_string(width) + "x" +
+                            std::to_string(height) + ".bin";
   int num_pixels = width * height;
-  // Create errors.
-  std::vector<float> errors;
-  GenerateRandomImage(width, height, channels, errors);
-  // Create target values.
-  std::vector<float> target;
-  GenerateRandomImage(width, height, channels, target);
-  // Create the predictions.
-  std::vector<float> predictions(num_pixels * channels, 0.0f);
-  for (int i = 0; i < num_pixels * channels; ++i)
-    predictions[i] = errors[i] + target[i];
-  // Create test data.
-  std::vector<TestData> test(num_pixels);
-  float rgb[3] = {0.0f, 0.0f, 0.0f};
-  for (int i = 0; i < num_pixels; ++i) {
-    int x = num_pixels % width, y = num_pixels / width;
-    test[i] = TestData(x, y, 0.0f, rgb, height, height, 1);
-  }
-  // Errors to be computed.
-  std::vector<float> errors_out(num_pixels, 0.0f);
-  // TODO: need to remove order, since it's not used.
-  // order.
   std::vector<int> order;
+  if (!(width == 800 && height == 600)) {
+    return;
+  }
+
+  const float rgb[3] = {0.0f, 0.0f, 0.0f};
+  std::vector<TestData> test(num_pixels);
+  for (int i = 0; i < num_pixels; ++i)
+    test[i] =
+        TestData(i % width, i / width, 0.0f, &rgb[0], width, height, 2.0f);
+
+  std::vector<float> errors_out;
+  std::vector<float> errors;
+  LoadBinaryMatlabData(error_path, width, height, 1, errors);
+  std::vector<float> predictions;
+  LoadBinaryMatlabData(prediction_path, width, height, channels, predictions);
+  std::vector<float> target;
+  LoadBinaryMatlabData(target_path, width, height, channels, target);
+  if (width == 800 && height == 600) {
+    for (int i = 0; i < num_pixels * channels; ++i)
+      assert(predictions[i] >= 0.0f);
+    for (int i = 0; i < num_pixels * channels; ++i) assert(target[i] >= 0.0f);
+    for (int i = 0; i < num_pixels; ++i) assert(errors[i] >= 0.0f);
+    for (int i = 0; i < 10; ++i)
+      LOG(STATUS) << "errors[" << i << "]=" << errors[height + i] << "\n";
+    for (int i = 0; i < 10; ++i)
+      LOG(STATUS) << "predictions[" << i
+                  << "]=" << predictions[width * height + i] << "\n";
+    for (int i = 0; i < 10; ++i)
+      LOG(STATUS) << "target[" << i << "]=" << target[channels * width + i]
+                  << "\n";
+  }
+  return;
+
   predictions_to_errors(
       order, ensemble_size, reinterpret_cast<float*>(&test[0]), num_pixels,
       test_size, &target[0], num_pixels, channels, &predictions[0], num_pixels,
-      channels, &errors[0], height, width);
+      channels, &errors_out[0], height, width);
   for (int i = 0; i < num_pixels; ++i) {
-    if (!(errors_out[i] == errors[i])) {
+    if (fabs(errors_out[i] - errors[i]) > 1e-5) {
       LOG(ERROR) << "Error does not match at " << i << " got " << errors_out[i]
                  << " but expected " << errors[i] << "\n";
+      for (int j = 0; j < 10; ++j) {
+        LOG(ERROR) << "errors_out[" << j << "]=" << errors_out[j] << "\n";
+      }
       assert(errors_out[i] == errors[i]);
     }
   }

@@ -29,9 +29,39 @@
     }                                                                     \
   }
 
+// TransformMatlabToC
+//  width - width of data
+//  height - height of data
+//  channels - number of channels
+//  data - data to transform
+//
+//  Transforms planar, column major order Matlab matrices to
+//  the usual interleaved, row major order.
 template <typename T>
-void MatlabToC(int width, int height, int channels, std::vector<T>& data) {}
+void TransformMatlabToC(int width, int height, int channels,
+                        std::vector<T>& data) {
+  std::vector<T> a(width * height * channels);
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      for (int c = 0; c < channels; ++c) {
+        a[channels * (y * width + x) + c] = data[height * (width * c + x) + y];
+      }
+    }
+  }
+  std::copy(a.begin(), a.end(), data.begin());
+}
 
+// LoadBinaryMatlabData -
+//  path - path to .bin file exported from Matlab using:
+//                 fwrite(fid,x,'float',0,'l');
+//         where 'x' is an matrix in Matlab.
+//  width - width of data
+//  height - height of data
+//  channels - number of channels
+//
+//  This reads data in little endian format.  Since Matlab stores
+//  .bin files in planar format using column major order, the binary
+//  data is permuted to fit interleaved, row major order.
 template <typename T>
 void LoadBinaryMatlabData(std::string path, int width, int height, int channels,
                           std::vector<T>& data) {
@@ -41,7 +71,7 @@ void LoadBinaryMatlabData(std::string path, int width, int height, int channels,
   if (!ifs.good()) LOG(ERROR) << path << " is bad.\n";
   assert(ifs.good());
   ifs.read(reinterpret_cast<char*>(&data[0]), count * sizeof(T));
-  MatlabToC(width, height, channels, data);
+  TransformMatlabToC(width, height, channels, data);
 }
 
 bool ContainsDuplicates(const NetworkData* network_data, int count) {
@@ -331,33 +361,34 @@ void TestPredictionsToErrors(int width, int height, int channels,
     test[i] =
         TestData(i % width, i / width, 0.0f, &rgb[0], width, height, 2.0f);
 
-  std::vector<float> errors_out;
   std::vector<float> errors;
   LoadBinaryMatlabData(error_path, width, height, 1, errors);
   std::vector<float> predictions;
   LoadBinaryMatlabData(prediction_path, width, height, channels, predictions);
   std::vector<float> target;
   LoadBinaryMatlabData(target_path, width, height, channels, target);
-  if (width == 800 && height == 600) {
-    for (int i = 0; i < num_pixels * channels; ++i)
-      assert(predictions[i] >= 0.0f);
-    for (int i = 0; i < num_pixels * channels; ++i) assert(target[i] >= 0.0f);
-    for (int i = 0; i < num_pixels; ++i) assert(errors[i] >= 0.0f);
-    for (int i = 0; i < 10; ++i)
-      LOG(STATUS) << "errors[" << i << "]=" << errors[height + i] << "\n";
-    for (int i = 0; i < 10; ++i)
-      LOG(STATUS) << "predictions[" << i
-                  << "]=" << predictions[width * height + i] << "\n";
-    for (int i = 0; i < 10; ++i)
-      LOG(STATUS) << "target[" << i << "]=" << target[channels * width + i]
-                  << "\n";
-  }
-  return;
+  // if (width == 800 && height == 600) {
+  // for (int i = 0; i < num_pixels * channels; ++i)
+  // assert(predictions[i] >= 0.0f);
+  // for (int i = 0; i < num_pixels * channels; ++i) assert(target[i] >= 0.0f);
+  // for (int i = 0; i < num_pixels; ++i) assert(errors[i] >= 0.0f);
+  // for (int i = 0; i < 10; ++i)
+  // LOG(STATUS) << "errors[" << i << "]=" << errors[i] << "\n";
+  // for (int i = 0; i < 10; ++i)
+  // LOG(STATUS) << "predictions[" << i
+  //<< "]=" << predictions[width * channels + i] << "\n";
+  // for (int i = 0; i < 10; ++i)
+  // LOG(STATUS) << "target[" << i << "]=" << target[width * channels + i]
+  //<< "\n";
+  //}
+  // return;
 
+  std::vector<float> errors_out(width * height, 0.0f);
   predictions_to_errors(
       order, ensemble_size, reinterpret_cast<float*>(&test[0]), num_pixels,
       test_size, &target[0], num_pixels, channels, &predictions[0], num_pixels,
       channels, &errors_out[0], height, width);
+  return;
   for (int i = 0; i < num_pixels; ++i) {
     if (fabs(errors_out[i] - errors[i]) > 1e-5) {
       LOG(ERROR) << "Error does not match at " << i << " got " << errors_out[i]

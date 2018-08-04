@@ -187,8 +187,6 @@ void GenerateTestAndAssignmentData(
   TestData* test_pos = &test_data[0];
   int total = 0;
   for (int level = 0; level < num_levels; ++level) {
-    // LOG(DEBUG) << " ---------------------------------------------- \n";
-    // LOG(DEBUG) << "GenerateTestAndAssignmentData: level = " << level << "\n";
     // 0. Compute number of neural networks, pixels to use, and limits on
     // maximum pixels any neural network can be assigned.
     int networks_at_level =
@@ -199,20 +197,12 @@ void GenerateTestAndAssignmentData(
         std::ceil(static_cast<float>(ensemble_size * pixels_at_level) /
                   networks_at_level);
     int current_network = 0;
-    // LOG(DEBUG)
-    //<< "GenerateTestAndAssignmentData: num_pixels / num_levels + 1 = "
-    //<< num_pixels / num_levels + 1 << " pixels.size() = " << pixels.size()
-    //<< "\n";
     LOG(STATUS) << "GenerateTestAndAssignmentData: networks_at_level= "
                 << networks_at_level << " pixels_at_level = " << pixels_at_level
                 << " pixels_per_network = " << pixels_per_network
-        //<< " max_count = " << *max_count
                 << " pixels.size=" << pixels.size() << "\n";
-    // LOG(DEBUG) << " GenerateTestAndAssignmentData: networks_left = "
-    //<< networks_left << "\n";
     networks_left -= networks_at_level;
     assert(networks_left >= 0);
-    // LOG(DEBUG) << " GenerateTestAndAssignmentData: fill\n";
     assert(test_pos >= &test_data[0]);
     assert(test_pos - &test_data[0] == test_data.size());
     int offset = test_pos - &test_data[0];
@@ -221,7 +211,6 @@ void GenerateTestAndAssignmentData(
     test_pos = &test_data[0] + offset;
     assert(test_pos >= &test_data[0]);
     assert(test_pos - &test_data[0] < test_data.size());
-    // LOG(DEBUG) << " GenerateTestAndAssignmentData: populate network data\n";
     for (int i = 0; i < networks_at_level; ++i) {
       assert(network_pos >= &network_data[0]);
       assert((network_pos - &network_data[0]) + i < network_data.size());
@@ -251,42 +240,19 @@ void GenerateTestAndAssignmentData(
       assert(assignment_data_size * pixel_index <
              assignment_data_size * width * height);
       assignments[assignment_data_size * pixel_index] = level;
-      // LOG(DEBUG) << "GenerateTestAndAssignmentData: assign networks to (" <<
-      // x
-      //<< "," << y << ")\n";
       float* rgb = &average[pixel_index * channels];
       TestData data(x, y, *image_number, rgb, width, height, *num_images);
-      // if (pixel_index <= 10)
-      // std::cout << "GenerateTestAndAssignmentData: level = " << level
-      //<< " pixel_index = " << pixel_index << " " << data << "\n";
       for (int j = 0; j < ensemble_size; ++j) {
-        // LOG(DEBUG) << "GenerateTestAndAssignmentData: assign network "
-        //<< current_network << " to (" << x << "," << y << ")\n";
         assert(network_pos >= &network_data[0] &&
                ((network_pos - &network_data[0]) + current_network <
                 network_data.size()));
         assert(current_network >= 0 && current_network < networks_at_level);
         NetworkData* network = &network_pos[current_network];
         int index = current_network * pixels_per_network + network->count;
-        // LOG(DEBUG) << "GenerateTestAndAssignmentData: add to test data\n";
-        // LOG(DEBUG) << "GenerateTestAndAssignmentData: current_network = "
-        //<< current_network
-        //<< " pixels_per_network = " << pixels_per_network
-        //<< " network->count = " << network->count
-        //<< " index = " << index << " pixel_index = " << pixel_index
-        //<< "\n";
         assert(pixel_index >= 0 && pixel_index < num_pixels);
         assert(pixel_index * channels <= width * height * channels);
         assert(pixel_index >= 0);
-        // LOG(DEBUG) << "GenerateTestAndAssignmentData: get rgb values: r = "
-        //<< rgb[0] << " g = " << rgb[1] << " b = " << rgb[2] << "\n";
-        //// LOG(DEBUG) << "GenerateTestAndAssignmentData: assign to
-        /// test_pos\n";
-        // assert(index >= 0);
-        // assert(test_pos >= &test_data[0] &&
-        //((test_pos - &test_data[0]) + index < test_data.size()));
         test_pos[index] = data;
-        //++network->count;
         ++network->count;
         ++total;
         if (!(network->count >= 0 && network->count <= pixels_per_network)) {
@@ -294,13 +260,10 @@ void GenerateTestAndAssignmentData(
                      << " and limit is " << pixels_per_network << "\n";
         }
         assert(network->count >= 0 && network->count <= pixels_per_network);
-        // LOG(DEBUG) << "GenerateTestAndAssignmentData: add assignment\n";
         assert(assignment_data_size * pixel_index + j + 1 <=
                width * height * assignment_data_size);
         assignments[assignment_data_size * pixel_index + j + 1] =
             current_network;
-        // LOG(DEBUG) << "GenerateTestAndAssignmentData: next
-        // current_network\n";
         current_network = (current_network + 1) % networks_at_level;
         assert(current_network >= 0 && current_network < networks_at_level);
       }
@@ -310,28 +273,12 @@ void GenerateTestAndAssignmentData(
   }
   assert(network_data.size() == num_networks);
   assert(pixels.size() == 0);
-  // return;
-  // bool contains_duplicates =
-  // ContainsDuplicates(&network_data[0], network_data.size());
-  // if (contains_duplicates) {
-  // LOG(ERROR)
-  //<< "GenerateTestAndAssignmentData: network_data contains duplicates.\n";
-  // assert(!contains_duplicates);
-  //}
   if (total != num_pixels * ensemble_size) {
     LOG(ERROR) << "Expected " << num_pixels * ensemble_size
                << " test entries, but got  " << total << " test entries.\n";
     assert(total == num_pixels * ensemble_size);
   }
 }
-
-// void predictions_to_errors(std::vector<int>& order, int ensemble_size,
-// float* test, int test_dim1, int test_dim2,
-// float* target, int target_dim1, int target_dim2,
-// float* predictions, int predictions_dim1,
-// int predictions_dim2, float* errors, int errors_dim1,
-// int errors_dim2) {
-//
 
 void TestPredictionsToErrors(int width, int height, int channels,
                              int ensemble_size) {
@@ -351,9 +298,6 @@ void TestPredictionsToErrors(int width, int height, int channels,
                             std::to_string(height) + ".bin";
   int num_pixels = width * height;
   std::vector<int> order;
-  if (!(width == 800 && height == 600)) {
-    return;
-  }
 
   const float rgb[3] = {0.0f, 0.0f, 0.0f};
   std::vector<TestData> test(num_pixels);
@@ -367,22 +311,6 @@ void TestPredictionsToErrors(int width, int height, int channels,
   LoadBinaryMatlabData(prediction_path, width, height, channels, predictions);
   std::vector<float> target;
   LoadBinaryMatlabData(target_path, width, height, channels, target);
-  // if (width == 800 && height == 600) {
-  // for (int i = 0; i < num_pixels * channels; ++i)
-  // assert(predictions[i] >= 0.0f);
-  // for (int i = 0; i < num_pixels * channels; ++i) assert(target[i] >= 0.0f);
-  // for (int i = 0; i < num_pixels; ++i) assert(errors[i] >= 0.0f);
-  // for (int i = 0; i < 10; ++i)
-  // LOG(STATUS) << "errors[" << i << "]=" << errors[i] << "\n";
-  // for (int i = 0; i < 10; ++i)
-  // LOG(STATUS) << "predictions[" << i
-  //<< "]=" << predictions[width * channels + i] << "\n";
-  // for (int i = 0; i < 10; ++i)
-  // LOG(STATUS) << "target[" << i << "]=" << target[width * channels + i]
-  //<< "\n";
-  //}
-  // return;
-
   std::vector<float> errors_out(width * height, 0.0f);
   predictions_to_errors(
       order, ensemble_size, reinterpret_cast<float*>(&test[0]), num_pixels,
@@ -429,17 +357,6 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
       num_images, &average_image[0], height, width, channels, &test_data_out,
       &test_data_dim1, &test_data_dim2, &network_data_out, &network_data_dim1,
       &network_data_dim2);
-
-  // const TestData* test_data_pos =
-  // reinterpret_cast<const TestData*>(&test_data[0]);
-  // const TestData* location = std::find_if(
-  // test_data_pos, test_data_pos + test_data_dim1,
-  //[](const TestData & t)->bool { return t.equalsXy(0.0f, 0.0f); });
-  // if (location == test_data_pos + test_data_dim1) {
-  // LOG(ERROR) << "Did not find (0, 0, 0) anywwhere!";
-  //} else {
-  // LOG(ERROR) << "Found (0, 0, 0) at " << location << "\n";
-  //}
 
   LOG(STATUS) << "TestAssignmentDataToTestData: contains_duplicates\n";
   bool contains_duplicates = ContainsDuplicates(

@@ -209,31 +209,29 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
   int train_data_size = pixel_dim + light_dim + coord_dim;
   int target_data_size = pixel_dim;
   int num_images = train_data_dim1 / (closest_dim1 * closest_dim2);
-  // std::cout << "closest_k_test_target: num_images = " << num_images << "\n";
-  // std::cout << "closest_k_test_target: closest_dim1 = " << closest_dim1 <<
-  // "\n";
-  // std::cout << "closest_k_test_target: closest_dim2 = " << closest_dim2 <<
-  // "\n";
-  // std::cout << "closest_k_test_target: closest_dim3 = " << closest_dim3 <<
-  // "\n";
-  // std::cout << "closest_k_test_target: k = " << k << "\n";
+  LOG(DEBUG) << "closest_k_test_target: num_images = " << num_images << "\n";
+  LOG(DEBUG) << "closest_k_test_target: closest_dim1 = " << closest_dim1
+             << "\n";
+  LOG(DEBUG) << "closest_k_test_target: closest_dim2 = " << closest_dim2
+             << "\n";
+  LOG(DEBUG) << "closest_k_test_target: closest_dim3 = " << closest_dim3
+             << "\n";
+  LOG(DEBUG) << "closest_k_test_target: k = " << k << "\n";
   // closest = np.zeros((height, width, channels))
   // Count how many pixels are k-th closest to this cluster.
-  // std::cout << "closest_k_test_target: count pixels\n";
-  // std::cout << "closest_k_test_target: train_data_dim1 = " << train_data_dim1
-  //<< "\n";
-  // std::cout << "closest_k_test_target: train_data_dim2 = " << train_data_dim2
-  //<< "\n";
-  // std::cout << "closest_k_test_target: train_total = "
-  //<< (train_data_dim1 * train_data_dim2) << "\n";
-  // std::cout << "closest_k_test_target: target_data_dim1 = " <<
-  // target_data_dim1
-  //<< "\n";
-  // std::cout << "closest_k_test_target: target_data_dim2 = " <<
-  // target_data_dim2
-  //<< "\n";
-  // std::cout << "closest_k_test_target: target_data_total = "
-  //<< (target_data_dim1 * target_data_dim2) << "\n";
+  LOG(DEBUG) << "closest_k_test_target: count pixels\n";
+  LOG(DEBUG) << "closest_k_test_target: train_data_dim1 = " << train_data_dim1
+             << "\n";
+  LOG(DEBUG) << "closest_k_test_target: train_data_dim2 = " << train_data_dim2
+             << "\n";
+  LOG(DEBUG) << "closest_k_test_target: train_total = "
+             << (train_data_dim1 * train_data_dim2) << "\n";
+  LOG(DEBUG) << "closest_k_test_target: target_data_dim1 = " << target_data_dim1
+             << "\n";
+  LOG(DEBUG) << "closest_k_test_target: target_data_dim2 = " << target_data_dim2
+             << "\n";
+  LOG(DEBUG) << "closest_k_test_target: target_data_total = "
+             << (target_data_dim1 * target_data_dim2) << "\n";
   int cluster_size = 0;
   for (int y = 0; y < closest_dim1; ++y) {
     for (int x = 0; x < closest_dim2; ++x) {
@@ -242,23 +240,23 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
     }
   }
 
-  // std::cout << "closest_k_test_target: cluster_size = " << cluster_size <<
-  // "\n";
+  LOG(DEBUG) << "closest_k_test_target: cluster_size = " << cluster_size
+             << "\n";
   // Set test and target dimensions.
-  // std::cout << "closest_k_test_target:allocate test\n";
+  LOG(DEBUG) << "closest_k_test_target:allocate test\n";
   *test_dim1 = cluster_size * num_images;
   *test_dim2 = train_data_size;
   *test = new float[(*test_dim1) * (*test_dim2)];
-  // std::cout << "closest_k_test_target:allocate target\n";
+  LOG(DEBUG) << "closest_k_test_target:allocate target\n";
   *target_dim1 = cluster_size * num_images;
   *target_dim2 = target_data_size;
   *target = new float[(*target_dim1) * (*target_dim2)];
-  // std::cout << "closest_k_test_target: test_dim1 = " << *test_dim1
-  //<< " test_dim2 = " << *test_dim2
-  //<< " total = " << (*test_dim1) * (*test_dim2) << "\n";
-  // std::cout << "closest_k_target_target: target_dim1 = " << *target_dim1
-  //<< " target_dim2 = " << *target_dim2
-  //<< " total = " << (*target_dim1) * (*target_dim2) << "\n";
+  LOG(DEBUG) << "closest_k_test_target: test_dim1 = " << *test_dim1
+             << " test_dim2 = " << *test_dim2
+             << " total = " << (*test_dim1) * (*test_dim2) << "\n";
+  LOG(DEBUG) << "closest_k_target_target: target_dim1 = " << *target_dim1
+             << " target_dim2 = " << *target_dim2
+             << " total = " << (*target_dim1) * (*target_dim2) << "\n";
 
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
@@ -366,19 +364,9 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
   for (int t = 0; t < num_threads; ++t) threads[t].join();
   int total_visited = 0;
   for (int t = 0; t < num_threads; ++t) {
-    // std::cout << "Thread " << t << " visited " << visited[t] << " values.\n";
+    LOG(DEBUG) << "Thread " << t << " visited " << visited[t] << " values.\n";
     total_visited += visited[t];
-    // std::cout << "t=" << t << " start =" << starts[t] << " end = " << ends[t]
-    //<< "\n";
-    // std::cout << "test_out_start = " << test_out_starts[t]
-    //<< " test_out_ends = " << test_out_ends[t] << "\n";
-    // std::cout << "target_out_start = " << target_out_starts[t]
-    //<< " target_out_ends = " << target_out_ends[t] << "\n";
-    // std::cout << "train_in_start = " << train_in_starts[t]
-    //<< " train_in_ends = " << train_in_ends[t] << "\n";
-    // std::cout << "pixels_copied = " << pixels_copied[t] << "\n";
   }
-  // std::cout << "Visited " << total_visited << " values.\n";
 }
 
 void predictions_to_errors(std::vector<int>& order, int ensemble_size,
@@ -387,16 +375,16 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                            float* predictions, int predictions_dim1,
                            int predictions_dim2, float* errors, int errors_dim1,
                            int errors_dim2) {
-  std::cout << "predictions_to_errors:ensemble_size = " << ensemble_size
-            << "\n";
-  std::cout << "predictions_to_errors:test_dim1 = " << test_dim1 << "\n";
-  std::cout << "predictions_to_errors:test_dim2 = " << test_dim2 << "\n";
-  std::cout << "predictions_to_errors:predictions_dim1 = " << predictions_dim1
-            << "\n";
-  std::cout << "predictions_to_errors:predictions_dim2 = " << predictions_dim2
-            << "\n";
-  std::cout << "predictions_to_errors:errors_dim1 = " << errors_dim1 << "\n";
-  std::cout << "predictions_to_errors:errors_dim2 = " << errors_dim2 << "\n";
+  LOG(DEBUG) << "predictions_to_errors:ensemble_size = " << ensemble_size
+             << "\n";
+  LOG(DEBUG) << "predictions_to_errors:test_dim1 = " << test_dim1 << "\n";
+  LOG(DEBUG) << "predictions_to_errors:test_dim2 = " << test_dim2 << "\n";
+  LOG(DEBUG) << "predictions_to_errors:predictions_dim1 = " << predictions_dim1
+             << "\n";
+  LOG(DEBUG) << "predictions_to_errors:predictions_dim2 = " << predictions_dim2
+             << "\n";
+  LOG(DEBUG) << "predictions_to_errors:errors_dim1 = " << errors_dim1 << "\n";
+  LOG(DEBUG) << "predictions_to_errors:errors_dim2 = " << errors_dim2 << "\n";
   const int num_threads = 8;
   std::vector<float> totals(num_threads, 0.0f);
   std::vector<std::thread> threads(num_threads);
@@ -438,13 +426,13 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                           errors[index] +=
                               fabs(predictions_pos[c] - target_pos[c]);
                           totals[tid] += target_pos[c];
-                          if (tid == 0 && k <= 10)
-                            std::cout << errors[y * test_dim2 + x] << " ";
+                          //if (tid == 0 && k <= 10)
+                            //std::cout << errors[y * test_dim2 + x] << " ";
                         }
                         target_pos += target_dim2;
                         predictions_pos += predictions_dim2;
                         test_pos += test_dim2;
-                        if (tid == 0 && k <= 10) std::cout << "\n";
+                        //if (tid == 0 && k <= 10) std::cout << "\n";
                         ++k;
                       }
                     },
@@ -458,7 +446,7 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
         [&total, &errors, &errors_dim1, &errors_dim2, &num_threads ](int tid)
                                                                         ->void {
           int total = errors_dim1 * errors_dim2;
-          int block_size = total  / num_threads + 1;
+          int block_size = total / num_threads + 1;
           int start = tid * block_size;
           int end = std::min(start + block_size, total);
           for (int i = start; i < end; ++i) errors[i] /= total;
@@ -591,11 +579,6 @@ void assignment_data_to_test_data(
     int average_image_dim3, float** test_data, int* test_data_dim1,
     int* test_data_dim2, int** network_data, int* network_data_dim1,
     int* network_data_dim2) {
-  // assignment_data_to_test_data(
-  //&assignment_data[0], width, height, ensemble_size + 1, image_number,
-  // num_images, &average_image[0], height, width, channels, &test_data_out,
-  //&test_data_dim1, &test_data_dim2, &network_data_out, &network_data_dim1,
-  //&network_data_dim2);
   int width = assignment_data_dim2;
   int height = assignment_data_dim1;
   int num_pixels = width * height;
@@ -608,9 +591,6 @@ void assignment_data_to_test_data(
       reinterpret_cast<const AssignmentData*>(&assignment_data[0]);
   for (int i = 0; i < num_pixels; ++i) {
     int x = i % width, y = i / width;
-    // if (x == 131 && y == 340)
-    // LOG(STATUS) << "x = " << x << " y = " << y << " level = " << pos->level
-    //<< "\n";
     for (int j = 0; j < ensemble_size; ++j) {
       NetworkData query(pos->level, (*pos)[j]);
       if (network_map.find(query) == network_map.end())
@@ -648,11 +628,6 @@ void assignment_data_to_test_data(
     for (int i = 0; i < entry.second.size(); ++i) {
       int pixel_index = entry.second[i], x = pixel_index % width,
           y = pixel_index / width;
-      // if (x == 131 && y == 340)
-      // LOG(STATUS) << "x = " << x << " y = " << y
-      //<< " level = " << entry.first.level
-      //<< " n.level = " << networks.back().level
-      //<< " idx = " << networks.size() - 1 << "\n";
       assert(entry.first.level == pos[pixel_index].level);
       assert(pixel_index >= 0 && pixel_index < num_pixels);
       test_pos[networks.back().start + i] = TestData(
@@ -672,8 +647,6 @@ void assignment_data_to_test_data(
   --network_pos;
   for (int i = 0; i < networks.size(); ++i) {
     *++network_pos = networks[i];
-    // if (i == 411 || i == 626 || i == 632 || i == 634 || i == 733)
-    // LOG(STATUS) << "i = " << i << " level = " << network_pos->level << "\n";
   }
   for (int i = 0; i < assignment_counts.size(); ++i) {
     if (assignment_counts[i] != ensemble_size) {

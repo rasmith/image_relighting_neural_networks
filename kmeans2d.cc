@@ -433,40 +433,11 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                         int x = round(*(test_pos) * (errors_dim2 - 1));
                         int y = round(*(test_pos + 1) * (errors_dim1 - 1));
                         int index = y * errors_dim2 + x;
-                        if (!(index >= 0 &&
-                              index < errors_dim2 * errors_dim1)) {
-                          LOG(ERROR) << "x_ = " << *test_pos
-                                     << " y_ = " << *(predictions_pos + 1)
-                                     << " x = " << x << " y = " << y
-                                     << " index = " << index << "\n";
-                          assert(index >= 0 && index < test_dim1 * test_dim2);
-                        }
-                        errors[index] = 0.0f;
-                        if (tid == 0) {
-                          if (k <= 10) {
-                            std::cout << "(" << x << ", " << y << ")"
-                                      << " p = ";
-
-                            for (int c = 0; c < 3; ++c) {
-                              std::cout << predictions_pos[c] << " ";
-                            }
-                            std::cout << "t = ";
-                            for (int c = 0; c < 3; ++c) {
-                              std::cout << target_pos[c] << " ";
-                            }
-                            std::cout << "e = ";
-                          }
-                        }
                         for (int c = 0; c < 3; ++c) {
-                          int index = y * test_dim2 + x;
-                          if (!(index >= 0 && index < test_dim1 * test_dim2)) {
-                            LOG(ERROR) << "index = " << index << "\n";
-                            assert(index >= 0 && index < test_dim1 * test_dim2);
-                          }
-                          float p = predictions_pos[c];
-                          float t = target_pos[c];
-                          errors[index] += fabs(p - t);
-                          totals[tid] += predictions_pos[c];
+                          int index = y * errors_dim2 + x;
+                          errors[index] +=
+                              fabs(predictions_pos[c] - target_pos[c]);
+                          totals[tid] += target_pos[c];
                           if (tid == 0 && k <= 10)
                             std::cout << errors[y * test_dim2 + x] << " ";
                         }
@@ -486,9 +457,10 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
     threads[t] = std::thread(
         [&total, &errors, &errors_dim1, &errors_dim2, &num_threads ](int tid)
                                                                         ->void {
-          int block_size = errors_dim1 / num_threads + 1;
+          int total = errors_dim1 * errors_dim2;
+          int block_size = total  / num_threads + 1;
           int start = tid * block_size;
-          int end = std::min(start + block_size, errors_dim1);
+          int end = std::min(start + block_size, total);
           for (int i = start; i < end; ++i) errors[i] /= total;
         },
         t);

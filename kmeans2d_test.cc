@@ -388,7 +388,6 @@ void TestPredictionsToErrors(int width, int height, int channels,
       order, ensemble_size, reinterpret_cast<float*>(&test[0]), num_pixels,
       test_size, &target[0], num_pixels, channels, &predictions[0], num_pixels,
       channels, &errors_out[0], height, width);
-  return;
   for (int i = 0; i < num_pixels; ++i) {
     if (fabs(errors_out[i] - errors[i]) > 1e-5) {
       LOG(ERROR) << "Error does not match at " << i << " got " << errors_out[i]

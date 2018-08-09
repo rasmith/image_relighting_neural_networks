@@ -672,7 +672,7 @@ void predictions_to_image(float* image_out, int image_out_dim1,
     int x = (width - 1) * (*test_pos);
     int y = (height - 1) * (*(test_pos + 1));
     for (int j = 0; j < image_out_dim3; ++j)
-      image_out[image_out_dim3 * (y * width + x) + j] = *(predictions_pos + j);
+      image_out[image_out_dim3 * (y * width + x) + j] += *(predictions_pos + j);
     test_pos += test_dim2;
   }
 }

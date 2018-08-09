@@ -56,13 +56,6 @@ test_data, ensemble_data = kmeans2d.assignment_data_to_test_data(\
 print ("test_data.shape = %s, ensemble_data.shape = %s" % \
   (test_data.shape, ensemble_data.shape))
 
-# void assignment_data_to_test_data(
-    # int* assignment_data, int assignment_data_dim_1, int assignment_data_dim_2,
-    # int assignment_data_dim_3, int image_number, int num_images,
-    # float* average_image, int average_image_dim_1, int average_image_dim_2,
-    # float** test_data, int* test_data_dim_1, int* test_data_dim_2,
-    # int** ensemble_data, int* ensemble_data_dim_1, int* ensemble_data_dim_2);
-
 # # predict image pixels
 light_dim = 1
 num_hidden_nodes = 15 
@@ -125,7 +118,7 @@ def main():
       # print("test = %s" % (test_out))
   image_out = np.divide(image_out, float(ensemble_size))
   end = time.clock()
-  image_file_name = str(sys.argv[2]) + '.png'
+  image_file_name = "render_images/" + str(sys.argv[2]) + '.png'
   print("time = %5.5f" % (end - start))
   print("saved %s" % (image_file_name))
   mpimg.imsave(image_file_name, image_out)

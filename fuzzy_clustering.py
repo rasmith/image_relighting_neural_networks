@@ -131,7 +131,7 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
         model.load_weights()
         predictions = model.predict(test, batch_size) 
         kmeans2d.predictions_to_errors(cxx_order, ensemble_size,\
-            test, target, predictions, erors);
+            test, target, predictions, errors);
       del test
       del target
 

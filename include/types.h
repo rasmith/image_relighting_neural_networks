@@ -3,6 +3,18 @@
 #include <algorithm>
 #include <tuple>
 
+struct PixelData {
+  float x;
+  float y;
+  float z;
+  PixelData() : x(0.0f), y(0.0f), z(0.0f) {}
+  PixelData(float xx, float yy, float zz) : x(xx), y(yy), z(zz) {}
+  float& operator[](int i) { return (&x)[i]; }
+  float operator[](int i) const { return (&x)[i]; }
+};
+static_assert(sizeof(PixelData) == 3 * sizeof(int),
+              "PixelData size should be  3 * sizeof(int) but was not.");
+
 struct AssignmentData {
   int level;
   int a0;
@@ -25,7 +37,6 @@ struct AssignmentData {
   bool operator!=(const AssignmentData& other) const {
     return !(*this == other);
   }
-
 };
 static_assert(sizeof(AssignmentData) == 6 * sizeof(int),
               "AssignmentData size should be  6 * sizeof(int) but was not.");

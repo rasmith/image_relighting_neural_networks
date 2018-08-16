@@ -18,7 +18,7 @@ find_package(Threads REQUIRED)
 #set(CMAKE_CXX_FLAGS 
   #"${CMAKE_CXX_FLAGS} -std=c++11 -g ")
 set(CMAKE_CXX_FLAGS 
-  "${CMAKE_CXX_FLAGS} -std=c++11 -O3 ")
+  "${CMAKE_CXX_FLAGS} -std=c++11 -g ")
 
 # Set the module path (mainly for FindXXX.cmake files)
 set(CMAKE_MODULE_PATH ${CMAKE_PATH}

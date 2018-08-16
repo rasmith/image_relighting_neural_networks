@@ -90,14 +90,26 @@ void PrintValues(Iterator begin, Iterator end, std::ostream& out) {
   for (Iterator i = begin; i != end; ++i, ++j) out << j << " " << *i << "\n";
 }
 
-void GenerateRandomImage(int width, int height, int channels,
-                         std::vector<float>& image) {
-  image.resize(width * height * channels);
+void GenerateRandomImage(int width, int height, int channels, float* image) {
   for (int i = 0; i < width * height * channels; ++i) {
     image[i] = std::rand() / static_cast<float>(RAND_MAX);
     assert(i >= 0 && i < width * height * channels);
   }
 }
+
+void GenerateRandomImage(int width, int height, int channels,
+                         std::vector<float>& image) {
+  image.resize(width * height * channels);
+  GenerateRandomImage(width, height, channels, &image[0]);
+}
+
+void GenerateRandomImage(int width, int height, int channels,
+                         std::vector<PixelData>& image) {
+  image.resize(width * height);
+  GenerateRandomImage(width, height, channels,
+                      reinterpret_cast<float*>(&image[0]));
+}
+
 
 void GenerateTestData(int width, int height, int channels, int num_samples,
                       const std::vector<float>& image,
@@ -550,6 +562,32 @@ bool TestPredictionsToImage(int width, int height, int channels,
     }
   }
   return true;
+}
+
+// void closest_k_test_target(int k, int cluster_id, int* closest,
+// int closest_dim1, int closest_dim2, int closest_dim3,
+// float* train_data, int train_data_dim1,
+// int train_data_dim2, float* target_data,
+// int target_data_dim1, int target_data_dim2,
+// float** test, int* test_dim1, int* test_dim2,
+// float** target, int* target_dim1, int* target_dim2) {
+
+void TestClosestKTestTarget(int width, int height, int channels,
+                            int ensemble_size, int num_images,
+                            int cluster_size) {
+  int num_pixels = width * height;
+  std::vector<int> closest(num_pixels * channels, 0);
+  std::vector<TestData> train_data(num_pixels * num_images);
+  std::vector<PixelData> target_data(num_pixels * num_images);
+  std::vector<TestData> test(cluster_size * num_images);
+  std::vector<PixelData> target(cluster_size * num_images);
+  std::vector<PixelData> image(num_pixels * channels);
+  for (int i = 0; i < num_images; ++i) {
+    GenerateRandomImage(width, height, channels, image);
+    for (int j = 0; j < num_pixels; ++j) {
+
+    }
+  }
 }
 
 struct Resolution {

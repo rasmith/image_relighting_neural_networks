@@ -656,7 +656,8 @@ struct Resolution {
 enum CommandLineOption {
   kTestPredictionsToImage,
   kTestAssignmentDataToTestData,
-  kTestPredictionsToErrors
+  kTestPredictionsToErrors,
+  kTestClosestKTestTarget
 };
 
 int main(int argc, char** argv) {
@@ -723,6 +724,9 @@ int main(int argc, char** argv) {
                     << r.height << ")\n";
         TestPredictionsToErrors(r.width, r.height, c, ensemble_size);
       }
+      break;
+    case kTestClosestKTestTarget:
+      TestClosestKTestTarget(256, 171, 3, 5, 100, 64 * 64, 3, 10);
       break;
     default:
       LOG(STATUS) << "Invalid option " << argv[1] << "\n";

@@ -50,7 +50,7 @@ num_hidden_nodes = 15
 light_dim = 1
 level = 0
 ensemble_size = 5
-tolerance = float(1e-3)
+tolerance = .03
 
 max_clusters =  int(\
     maximum_clusters(width, height, num_hidden_nodes, num_images))

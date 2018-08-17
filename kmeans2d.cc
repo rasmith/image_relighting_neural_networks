@@ -303,74 +303,64 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
   LOG(DEBUG) << "predictions_to_errors:errors_dim1 = " << errors_dim1 << "\n";
   LOG(DEBUG) << "predictions_to_errors:errors_dim2 = " << errors_dim2 << "\n";
   const int num_threads = 8;
-  std::vector<float> totals(num_threads, 0.0f);
+  int height = errors_dim1;
+  int width = errors_dim2;
+  int num_pixels = height * width;
+  std::vector<float> thread_errors(num_threads * num_pixels, 0.0f);
   std::vector<std::thread> threads(num_threads);
   for (int t = 0; t < num_threads; ++t) {
-    threads[t] =
-        std::thread([
-                      &order,
-                      &totals,
-                      &ensemble_size,
-                      &test,
-                      &test_dim1,
-                      &test_dim2,
-                      &target,
-                      &target_dim1,
-                      &target_dim2,
-                      &predictions,
-                      &predictions_dim1,
-                      &predictions_dim2,
-                      &errors,
-                      &errors_dim1,
-                      &errors_dim2,
-                      &num_threads
-                    ](int tid)
-                         ->void {
-                      int block_size = test_dim1 / num_threads + 1;
-                      int start = tid * block_size;
-                      int end = std::min(start + block_size, test_dim1);
-                      float* test_pos = test + test_dim2 * start;
-                      float* target_pos = target + target_dim2 * start;
-                      float* predictions_pos =
-                          predictions + predictions_dim2 * start;
-                      int k = 0;
-                      for (int i = start; i < end; ++i) {
-                        int x = round(*(test_pos) * (errors_dim2 - 1));
-                        int y = round(*(test_pos + 1) * (errors_dim1 - 1));
-                        int index = y * errors_dim2 + x;
-                        for (int c = 0; c < 3; ++c) {
-                          int index = y * errors_dim2 + x;
-                          errors[index] +=
-                              fabs(predictions_pos[c] - target_pos[c]);
-                          totals[tid] += target_pos[c];
-                          // if (tid == 0 && k <= 10)
-                          // std::cout << errors[y * test_dim2 + x] << " ";
-                        }
-                        target_pos += target_dim2;
-                        predictions_pos += predictions_dim2;
-                        test_pos += test_dim2;
-                        // if (tid == 0 && k <= 10) std::cout << "\n";
-                        ++k;
-                      }
-                    },
-                    t);
+    threads[t] = std::thread([
+                               &order,
+                               &height,
+                               &width,
+                               &num_pixels,
+                               &ensemble_size,
+                               &test,
+                               &test_dim1,
+                               &test_dim2,
+                               &target,
+                               &target_dim1,
+                               &target_dim2,
+                               &predictions,
+                               &predictions_dim1,
+                               &predictions_dim2,
+                               &thread_errors,
+                               &num_threads
+                             ](int tid)
+                                  ->void {
+                               float* errors = &thread_errors[tid * num_pixels];
+                               int block_size = test_dim1 / num_threads + 1;
+                               int start = tid * block_size;
+                               int end =
+                                   std::min(start + block_size, test_dim1);
+                               float* test_pos = test + test_dim2 * start;
+                               float* target_pos = target + target_dim2 * start;
+                               float* predictions_pos =
+                                   predictions + predictions_dim2 * start;
+                               for (int i = start; i < end; ++i) {
+                                 int x = round(*(test_pos) * (width - 1));
+                                 int y = round(*(test_pos + 1) * (height - 1));
+                                 int index = y * width + x;
+                                 float total = 0;
+                                 for (int c = 0; c < 3; ++c)
+                                   total += target_pos[c];
+                                 for (int c = 0; c < 3; ++c) {
+                                   int k = y * width + x;
+                                   float e = predictions_pos[c] - target_pos[c];
+                                   errors[k] += (e * e) / (total * total);
+                                 }
+                                 target_pos += target_dim2;
+                                 predictions_pos += predictions_dim2;
+                                 test_pos += test_dim2;
+                               }
+                             },
+                             t);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
-  float total = 0.0f;
-  for (int i = 0; i < num_threads; ++i) total += totals[i];
-  for (int t = 0; t < num_threads; ++t) {
-    threads[t] = std::thread(
-        [&total, &errors, &errors_dim1, &errors_dim2, &num_threads ](int tid)
-                                                                        ->void {
-          int total = errors_dim1 * errors_dim2;
-          int block_size = total / num_threads + 1;
-          int start = tid * block_size;
-          int end = std::min(start + block_size, total);
-          for (int i = start; i < end; ++i) errors[i] /= total;
-        },
-        t);
+  for (int i = 0; i < num_threads; ++i) {
+    for (int j = 0; j < num_pixels; ++j)
+      errors[j] += thread_errors[i * num_pixels + j];
   }
-  for (int i = 0; i < num_threads; ++i) threads[i].join();
 }
 
 void closest_n(int width, int height, int n, std::vector<float>& centers,

@@ -15,10 +15,10 @@ find_package(Threads REQUIRED)
   #"${CMAKE_CXX_FLAGS} -std=c++11 -g -fsanitize=address -fno-omit-frame-pointer")
 #set(cmake_cxx_flags 
   #"${cmake_cxx_flags} -std=c++11 -o3 -wno-deprecated-register")
-set(CMAKE_CXX_FLAGS 
-  "${CMAKE_CXX_FLAGS} -std=c++11 -g ")
 #set(CMAKE_CXX_FLAGS 
-  #"${CMAKE_CXX_FLAGS} -std=c++11 -O3 ")
+  #"${CMAKE_CXX_FLAGS} -std=c++11 -g ")
+set(CMAKE_CXX_FLAGS 
+  "${CMAKE_CXX_FLAGS} -std=c++11 -O3 ")
 
 # Set the module path (mainly for FindXXX.cmake files)
 set(CMAKE_MODULE_PATH ${CMAKE_PATH}

@@ -618,18 +618,22 @@ void TestClosestKTestTarget(int width, int height, int channels,
   if (test_dim1 != num_images * cluster_size) {
     LOG(ERROR) << "test_dim1 should be " << num_images * cluster_size
                << " but got " << test_dim1 << "\n";
+    assert(test_dim1 == num_images * cluster_size);
   }
   if (test_dim2 != sizeof(TestData) / sizeof(float)) {
     LOG(ERROR) << "target_dim2 should be " << sizeof(TestData) / sizeof(float)
                << " but got " << target_dim2 << "\n";
+    assert(test_dim2 == sizeof(TestData) / sizeof(float));
   }
   if (target_dim1 != num_images * cluster_size) {
     LOG(ERROR) << "target_dim1 should be " << num_images * cluster_size
                << " but got " << target_dim1 << "\n";
+    assert(target_dim1 == num_images * cluster_size);
   }
   if (target_dim2 != sizeof(PixelData) / sizeof(float)) {
     LOG(ERROR) << "target_dim2 should be " << sizeof(TestData) / sizeof(float)
                << " but got " << target_dim2 << "\n";
+    assert(target_dim2 == sizeof(PixelData) / sizeof(float));
   }
   for (int i = 0; i < num_images; ++i) {
     for (int j = 0; j < cluster_size; ++j) {

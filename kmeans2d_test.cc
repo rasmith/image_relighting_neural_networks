@@ -110,7 +110,6 @@ void GenerateRandomImage(int width, int height, int channels,
                       reinterpret_cast<float*>(&image[0]));
 }
 
-
 void GenerateTestData(int width, int height, int channels, int num_samples,
                       const std::vector<float>& image,
                       std::vector<float>& test) {
@@ -573,19 +572,78 @@ bool TestPredictionsToImage(int width, int height, int channels,
 // float** target, int* target_dim1, int* target_dim2) {
 
 void TestClosestKTestTarget(int width, int height, int channels,
-                            int ensemble_size, int num_images,
-                            int cluster_size) {
+                            int ensemble_size, int num_images, int cluster_size,
+                            int k, int cluster_id) {
   int num_pixels = width * height;
-  std::vector<int> closest(num_pixels * channels, 0);
+  std::vector<int> closest(num_pixels * ensemble_size, 0);
   std::vector<TestData> train_data(num_pixels * num_images);
   std::vector<PixelData> target_data(num_pixels * num_images);
   std::vector<TestData> test(cluster_size * num_images);
   std::vector<PixelData> target(cluster_size * num_images);
   std::vector<PixelData> image(num_pixels * channels);
+  std::vector<int> cluster(cluster_size);
+  std::vector<TestData> check_test(cluster_size * num_images);
+  std::vector<PixelData> check_target(cluster_size * num_images);
+  std::vector<int> values;
+  GenerateRandomPermutation(num_pixels, values);
+  for (int i = 0; i < cluster_size; ++i) cluster[i] = values[i];
+  std::sort(cluster.begin(), cluster.end());
   for (int i = 0; i < num_images; ++i) {
     GenerateRandomImage(width, height, channels, image);
     for (int j = 0; j < num_pixels; ++j) {
-
+      int x = j % width, y = j / width;
+      train_data[i * num_pixels + j] =
+          TestData(x, y, i, reinterpret_cast<float*>(&image[j]), width, height,
+                   num_images);
+    }
+    for (int j = 0; j < cluster_size; ++j) {
+      int c = cluster[j], x = c % width, y = c / width;
+      check_test[i * cluster_size + j] =
+          TestData(x, y, i, reinterpret_cast<float*>(&image[c]), width, height,
+                   num_images);
+      check_target[i * cluster_size + j] = image[c];
+      closest[ensemble_size * c + k] = cluster_id;
+    }
+  }
+  float* test_in = reinterpret_cast<float*>(&test[0]);
+  float* target_in = reinterpret_cast<float*>(&target[0]);
+  int target_dim1, target_dim2, test_dim1, test_dim2;
+  closest_k_test_target(
+      k, cluster_id, reinterpret_cast<int*>(&closest[0]), height, width,
+      ensemble_size, reinterpret_cast<float*>(&train_data[0]),
+      num_pixels * num_images, sizeof(TestData) / sizeof(float),
+      reinterpret_cast<float*>(&target_data[0]), num_pixels * num_images,
+      sizeof(PixelData) / sizeof(float), &test_in, &test_dim1, &test_dim2,
+      &target_in, &target_dim1, &target_dim2);
+  if (test_dim1 != num_images * cluster_size) {
+    LOG(ERROR) << "test_dim1 should be " << num_images * cluster_size
+               << " but got " << test_dim1 << "\n";
+  }
+  if (test_dim2 != sizeof(TestData) / sizeof(float)) {
+    LOG(ERROR) << "target_dim2 should be " << sizeof(TestData) / sizeof(float)
+               << " but got " << target_dim2 << "\n";
+  }
+  if (target_dim1 != num_images * cluster_size) {
+    LOG(ERROR) << "target_dim1 should be " << num_images * cluster_size
+               << " but got " << target_dim1 << "\n";
+  }
+  if (target_dim2 != sizeof(PixelData) / sizeof(float)) {
+    LOG(ERROR) << "target_dim2 should be " << sizeof(TestData) / sizeof(float)
+               << " but got " << target_dim2 << "\n";
+  }
+  for (int i = 0; i < num_images; ++i) {
+    for (int j = 0; j < cluster_size; ++j) {
+      if (test[cluster_size * i + j] != check_test[cluster_size * i + j]) {
+        LOG(ERROR) << "Expected " << check_test[cluster_size * i + j]
+                   << " but got " << test[cluster_size * i + j] << ".\n";
+        assert(test[cluster_size * i + j] == check_test[cluster_size * i + j]);
+      }
+      if (target[cluster_size * i + j] != check_target[cluster_size * i + j]) {
+        LOG(ERROR) << "Expected " << check_target[cluster_size * i + j]
+                   << " but got " << target[cluster_size * i + j] << ".\n";
+        assert(target[cluster_size * i + j] ==
+               check_target[cluster_size * i + j]);
+      }
     }
   }
 }

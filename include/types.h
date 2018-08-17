@@ -4,13 +4,17 @@
 #include <tuple>
 
 struct PixelData {
-  float x;
-  float y;
-  float z;
-  PixelData() : x(0.0f), y(0.0f), z(0.0f) {}
-  PixelData(float xx, float yy, float zz) : x(xx), y(yy), z(zz) {}
-  float& operator[](int i) { return (&x)[i]; }
-  float operator[](int i) const { return (&x)[i]; }
+  float r;
+  float g;
+  float b;
+  PixelData() : r(0.0f), g(0.0f), b(0.0f) {}
+  PixelData(float rr, float gg, float bb) : r(rr), g(gg), b(bb) {}
+  float& operator[](int i) { return (&r)[i]; }
+  float operator[](int i) const { return (&r)[i]; }
+  bool operator==(const PixelData& p) const {
+    return r == p.r && g == p.g && b == p.b;
+  }
+  bool operator!=(const PixelData& p) const { return !(*this == p); }
 };
 static_assert(sizeof(PixelData) == 3 * sizeof(int),
               "PixelData size should be  3 * sizeof(int) but was not.");
@@ -125,5 +129,10 @@ inline std::ostream& operator<<(std::ostream& out, const TestData& d) {
 inline std::ostream& operator<<(std::ostream& out, const AssignmentData& a) {
   out << "{level:" << a.level << ", a0:" << a.a0 << ", a1:" << a.a1
       << ", a2:" << a.a2 << ", a3:" << a.a3 << ", a4:" << a.a4 << "}\n";
+  return out;
+}
+
+inline std::ostream& operator<<(std::ostream& out, const PixelData& p) {
+  out << "{r:" << p.r << ", g:" << p.g << ", b:" << p.b << "}\n";
   return out;
 }

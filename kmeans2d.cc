@@ -15,6 +15,7 @@
 #include <random>
 #include <string>
 #include <thread>
+#include <mutex>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -202,19 +203,27 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
                            int target_data_dim1, int target_data_dim2,
                            float** test, int* test_dim1, int* test_dim2,
                            float** target, int* target_dim1, int* target_dim2) {
+  // closest_k_test_target(
+  // k, cluster_id, reinterpret_cast<int*>(&closest[0]), height, width,
+  // ensemble_size, reinterpret_cast<float*>(&train_data[0]),
+  // num_pixels * num_images, sizeof(TestData) / sizeof(float),
+  // reinterpret_cast<float*>(&target_data[0]), num_pixels * num_images,
+  // sizeof(PixelData) / sizeof(float), &test_in, &test_dim1, &test_dim2,
+  //&target_in, &target_dim1, &target_dim2);
   // Train data configuratian.
   int num_images = train_data_dim1 / (closest_dim1 * closest_dim2);
   int width = closest_dim2;
   int height = closest_dim1;
+  int ensemble_size = closest_dim3;
   int cluster_size = 0;
   std::vector<int> cluster;
-  for (int y = 0; y < closest_dim1; ++y) {
-    for (int x = 0; x < closest_dim2; ++x) {
-      int i = k + closest_dim3 * (y * closest_dim2 + x);
-      if (cluster_id == closest[i]) ++cluster_size;
-      cluster.push_back(i);
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      int p = y * width + x;
+      if (cluster_id == closest[k + ensemble_size * p]) cluster.push_back(p);
     }
   }
+  cluster_size = cluster.size();
 
   // Set test and target dimensions.
   *test_dim1 = cluster_size * num_images;
@@ -229,52 +238,51 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
   LOG(STATUS) << "closest_k_target_target: target_dim1 = " << *target_dim1
               << " target_dim2 = " << *target_dim2
               << " total = " << (*target_dim1) * (*target_dim2) << "\n";
-
+  LOG(STATUS) << " width = " << width << " height = " << height
+              << " cluster_size =" << cluster_size << "\n ";
+  LOG(STATUS) << " num_images = " << num_images << "\n";
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
   for (int t = 0; t < num_threads; ++t) {
-    threads[t] =
-        std::thread([
-                      &num_images,
-                      &cluster_size,
-                      &cluster,
-                      &train_data,
-                      &target_data,
-                      &test,
-                      &target,
-                      &num_threads,
-                      &width,
-                      &height
-                    ](int tid)
-                         ->void {
-                      // Write out the test and target data.
-                      int num_pixels = width * height;
-                      int block_size = num_images / num_threads + 1;
-                      int start = tid * block_size;
-                      int end = std::min(num_images, start + block_size);
-                      // Output.
-                      TestData* test_out = reinterpret_cast<TestData*>(
-                          *test + cluster_size * start);
-                      TestData* train_in = reinterpret_cast<TestData*>(
-                          train_data + num_pixels * start);
-                      PixelData* target_out = reinterpret_cast<PixelData*>(
-                          *target + cluster_size * start);
-                      PixelData* target_in = reinterpret_cast<PixelData*>(
-                          target_data + num_pixels * start);
-                      for (int i = 0; i < block_size; ++i) {
-                        for (int j = 0; j < cluster_size; ++j) {
-                          int c = cluster[j];
-                          int x = c % width;
-                          int y = c / width;
-                          test_out[i * cluster_size + j] =
-                              train_in[i * num_pixels + y * width + x];
-                          target_out[i * cluster_size + j] =
-                              target_in[i * num_pixels + y * width + x];
-                        }
-                      }
-                    },
-                    t);
-  } 
+    threads[t] = std::thread(
+        [
+          &num_images,
+          &cluster_size,
+          &cluster,
+          &train_data,
+          &target_data,
+          &test,
+          &target,
+          &num_threads,
+          &width,
+          &height
+        ](int tid)
+             ->void {
+          // Write out the test and target data.
+          int num_pixels = width * height;
+          int block_size = num_images / num_threads + 1;
+          int start = tid * block_size;
+          int end = std::min(num_images, start + block_size);
+          block_size = end - start;
+          // Output.
+          TestData* test_out =
+              reinterpret_cast<TestData*>(*test) + cluster_size * start;
+          TestData* train_in =
+              reinterpret_cast<TestData*>(train_data) + num_pixels * start;
+          PixelData* target_out =
+              reinterpret_cast<PixelData*>(*target) + cluster_size * start;
+          PixelData* target_in =
+              reinterpret_cast<PixelData*>(target_data) + num_pixels * start;
+          for (int i = 0; i < block_size; ++i) {
+            for (int j = 0; j < cluster_size; ++j) {
+              int c = cluster[j];
+              test_out[i * cluster_size + j] = train_in[i * num_pixels + c];
+              target_out[i * cluster_size + j] = target_in[i * num_pixels + c];
+            }
+          }
+        },
+        t);
+  }
   for (int t = 0; t < num_threads; ++t) threads[t].join();
 }
 

@@ -87,6 +87,7 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   print("num_centers = %d\n" % len(centers))
   print ("len(batch_sizes) = %d\n" % len(batch_sizes))
   cluster_ids = get_flagged_clusters(range(0, len(centers)), closest, flagged)
+  print("len(cluster_ids) = %d\n" % len(cluster_ids))
 
   for cluster_id in cluster_ids:
     (checkpoint_file_name, checkpoint_file) = \

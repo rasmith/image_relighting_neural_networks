@@ -578,8 +578,6 @@ void TestClosestKTestTarget(int width, int height, int channels,
   std::vector<int> closest(num_pixels * ensemble_size, 0);
   std::vector<TestData> train_data(num_pixels * num_images);
   std::vector<PixelData> target_data(num_pixels * num_images);
-  std::vector<TestData> test(cluster_size * num_images);
-  std::vector<PixelData> target(cluster_size * num_images);
   std::vector<PixelData> image(num_pixels * channels);
   std::vector<int> cluster(cluster_size);
   std::vector<TestData> check_test(cluster_size * num_images);
@@ -587,6 +585,7 @@ void TestClosestKTestTarget(int width, int height, int channels,
   std::vector<int> values;
   GenerateRandomPermutation(num_pixels, values);
   for (int i = 0; i < cluster_size; ++i) cluster[i] = values[i];
+  LOG(STATUS) << " cluster_size = " << cluster_size << "\n";
   std::sort(cluster.begin(), cluster.end());
   for (int i = 0; i < num_images; ++i) {
     GenerateRandomImage(width, height, channels, image);
@@ -595,6 +594,7 @@ void TestClosestKTestTarget(int width, int height, int channels,
       train_data[i * num_pixels + j] =
           TestData(x, y, i, reinterpret_cast<float*>(&image[j]), width, height,
                    num_images);
+      target_data[i * num_pixels + j] = image[j];
     }
     for (int j = 0; j < cluster_size; ++j) {
       int c = cluster[j], x = c % width, y = c / width;
@@ -605,8 +605,8 @@ void TestClosestKTestTarget(int width, int height, int channels,
       closest[ensemble_size * c + k] = cluster_id;
     }
   }
-  float* test_in = reinterpret_cast<float*>(&test[0]);
-  float* target_in = reinterpret_cast<float*>(&target[0]);
+  float* test_in = nullptr;
+  float* target_in = nullptr;
   int target_dim1, target_dim2, test_dim1, test_dim2;
   closest_k_test_target(
       k, cluster_id, reinterpret_cast<int*>(&closest[0]), height, width,
@@ -637,19 +637,31 @@ void TestClosestKTestTarget(int width, int height, int channels,
   }
   for (int i = 0; i < num_images; ++i) {
     for (int j = 0; j < cluster_size; ++j) {
-      if (test[cluster_size * i + j] != check_test[cluster_size * i + j]) {
+      TestData* test_in_data = reinterpret_cast<TestData*>(test_in);
+      if (test_in_data[cluster_size * i + j] !=
+          check_test[cluster_size * i + j]) {
         LOG(ERROR) << "Expected " << check_test[cluster_size * i + j]
-                   << " but got " << test[cluster_size * i + j] << ".\n";
-        assert(test[cluster_size * i + j] == check_test[cluster_size * i + j]);
+                   << " but got " << test_in_data[cluster_size * i + j]
+                   << ".\n";
+        assert(test_in_data[cluster_size * i + j] ==
+               check_test[cluster_size * i + j]);
       }
-      if (target[cluster_size * i + j] != check_target[cluster_size * i + j]) {
+    }
+  }
+  for (int i = 0; i < num_images; ++i) {
+    for (int j = 0; j < cluster_size; ++j) {
+      PixelData* target_in_data = reinterpret_cast<PixelData*>(target_in);
+      if (target_in_data[cluster_size * i + j] !=
+          check_target[cluster_size * i + j]) {
         LOG(ERROR) << "Expected " << check_target[cluster_size * i + j]
-                   << " but got " << target[cluster_size * i + j] << ".\n";
-        assert(target[cluster_size * i + j] ==
+                   << " but got " << target_in[cluster_size * i + j] << ".\n";
+        assert(target_in_data[cluster_size * i + j] ==
                check_target[cluster_size * i + j]);
       }
     }
   }
+  delete[] test_in;
+  delete[] target_in;
 }
 
 struct Resolution {
@@ -731,6 +743,7 @@ int main(int argc, char** argv) {
       break;
     case kTestClosestKTestTarget:
       TestClosestKTestTarget(256, 171, 3, 5, 100, 64 * 64, 3, 10);
+      TestClosestKTestTarget(256, 171, 3, 5, 358, 64 * 64, 3, 10);
       break;
     default:
       LOG(STATUS) << "Invalid option " << argv[1] << "\n";

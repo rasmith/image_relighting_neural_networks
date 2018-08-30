@@ -8,7 +8,6 @@ from multiprocessing import Pool
 from model import ModelMaker
 import tensorflow as tf
 from keras import backend as K
-import matplotlib.image as mpimg
 
 import concurrent.futures
 
@@ -78,7 +77,8 @@ end = 0
     # predictions = model.predict(test_data[start:end], batch_size) 
   
 def predict(arg):
-  level, ensemble_id, start, end, batch_size = arg
+  level, ensemble_id, start, batch_size= arg
+  end = start + batch_size
   (checkpoint_file_name, checkpoint_file) = \
       config.get_checkpoint_file_info(model_dir, level, ensemble_id)
   # print("checkpoint_file = %s\n" % (checkpoint_file))
@@ -112,6 +112,19 @@ def main():
   with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
     for result in executor.map(predict, ensemble_data):
       (checkpoint_file_name, predictions, test_out)  = result 
+      print("====================================")
+      print("ensemble_data = %s" % (str(ensemble_data)))
+      print ("type(image_out) = %s" % type(image_out))
+      print ("type(test_out) = %s" % type(test_out))
+      print("type(predictions) = %s" % type(predictions))
+      print("predictions = %s" % predictions)
+      print("type(predictions[0]) = %s" % type(predictions[0]))
+      predictions = np.asarray(predictions, order='C', dtype='float32')
+      print("--predictions = %s" % predictions)
+      print("--type(predictions) = %s" % type(predictions))
+      print("--type(predictions[0]) = %s" % type(predictions[0]))
+      print("predictions.shape = %s" % (str(predictions.shape)))
+      print("test_out.shape = %s" % (str(test_out.shape)))
       kmeans2d.predictions_to_image(image_out, test_out, predictions)
       # print("checkpoint_file_name =%s" % (checkpoint_file_name))
       # print("predictions = %s" % (predictions))
@@ -121,7 +134,7 @@ def main():
   image_file_name = "render_images/" + str(sys.argv[2]) + '.png'
   print("time = %5.5f" % (end - start))
   print("saved %s" % (image_file_name))
-  mpimg.imsave(image_file_name, image_out)
+  misc.imsave(image_file_name, image_out)
   # for data in ensemble_data:
     # test(data)
 

@@ -1,5 +1,6 @@
 #include "image.h"
 #include "kmeans.h"
+#include "types.h"
 
 #define LODEPNG_COMPILE_DISK
 
@@ -122,19 +123,16 @@ void GetTrainingData(const std::vector<image::Image>& images,
                      int* train_data_dim2, float** train_labels,
                      int* train_labels_dim1, int* train_labels_dim2,
                      std::vector<int>& batch_sizes) {
-  //std::cout << "GetTrainingData:images.size()  = " << images.size() << "\n";
-  //std::cout << "GetTrainingData:indices.size() = " << indices.size() << "\n";
-  //std::cout << "GetTrainingData:min_index = "
-            //<< *std::min_element(indices.begin(),
-                                 //indices.begin() + indices.size()) << "\n";
-  //std::cout << "GetTrainingData:max_index = "
-            //<< *std::max_element(indices.begin(),
-                                 //indices.begin() + indices.size()) << "\n";
-  const uint32_t coord_dim = 2;
-  const uint32_t light_dim = 1;
-  const uint32_t pixel_dim = 3;
-  const uint32_t data_size = coord_dim + light_dim + pixel_dim;
-  const uint32_t label_size = pixel_dim;
+  // std::cout << "GetTrainingData:images.size()  = " << images.size() << "\n";
+  // std::cout << "GetTrainingData:indices.size() = " << indices.size() << "\n";
+  // std::cout << "GetTrainingData:min_index = "
+  //<< *std::min_element(indices.begin(),
+  // indices.begin() + indices.size()) << "\n";
+  // std::cout << "GetTrainingData:max_index = "
+  //<< *std::max_element(indices.begin(),
+  // indices.begin() + indices.size()) << "\n";
+  const uint32_t data_size = sizeof(TestData) / sizeof(float);
+  const uint32_t label_size = sizeof(PixelData) / sizeof(float);
   uint32_t width = images[0].width(), height = images[0].height(),
            num_threads = 8;
   uint32_t sample_size = indices.size();
@@ -147,9 +145,9 @@ void GetTrainingData(const std::vector<image::Image>& images,
   *train_labels = new float[(*train_labels_dim1) * (*train_labels_dim2)];
   std::vector<uint32_t> cluster_sizes(num_centers, 0);
   std::vector<uint32_t> cluster_counts(num_centers, 0);
-  //std::cout << "GetTrainingData:width  = " << width << "\n";
-  //std::cout << "GetTrainingData:height  = " << height << "\n";
-  //std::cout << "GetTrainingData:labels.size= " << labels.size() << "\n";
+  // std::cout << "GetTrainingData:width  = " << width << "\n";
+  // std::cout << "GetTrainingData:height  = " << height << "\n";
+  // std::cout << "GetTrainingData:labels.size= " << labels.size() << "\n";
   // Count pixels per cluster.
   for (int i = 0; i < labels.size(); ++i) ++cluster_sizes[labels[i]];
   batch_sizes.clear();
@@ -162,57 +160,50 @@ void GetTrainingData(const std::vector<image::Image>& images,
 
   std::vector<std::thread> threads(num_threads);
   for (int i = 0; i < num_threads; ++i) {
-    threads[i] =
-        std::thread([
-                      &num_threads,
-                      &num_centers,
-                      &num_pixels,
-                      &labels,
-                      &cluster_counts,
-                      &cluster_sizes,
-                      &data_size,
-                      &label_size,
-                      &width,
-                      &height,
-                      &indices,
-                      &images,
-                      &average,
-                      &train_data,
-                      &train_labels
-                    ](int tid)
-                         ->void {
+    threads[i] = std::thread(
+        [
+          &num_threads,
+          &num_centers,
+          &num_pixels,
+          &labels,
+          &cluster_counts,
+          &cluster_sizes,
+          &data_size,
+          &label_size,
+          &width,
+          &height,
+          &indices,
+          &images,
+          &average,
+          &train_data,
+          &train_labels
+        ](int tid)
+             ->void {
 
-                      uint32_t sample_size = indices.size(),
-                               block_size = sample_size / num_threads + 1,
-                               start = tid * block_size,
-                               end = std::min(start + block_size, sample_size),
-                               num_pixels = width * height;
-                      float* train_data_pos =
-                          *train_data + data_size * start * num_pixels;
-                      float* train_labels_pos =
-                          *train_labels + label_size * start * num_pixels;
-                      --train_data_pos;
-                      --train_labels_pos;
-                      for (int i = start; i < end; ++i) {
-                        const image::Image& img = images[indices[i]];
-                        for (int j = 0; j < labels.size(); ++j) {
-                          uint32_t center = labels[j], x = j % width,
-                                   y = j / width;
-                          image::Pixel p = img(x, y), a = average(x, y);
-                          *(++train_data_pos) = x / static_cast<float>(width);
-                          *(++train_data_pos) = y / static_cast<float>(height);
-                          *(++train_data_pos) =
-                              indices[i] / static_cast<float>(images.size());
-                          *(++train_data_pos) = a.r / 255.0f;
-                          *(++train_data_pos) = a.g / 255.0f;
-                          *(++train_data_pos) = a.b / 255.0f;
-                          *(++train_labels_pos) = p.r / 255.0f;
-                          *(++train_labels_pos) = p.g / 255.0f;
-                          *(++train_labels_pos) = p.b / 255.0f;
-                        }
-                      }
-                    },
-                    i);
+          uint32_t sample_size = indices.size(),
+                   block_size = sample_size / num_threads + 1,
+                   start = tid * block_size,
+                   end = std::min(start + block_size, sample_size),
+                   num_pixels = width * height;
+          float* train_data_pos = *train_data + data_size * start * num_pixels;
+          float* train_labels_pos =
+              *train_labels + label_size * start * num_pixels;
+          for (int i = start; i < end; ++i) {
+            const image::Image& img = images[indices[i]];
+            for (int j = 0; j < labels.size(); ++j) {
+              uint32_t center = labels[j], x = j % width, y = j / width;
+              image::Pixel p = img(x, y), a = average(x, y);
+              *reinterpret_cast<TestData*>(train_data_pos) =
+                  TestData(x, y, indices[i], a, width, height, images.size(),
+                           ::PixelConversion::kNegativeOneToPositiveOne);
+              *reinterpret_cast<PixelData*>(train_labels_pos) =
+                  PixelData(p, ::PixelConversion::kNegativeOneToPositiveOne);
+              train_data_pos += data_size;
+              train_labels_pos += label_size;
+            }
+          }
+        },
+        i);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
 }
@@ -297,16 +288,14 @@ void KmeansDataAndLabels(
   *average_dim1 = height;
   *average_dim2 = width;
   *average_dim3 = 3;
-  // for (int y = 0; y < height; ++y) {
-  // for (int x = 0; x < width; ++x) {
-  // image::Pixel p = average(x, y);
-  // float *values = &((*average_img)[3*(x + width * y)]);
-  // values[0] = p.r / 255.0f;
-  // values[1] = p.g / 255.0f;
-  // values[2] = p.b / 255.0f;
-  //}
-  //}
-  // std::cout << "done\n";
+  const image::Pixel* pixels =
+      reinterpret_cast<const image::Pixel*>(average.GetBytes());
+  int num_pixels = width * height;
+  std::transform(pixels, pixels + num_pixels,
+                 reinterpret_cast<PixelData*>(*average_img),
+                 [](const image::Pixel& p) {
+    return PixelData(p.r / 255.0f, p.g / 255.0f, p.b / 255.0f);
+  });
   // Run kmeans.
   centers.resize(num_centers);
   labels.resize(width * height);

@@ -1,7 +1,24 @@
 #pragma once
 
+#include "image.h"
+
+#include <iostream>
 #include <algorithm>
 #include <tuple>
+
+struct PixelConversion {
+  enum ConversionType {
+    kZeroToPositiveOne,
+    kNegativeOneToPositiveOne
+  };
+  static float Convert(uint8_t x, PixelConversion::ConversionType conversion) {
+    return (conversion == kZeroToPositiveOne ? x / 255.0f
+                                             : 2.0f * (x / 255.0f) - 1.0f);
+  }
+  static float Convert(float x, PixelConversion::ConversionType conversion) {
+    return (conversion == kZeroToPositiveOne ? x : 2.0f * x - 1.0f);
+  }
+};
 
 struct PixelData {
   float r;
@@ -9,6 +26,15 @@ struct PixelData {
   float b;
   PixelData() : r(0.0f), g(0.0f), b(0.0f) {}
   PixelData(float rr, float gg, float bb) : r(rr), g(gg), b(bb) {}
+  PixelData(float rr, float gg, float bb,
+            ::PixelConversion::ConversionType conversion)
+      : r(::PixelConversion::Convert(rr, conversion)),
+        g(::PixelConversion::Convert(gg, conversion)),
+        b(::PixelConversion::Convert(bb, conversion)) {}
+  PixelData(const image::Pixel& p, ::PixelConversion::ConversionType conversion)
+      : r(::PixelConversion::Convert(p.r, conversion)),
+        g(::PixelConversion::Convert(p.g, conversion)),
+        b(::PixelConversion::Convert(p.b, conversion)) {}
   float& operator[](int i) { return (&r)[i]; }
   float operator[](int i) const { return (&r)[i]; }
   bool operator==(const PixelData& p) const {
@@ -45,8 +71,11 @@ struct AssignmentData {
 static_assert(sizeof(AssignmentData) == 6 * sizeof(int),
               "AssignmentData size should be  6 * sizeof(int) but was not.");
 
-// TestData data(x, y, *image_number, rgb, width, height, *num_images);
 struct TestData {
+  enum PixelConversion {
+    kZeroToPositiveOne,
+    kNegativeOneToPositiveOne
+  };
   float x;
   float y;
   float i;
@@ -62,6 +91,22 @@ struct TestData {
         r(rgb[0]),
         g(rgb[1]),
         b(rgb[2]) {}
+  TestData(int ix, int iy, int in, const float* rgb, int width, int height,
+           int num_images, ::PixelConversion::ConversionType conversion)
+      : x(static_cast<float>(ix) / (width - 1)),
+        y(static_cast<float>(iy) / (height - 1)),
+        i(static_cast<float>(in) / (num_images - 1)),
+        r(::PixelConversion::Convert(rgb[0], conversion)),
+        g(::PixelConversion::Convert(rgb[1], conversion)),
+        b(::PixelConversion::Convert(rgb[2], conversion)) {}
+  TestData(int ix, int iy, int in, const image::Pixel& p, int width, int height,
+           int num_images, ::PixelConversion::ConversionType conversion)
+      : x(static_cast<float>(ix) / (width - 1)),
+        y(static_cast<float>(iy) / (height - 1)),
+        i(static_cast<float>(in) / (num_images - 1)),
+        r(::PixelConversion::Convert(p.r, conversion)),
+        g(::PixelConversion::Convert(p.g, conversion)),
+        b(::PixelConversion::Convert(p.b, conversion)) {}
   bool operator==(const TestData& a) {
     return (this == &a) || (x == a.x && y == a.y && i == a.i && r == a.r &&
                             g == a.g && b == a.b);

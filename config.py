@@ -1,6 +1,5 @@
 from scipy import misc
 import numpy as np
-import matplotlib.image as mpimg
 
 def save_cfg(cfg_dir, average, sampled, assignments, num_images, max_levels):
   cfg = cfg_dir + '/relighting.cfg'
@@ -24,7 +23,7 @@ def save_cfg(cfg_dir, average, sampled, assignments, num_images, max_levels):
             if i < assignment_size - 1:
               f.write(" ")  
           f.write("\n")
-  mpimg.imsave(cfg_dir + '/average.png', average)
+  misc.imsave(cfg_dir + '/average.png', average)
 
 def load_cfg(dirname):
   img_dir = dirname 
@@ -48,7 +47,8 @@ def load_cfg(dirname):
         for i in range(0, assignment_size):
           assignments[y, x, i] = int(values[i])
         j = j + 1
-  average_img = mpimg.imread(cfg_dir + '/average.png')
+  average_img = misc.imread(cfg_dir + '/average.png',\
+      mode = 'RGB').astype('float32') / 255.0
   return model_dir, img_dir, width, height, num_images, ensemble_size, \
       max_levels, sampled, assignments, average_img
 

@@ -232,15 +232,15 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
   *target_dim1 = cluster_size * num_images;
   *target_dim2 = sizeof(PixelData) / sizeof(float);
   *target = new float[(*target_dim1) * (*target_dim2)];
-  LOG(STATUS) << "closest_k_test_target: test_dim1 = " << *test_dim1
+  LOG(DEBUG) << "closest_k_test_target: test_dim1 = " << *test_dim1
               << " test_dim2 = " << *test_dim2
               << " total = " << (*test_dim1) * (*test_dim2) << "\n";
-  LOG(STATUS) << "closest_k_target_target: target_dim1 = " << *target_dim1
+  LOG(DEBUG) << "closest_k_target_target: target_dim1 = " << *target_dim1
               << " target_dim2 = " << *target_dim2
               << " total = " << (*target_dim1) * (*target_dim2) << "\n";
-  LOG(STATUS) << " width = " << width << " height = " << height
+  LOG(DEBUG) << " width = " << width << " height = " << height
               << " cluster_size =" << cluster_size << "\n ";
-  LOG(STATUS) << " num_images = " << num_images << "\n";
+  LOG(DEBUG) << " num_images = " << num_images << "\n";
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
   for (int t = 0; t < num_threads; ++t) {
@@ -344,6 +344,7 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                                  float total = 0;
                                  for (int c = 0; c < 3; ++c)
                                    total += target_pos[c];
+                                 if (total == 0.0f) total = 1.0f;
                                  for (int c = 0; c < 3; ++c) {
                                    int k = y * width + x;
                                    float e = predictions_pos[c] - target_pos[c];
@@ -539,7 +540,7 @@ void assignment_data_to_test_data(
       assert(pixel_index >= 0 && pixel_index < num_pixels);
       test_pos[networks.back().start + i] = TestData(
           x, y, image_number, &average_image[pixel_index * average_image_dim3],
-          width, height, num_images);
+          width, height, num_images, ::PixelConversion::kNegativeOneToPositiveOne);
       ++assignment_counts[pixel_index];
       assert(assignment_counts[pixel_index] >= 1 &&
              assignment_counts[pixel_index] <= ensemble_size);

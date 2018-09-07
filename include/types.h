@@ -6,6 +6,18 @@
 #include <algorithm>
 #include <tuple>
 
+#include <glm/glm.hpp>
+
+struct CoordinateData {
+  float x;
+  float y;
+  CoordinateData(int xx, int yy, int width, int height)
+      : x(xx / static_cast<float>(width)), y(yy / static_cast<float>(height)) {}
+  CoordinateData(float xx, float yy) : x(xx), y(yy) {}
+  float& operator[](int i) { return (&x)[i]; }
+  float operator[](int i) const { return (&x)[i]; }
+};
+
 struct PixelConversion {
   enum ConversionType {
     kZeroToPositiveOne,
@@ -17,6 +29,11 @@ struct PixelConversion {
   }
   static float Convert(float x, PixelConversion::ConversionType conversion) {
     return (conversion == kZeroToPositiveOne ? x : 2.0f * x - 1.0f);
+  }
+  static float Unconvert(float x, PixelConversion::ConversionType conversion) {
+    return (conversion == kZeroToPositiveOne
+                ? 255.0f * glm::clamp(x, 0.0f, 1.0f)
+                : 255.0f * glm::clamp(0.5f * (x + 1.0f), 0.0f, 1.0f));
   }
 };
 

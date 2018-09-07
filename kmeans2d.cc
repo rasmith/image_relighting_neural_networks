@@ -233,13 +233,13 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
   *target_dim2 = sizeof(PixelData) / sizeof(float);
   *target = new float[(*target_dim1) * (*target_dim2)];
   LOG(DEBUG) << "closest_k_test_target: test_dim1 = " << *test_dim1
-              << " test_dim2 = " << *test_dim2
-              << " total = " << (*test_dim1) * (*test_dim2) << "\n";
+             << " test_dim2 = " << *test_dim2
+             << " total = " << (*test_dim1) * (*test_dim2) << "\n";
   LOG(DEBUG) << "closest_k_target_target: target_dim1 = " << *target_dim1
-              << " target_dim2 = " << *target_dim2
-              << " total = " << (*target_dim1) * (*target_dim2) << "\n";
+             << " target_dim2 = " << *target_dim2
+             << " total = " << (*target_dim1) * (*target_dim2) << "\n";
   LOG(DEBUG) << " width = " << width << " height = " << height
-              << " cluster_size =" << cluster_size << "\n ";
+             << " cluster_size =" << cluster_size << "\n ";
   LOG(DEBUG) << " num_images = " << num_images << "\n";
   const int num_threads = 8;
   std::vector<std::thread> threads(num_threads);
@@ -540,7 +540,8 @@ void assignment_data_to_test_data(
       assert(pixel_index >= 0 && pixel_index < num_pixels);
       test_pos[networks.back().start + i] = TestData(
           x, y, image_number, &average_image[pixel_index * average_image_dim3],
-          width, height, num_images, ::PixelConversion::kNegativeOneToPositiveOne);
+          width, height, num_images,
+          ::PixelConversion::kNegativeOneToPositiveOne);
       ++assignment_counts[pixel_index];
       assert(assignment_counts[pixel_index] >= 1 &&
              assignment_counts[pixel_index] <= ensemble_size);
@@ -580,7 +581,10 @@ void predictions_to_image(float* image_out, int image_out_dim1,
     int x = (width - 1) * (*test_pos);
     int y = (height - 1) * (*(test_pos + 1));
     for (int j = 0; j < image_out_dim3; ++j)
-      image_out[image_out_dim3 * (y * width + x) + j] += *(predictions_pos + j);
+      image_out[image_out_dim3 * (y * width + x) + j] +=
+          PixelConversion::Unconvert(
+              *(predictions_pos + j),
+              PixelConversion::kNegativeOneToPositiveOne);
     test_pos += test_dim2;
   }
 }

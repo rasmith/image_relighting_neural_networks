@@ -28,12 +28,13 @@ struct PixelConversion {
                                              : 2.0f * (x / 255.0f) - 1.0f);
   }
   static float Convert(float x, PixelConversion::ConversionType conversion) {
-    return (conversion == kZeroToPositiveOne ? x : 2.0f * x - 1.0f);
+    return (conversion == kZeroToPositiveOne ? x : glm::clamp(2.0f * x - 1.0f,
+                                                              -1.0f, 1.0f));
   }
   static float Unconvert(float x, PixelConversion::ConversionType conversion) {
     return (conversion == kZeroToPositiveOne
                 ? 255.0f * glm::clamp(x, 0.0f, 1.0f)
-                : 255.0f * glm::clamp(0.5f * (x + 1.0f), 0.0f, 1.0f));
+                : 255.0f * glm::clamp(0.5f * (x + 1.0f), -1.0f, 1.0f));
   }
 };
 

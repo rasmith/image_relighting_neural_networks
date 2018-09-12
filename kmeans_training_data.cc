@@ -195,9 +195,9 @@ void GetTrainingData(const std::vector<image::Image>& images,
               image::Pixel p = img(x, y), a = average(x, y);
               *reinterpret_cast<TestData*>(train_data_pos) =
                   TestData(x, y, indices[i], a, width, height, images.size(),
-                           ::PixelConversion::kNegativeOneToPositiveOne);
+                           ::PixelConversion::DefaultConversion());
               *reinterpret_cast<PixelData*>(train_labels_pos) =
-                  PixelData(p, ::PixelConversion::kNegativeOneToPositiveOne);
+                  PixelData(p, ::PixelConversion::DefaultConversion());
               train_data_pos += data_size;
               train_labels_pos += label_size;
             }

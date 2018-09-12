@@ -45,9 +45,9 @@ dirname = sys.argv[1]
 width, height, num_images = get_parameters(dirname)
 
 print("width = %d, height = %d, num_images = %d\n" % (width, height, num_images))
-num_levels = 4 
-max_levels = 4 
-num_hidden_nodes = 15 
+num_levels = 1 
+max_levels = 1 
+num_hidden_nodes = 15
 light_dim = 1
 level = 0
 ensemble_size = 5
@@ -117,6 +117,8 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   # Compute all of the predicted images.
   cluster_index = 0
   for cluster_id in cluster_ids:
+    if level == max_levels - 1:
+      break;
     batch_size = batch_sizes[cluster_id]
     print("batch_size = %d\n" % (batch_size))
     (checkpoint_file_name, checkpoint_file) = \

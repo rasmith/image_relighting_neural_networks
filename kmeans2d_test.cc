@@ -252,7 +252,8 @@ void GenerateTestAndAssignmentData(
              assignment_data_size * width * height);
       assignments[assignment_data_size * pixel_index] = level;
       float* rgb = &average[pixel_index * channels];
-      TestData data(x, y, *image_number, rgb, width, height, *num_images);
+      TestData data(x, y, *image_number, rgb, width, height, *num_images,
+                    PixelConversion::DefaultConversion());
       for (int j = 0; j < ensemble_size; ++j) {
         assert(network_pos >= &network_data[0] &&
                ((network_pos - &network_data[0]) + current_network <
@@ -322,17 +323,27 @@ void TestPredictionsToErrors(int width, int height, int channels,
   LoadBinaryMatlabData(prediction_path, width, height, channels, predictions);
   std::vector<float> target;
   LoadBinaryMatlabData(target_path, width, height, channels, target);
+  const PixelData* target_pixel_data =
+      reinterpret_cast<const PixelData*>(&target[0]);
+  const PixelData* predictions_pixel_data =
+      reinterpret_cast<const PixelData*>(&predictions[0]);
   std::vector<float> errors_out(width * height, 0.0f);
   predictions_to_errors(
       order, ensemble_size, reinterpret_cast<float*>(&test[0]), num_pixels,
       test_size, &target[0], num_pixels, channels, &predictions[0], num_pixels,
       channels, &errors_out[0], height, width);
   for (int i = 0; i < num_pixels; ++i) {
-    if (fabs(errors_out[i] - errors[i]) > 1e-5) {
+    if (fabs(errors_out[i] - errors[i]) > 1e-2) {
       LOG(ERROR) << "Error does not match at " << i << " got " << errors_out[i]
                  << " but expected " << errors[i] << "\n";
+      LOG(ERROR) << "target_pixel_data = " << target_pixel_data[i] << "\n";
+      LOG(ERROR) << "predictions_pixel_data = " << predictions_pixel_data[i]
+                 << "\n";
       for (int j = 0; j < 10; ++j) {
         LOG(ERROR) << "errors_out[" << j << "]=" << errors_out[j] << "\n";
+      }
+      for (int j = 0; j < 10; ++j) {
+        LOG(ERROR) << "errors[" << j << "]=" << errors[j] << "\n";
       }
       assert(errors_out[i] == errors[i]);
     }
@@ -680,25 +691,8 @@ int main(int argc, char** argv) {
   int x = 180;
   int y = 240;
   int c = 3;
-  Resolution resolutions[] = {{800, 600},
-                              {1024, 600},
-                              {1024, 768},
-                              {1152, 864},
-                              {1280, 720},
-                              {1280, 800},
-                              {1280, 1024},
-                              {1360, 768},
-                              {1366, 768},
-                              {1440, 900},
-                              {1536, 864},
-                              {1600, 900},
-                              {1680, 1050},
-                              {1920, 1080},
-                              {1920, 1200},
-                              {2560, 1080},
-                              {2560, 1440},
-                              {3440, 1440},
-                              {3840, 2160}};
+  Resolution resolutions[] = {
+      {800, 600}, {1280, 1024}, {1920, 1080}, {3840, 2160}};
 
   CommandLineOption option;
   if (argc > 1) {

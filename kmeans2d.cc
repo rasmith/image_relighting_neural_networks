@@ -541,7 +541,7 @@ void assignment_data_to_test_data(
       test_pos[networks.back().start + i] = TestData(
           x, y, image_number, &average_image[pixel_index * average_image_dim3],
           width, height, num_images,
-          ::PixelConversion::kNegativeOneToPositiveOne);
+          PixelConversion::DefaultConversion());
       ++assignment_counts[pixel_index];
       assert(assignment_counts[pixel_index] >= 1 &&
              assignment_counts[pixel_index] <= ensemble_size);
@@ -581,10 +581,7 @@ void predictions_to_image(float* image_out, int image_out_dim1,
     int x = (width - 1) * (*test_pos);
     int y = (height - 1) * (*(test_pos + 1));
     for (int j = 0; j < image_out_dim3; ++j)
-      image_out[image_out_dim3 * (y * width + x) + j] +=
-          PixelConversion::Unconvert(
-              *(predictions_pos + j),
-              PixelConversion::kNegativeOneToPositiveOne);
+      image_out[image_out_dim3 * (y * width + x) + j] += *(predictions_pos +j);
     test_pos += test_dim2;
   }
 }

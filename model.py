@@ -40,7 +40,7 @@ class ModelMaker:
     model_checkpoint = ModelCheckpoint(self.checkpoint_file, monitor='loss')
     self.model.fit(train_data, train_labels,
       batch_size=batch_size, callbacks=[model_checkpoint], \
-          epochs = 1, verbose=verbose)
+          epochs = 10, verbose=verbose)
 
   def load_weights(self):
     self.model.load_weights(self.checkpoint_file)

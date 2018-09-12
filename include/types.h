@@ -108,9 +108,9 @@ struct TestData {
   TestData() : x(0.0f), y(0.0f), i(0.0f), r(0.0f), g(0.0f), b(0.0f) {}
   TestData(int ix, int iy, int in, const float* rgb, int width, int height,
            int num_images)
-      : x(static_cast<float>(ix) / (width - 1)),
-        y(static_cast<float>(iy) / (height - 1)),
-        i(static_cast<float>(in) / (num_images - 1)),
+      : x(static_cast<float>(ix) / (std::max(width - 1, 1)),
+        y(static_cast<float>(iy) / (std::max(height - 1, 1)),
+        i(static_cast<float>(in) / (std::max(num_images - 1, 1)),
         r(rgb[0]),
         g(rgb[1]),
         b(rgb[2]) {}

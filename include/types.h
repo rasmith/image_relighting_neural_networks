@@ -93,6 +93,7 @@ struct AssignmentData {
 static_assert(sizeof(AssignmentData) == 6 * sizeof(int),
               "AssignmentData size should be  6 * sizeof(int) but was not.");
 
+#define 
 struct TestData {
   enum PixelConversion {
     kZeroToPositiveOne,
@@ -115,17 +116,17 @@ struct TestData {
         b(rgb[2]) {}
   TestData(int ix, int iy, int in, const float* rgb, int width, int height,
            int num_images, ::PixelConversion::ConversionType conversion)
-      : x(static_cast<float>(ix) / (width - 1)),
-        y(static_cast<float>(iy) / (height - 1)),
-        i(static_cast<float>(in) / (num_images - 1)),
+      : x(static_cast<float>(ix) / (std::max(width - 1, 1)),
+        y(static_cast<float>(iy) / (std::max(height - 1, 1)),
+        i(static_cast<float>(in) / (std::max(num_images - 1, 1)),
         r(::PixelConversion::Convert(rgb[0], conversion)),
         g(::PixelConversion::Convert(rgb[1], conversion)),
         b(::PixelConversion::Convert(rgb[2], conversion)) {}
   TestData(int ix, int iy, int in, const image::Pixel& p, int width, int height,
            int num_images, ::PixelConversion::ConversionType conversion)
-      : x(static_cast<float>(ix) / (width - 1)),
-        y(static_cast<float>(iy) / (height - 1)),
-        i(static_cast<float>(in) / (num_images - 1)),
+      : x(static_cast<float>(ix) / (std::max(width - 1, 1)),
+        y(static_cast<float>(iy) / (std::max(height - 1, 1)),
+        i(static_cast<float>(in) / (std::max(num_images - 1, 1)),
         r(::PixelConversion::Convert(p.r, conversion)),
         g(::PixelConversion::Convert(p.g, conversion)),
         b(::PixelConversion::Convert(p.b, conversion)) {}

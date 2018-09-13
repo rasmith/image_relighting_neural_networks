@@ -12,6 +12,20 @@ import config
 
 from cluster import *
 
+def save_assignment_map(level, cluster_id, width, height, test_data,\
+                        network_data):
+  image_out = np.zeros((height, width, 3), dtype = np.float32)
+  image_file_name = "render_images/map_%04d_%04d.png" % (level, cluster_id)
+  level, network_id, start, count= network_data 
+  for i in range(start, start+count):
+    x, y, i, r, g, b = test_data[i]
+    xx = int((width - 1) * x)
+    yy = int((height - 1) * y)
+    image_out[yy, xx, 0]  = 255.0
+    image_out[yy, xx, 1]  = 0.0
+    image_out[yy, xx, 2]  = 0.0
+  misc.imsave(image_file_name, image_out)
+
 # width = 696
 # height = 464
 def get_parameters(directory):
@@ -50,7 +64,7 @@ max_levels = 1
 num_hidden_nodes = 15
 light_dim = 1
 level = 0
-ensemble_size = 5
+ensemble_size = 1 
 tolerance = .03
 
 max_clusters =  int(\
@@ -98,6 +112,12 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
         config.get_checkpoint_file_info(models_dir, level, cluster_id)
     print("[%d] %d/%d checkpoint_file = %s" %
           (level, cluster_id, len(centers) - 1, checkpoint_file))
+    count = ends[cluster_id] - starts[cluster_id]
+    network_data = np.array([level, cluster_id, starts[cluster_id], count])
+    print("level = %d cluster_id = %d  start = %d count = %d\n"%\
+      (level, cluster_id, starts[cluster_id], count))
+    save_assignment_map(level, cluster_id, width, height,\
+      train_data, network_data)
     if not os.path.exists(checkpoint_file):
       start = time.time()
       with tf.device('/cpu:0'):
@@ -150,7 +170,7 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
     for y in range(0, height):
       if flagged[y, x] == 0 and not used[y,x]:
         assignments[y, x, 0] = level
-        assignments[y, x, 1:ensemble_size + 1] = closest[y, x, :]
+        assignments[y, x, 1:] = closest[y, x, :]
         used[y, x] = 1
         
   # Save pixel assignments to file.

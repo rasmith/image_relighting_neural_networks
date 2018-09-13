@@ -18,6 +18,7 @@
 #include <queue>
 #include <random>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -136,15 +137,16 @@ void GetTrainingData(const std::vector<image::Image>& images,
   uint32_t width = images[0].width(), height = images[0].height(),
            num_threads = 8;
   uint32_t sample_size = indices.size();
-  uint32_t num_pixels = sample_size * width * height;
-  *train_data_dim1 = num_pixels;
+  uint32_t num_pixels = width * height;
+  uint32_t total_pixels = sample_size * num_pixels;
+  *train_data_dim1 = total_pixels;
   *train_data_dim2 = data_size;
   *train_data = new float[(*train_data_dim1) * (*train_data_dim2)];
-  *train_labels_dim1 = num_pixels;
+  *train_labels_dim1 = total_pixels;
   *train_labels_dim2 = label_size;
   *train_labels = new float[(*train_labels_dim1) * (*train_labels_dim2)];
   std::vector<uint32_t> cluster_sizes(num_centers, 0);
-  std::vector<uint32_t> cluster_counts(num_centers, 0);
+  std::vector<uint32_t> cluster_offsets(num_centers, 0);
   // std::cout << "GetTrainingData:width  = " << width << "\n";
   // std::cout << "GetTrainingData:height  = " << height << "\n";
   // std::cout << "GetTrainingData:labels.size= " << labels.size() << "\n";
@@ -155,55 +157,75 @@ void GetTrainingData(const std::vector<image::Image>& images,
   std::copy(cluster_sizes.begin(), cluster_sizes.end(),
             std::back_inserter(batch_sizes));
   // Convert to total counts.
-  for (int i = 1; i < cluster_counts.size(); ++i)
-    cluster_counts[i] = cluster_counts[i - 1] + cluster_sizes[i - 1];
-
+  for (int i = 1; i < cluster_offsets.size(); ++i)
+    cluster_offsets[i] = cluster_offsets[i - 1] + cluster_sizes[i - 1];
+  // Compute starts, ends, and pixel offsets for each thread.
+  std::vector<int> starts(num_threads, 0);
+  std::vector<int> ends(num_threads, 0);
+  std::vector<int> pixel_offsets(num_threads, 0);
+  for (int i = 0; i < num_threads; ++i) {
+    int block_size = num_centers / num_threads + 1;
+    starts[i] = i * block_size;
+    ends[i] = std::min(starts[i] + block_size, num_centers);
+    if (i > 0) {
+      for (int j = starts[i]; j < ends[i]; ++j)
+        pixel_offsets[i] += cluster_sizes[j];
+      pixel_offsets[i] = pixel_offsets[i] * sample_size + pixel_offsets[i - 1];
+    }
+  }
+  // Compute a list of pixels for each cluster.
+  std::unordered_map<int, std::vector<int>> cluster_to_pixels_map;
+  for (int i = 0; i < num_pixels; ++i) {
+    int cluster_id = labels[i];
+    if (cluster_to_pixels_map.find(cluster_id) == cluster_to_pixels_map.end())
+      cluster_to_pixels_map.insert(
+          std::make_pair(cluster_id, std::vector<int>()));
+    cluster_to_pixels_map.find(cluster_id)->second.push_back(i);
+  }
   std::vector<std::thread> threads(num_threads);
   for (int i = 0; i < num_threads; ++i) {
-    threads[i] = std::thread(
-        [
-          &num_threads,
-          &num_centers,
-          &num_pixels,
-          &labels,
-          &cluster_counts,
-          &cluster_sizes,
-          &data_size,
-          &label_size,
-          &width,
-          &height,
-          &indices,
-          &images,
-          &average,
-          &train_data,
-          &train_labels
-        ](int tid)
-             ->void {
-
-          uint32_t sample_size = indices.size(),
-                   block_size = sample_size / num_threads + 1,
-                   start = tid * block_size,
-                   end = std::min(start + block_size, sample_size),
-                   num_pixels = width * height;
-          float* train_data_pos = *train_data + data_size * start * num_pixels;
-          float* train_labels_pos =
-              *train_labels + label_size * start * num_pixels;
-          for (int i = start; i < end; ++i) {
-            const image::Image& img = images[indices[i]];
-            for (int j = 0; j < labels.size(); ++j) {
-              uint32_t center = labels[j], x = j % width, y = j / width;
-              image::Pixel p = img(x, y), a = average(x, y);
-              *reinterpret_cast<TestData*>(train_data_pos) =
-                  TestData(x, y, indices[i], a, width, height, images.size(),
-                           ::PixelConversion::DefaultConversion());
-              *reinterpret_cast<PixelData*>(train_labels_pos) =
-                  PixelData(p, ::PixelConversion::DefaultConversion());
-              train_data_pos += data_size;
-              train_labels_pos += label_size;
-            }
-          }
-        },
-        i);
+    threads[i] =
+        std::thread([
+                      &width,
+                      &height,
+                      &num_pixels,
+                      &starts,
+                      &ends,
+                      &pixel_offsets,
+                      &cluster_to_pixels_map,
+                      &indices,
+                      &images,
+                      &average,
+                      &train_data,
+                      &train_labels
+                    ](int tid)
+                         ->void {
+                      TestData* train_data_pos =
+                          reinterpret_cast<TestData*>(*train_data) +
+                          pixel_offsets[tid];
+                      PixelData* train_labels_pos =
+                          reinterpret_cast<PixelData*>(*train_labels) +
+                          pixel_offsets[tid];
+                      for (int i = starts[tid]; i < ends[tid]; ++i) {
+                        const std::vector<int>& pixels =
+                            cluster_to_pixels_map.find(i)->second;
+                        for (int j = 0; j < indices.size(); ++j) {
+                          for (int k = 0; k < pixels.size(); ++k) {
+                            int x = pixels[k] % width, y = pixels[k] / width;
+                            *train_data_pos =
+                                TestData(x, y, indices[j], average(x, y), width,
+                                         height, images.size(),
+                                         PixelConversion::DefaultConversion());
+                            *train_labels_pos =
+                                PixelData(images[indices[j]](x, y),
+                                          PixelConversion::DefaultConversion());
+                            ++train_data_pos;
+                            ++train_labels_pos;
+                          }
+                        }
+                      }
+                    },
+                    i);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
 }
@@ -216,7 +238,7 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
   auto cmp = [](std::pair<int, float> left, std::pair<int, float> right) {
     return left.second < right.second;
   };
-  std::priority_queue<std::pair<int, float>, std::deque<std::pair<int, float> >,
+  std::priority_queue<std::pair<int, float>, std::deque<std::pair<int, float>>,
                       decltype(cmp)> q(cmp);
 #define USE_STD_UNIFORM_RANDOM_DEVICE 0
 #if USE_STD_UNIFORM_RANDOM_DEVICE
@@ -274,7 +296,8 @@ void KmeansDataAndLabels(
   if (images.size() < 1) return;
   image::Image average;
   // Pick random sample to use for training.
-  uint32_t sample_size = static_cast<uint32_t>(0.70 * images.size());
+  uint32_t sample_size =
+      std::max(static_cast<uint32_t>(0.70 * images.size()), 1U);
   std::cout << "pick indices\n";
   std::cout << "sample_size = " << sample_size << "\n";
   if (indices.empty())
@@ -294,7 +317,7 @@ void KmeansDataAndLabels(
   std::transform(pixels, pixels + num_pixels,
                  reinterpret_cast<PixelData*>(*average_img),
                  [](const image::Pixel& p) {
-    return PixelData(p.r / 255.0f, p.g / 255.0f, p.b / 255.0f);
+    return PixelData(p, PixelConversion::DefaultConversion());
   });
   // Run kmeans.
   centers.resize(num_centers);

@@ -22,6 +22,20 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
+def save_assignment_map(width, height, test_data, network_data):
+  image_out = np.zeros((height, width, 3), dtype = np.float32)
+  image_file_name = "render_images/map.png"
+  network_0 = network_data[0]
+  level, network_id, start, end = network_0
+  for i in range(start, end):
+    x, y, i, r, g, b = test_data[i]
+    xx = int((width - 1) * x)
+    yy = int((height - 1) * y)
+    image_out[yy, xx, 0]  = 255.0
+    image_out[yy, xx, 1]  = 0.0
+    image_out[yy, xx, 2]  = 0.0
+  misc.imsave(image_file_name, image_out)
+
 def init(models_dir, img_dir):
   assert os.path.exists(models_dir)
   if not os.path.exists(img_dir):
@@ -49,26 +63,28 @@ print("image_number = %s, num_images = %s" % (str(image_number), str(num_images)
 print("assignments.dtype= %s, average_img.dtype = %s"\
   % (str(assignments.dtype), str(average_img.dtype)))
 
-test_data, ensemble_data = kmeans2d.assignment_data_to_test_data(\
+test_data, network_data = kmeans2d.assignment_data_to_test_data(\
   assignments, image_number, num_images, average_img)
 
-print ("test_data.shape = %s, ensemble_data.shape = %s" % \
-  (test_data.shape, ensemble_data.shape))
+save_assignment_map(width, height, test_data, network_data)
+
+print ("test_data.shape = %s, network_data.shape = %s" % \
+  (test_data.shape, network_data.shape))
 
 # # predict image pixels
 light_dim = 1
 num_hidden_nodes = 15 
 start = 0
 end = 0
-# for data in ensemble_data:
-  # level, ensemble_id, count =  data
+# for data in network_data:
+  # level, network_id, count =  data
   # batch_size = count 
   # start = end
   # end = start + count
-  # print("level = %d, ensemble_id = %d, count = %d, start = %d, end = %d\n"\
-    # % (level, ensemble_id, count, start, end)) 
+  # print("level = %d, network_id = %d, count = %d, start = %d, end = %d\n"\
+    # % (level, network_id, count, start, end)) 
   # (checkpoint_file_name, checkpoint_file) = \
-      # config.get_checkpoint_file_info(model_dir, level, ensemble_id)
+      # config.get_checkpoint_file_info(model_dir, level, network_id)
   # with tf.device('/cpu:0'):
     # model = ModelMaker(light_dim, num_hidden_nodes)
     # model.set_checkpoint_file(checkpoint_file)
@@ -77,10 +93,10 @@ end = 0
     # predictions = model.predict(test_data[start:end], batch_size) 
   
 def predict(arg):
-  level, ensemble_id, start, batch_size= arg
+  level, network_id, start, batch_size= arg
   end = start + batch_size
   (checkpoint_file_name, checkpoint_file) = \
-      config.get_checkpoint_file_info(model_dir, level, ensemble_id)
+      config.get_checkpoint_file_info(model_dir, level, network_id)
   # print("checkpoint_file = %s\n" % (checkpoint_file))
   graph = tf.Graph()
   with graph.as_default():
@@ -104,27 +120,30 @@ def predict(arg):
   # kmeans2d.predictions_to_image(image_out, test_out[start:end], predictions)
   # print("=============================")
   # lock.release()
-  return (checkpoint_file_name, predictions, test_data[start:end])
+  return (checkpoint_file_name, level, network_id, predictions, \
+          test_data[start:end])
 
 def main():
   image_out = np.zeros((height, width, 3), dtype = np.float32)
+
   start = time.clock()
+  network_data_to_predict = network_data[0:1]
   with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-    for result in executor.map(predict, ensemble_data):
-      (checkpoint_file_name, predictions, test_out)  = result 
-      print("====================================")
-      print("ensemble_data = %s" % (str(ensemble_data)))
-      print ("type(image_out) = %s" % type(image_out))
-      print ("type(test_out) = %s" % type(test_out))
-      print("type(predictions) = %s" % type(predictions))
-      print("predictions = %s" % predictions)
-      print("type(predictions[0]) = %s" % type(predictions[0]))
+    for result in executor.map(predict, network_data_to_predict):
+      (checkpoint_file_name, level, network_id, predictions, test_out) = result 
+      # print("====================================")
+      print("network_data = %s" % (str(network_data_to_predict)))
+      # print ("type(image_out) = %s" % type(image_out))
+      # print ("type(test_out) = %s" % type(test_out))
+      # print("type(predictions) = %s" % type(predictions))
+      # print("predictions = %s" % predictions)
+      # print("type(predictions[0]) = %s" % type(predictions[0]))
       predictions = np.asarray(predictions, order='C', dtype='float32')
-      print("--predictions = %s" % predictions)
-      print("--type(predictions) = %s" % type(predictions))
-      print("--type(predictions[0]) = %s" % type(predictions[0]))
-      print("predictions.shape = %s" % (str(predictions.shape)))
-      print("test_out.shape = %s" % (str(test_out.shape)))
+      # print("--predictions = %s" % predictions)
+      # print("--type(predictions) = %s" % type(predictions))
+      # print("--type(predictions[0]) = %s" % type(predictions[0]))
+      # print("predictions.shape = %s" % (str(predictions.shape)))
+      # print("test_out.shape = %s" % (str(test_out.shape)))
       kmeans2d.predictions_to_image(image_out, test_out, predictions)
       # print("checkpoint_file_name =%s" % (checkpoint_file_name))
       # print("predictions = %s" % (predictions))
@@ -134,8 +153,11 @@ def main():
   image_file_name = "render_images/" + str(sys.argv[2]) + '.png'
   print("time = %5.5f" % (end - start))
   print("saved %s" % (image_file_name))
+  image_out = image_out - np.min(image_out)
+  image_out = np.divide(image_out, np.max(image_out))
+  image_out = 255.0 * image_out
   misc.imsave(image_file_name, image_out)
-  # for data in ensemble_data:
+  # for data in network_data:
     # test(data)
 
 if __name__ == '__main__':

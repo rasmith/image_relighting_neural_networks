@@ -21,6 +21,7 @@ class PixelClusters:
     self.timed = timed
     self.cxx_indices = kmeans2d.VectorInt()
     self.cxx_order  = kmeans2d.VectorInt()
+    self.ensemble_size = ensemble_size
 
   def __iter__(self):
     return self
@@ -57,7 +58,7 @@ class PixelClusters:
       print("iteration = %d elapsed = %s" % (self.iteration, str(elapsed)))
     centroids = [[cxx_centroids[i], cxx_centroids[i+1]] \
         for i in range(0, num_centers)]
-    k = 5;
+    k = self.ensemble_size;
     closest = kmeans2d.closest_n(width, height, k, cxx_centroids)
     cxx_centroids.clear()
     indices = [self.cxx_indices[i] for i in range(0, self.cxx_indices.size())]

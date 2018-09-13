@@ -6,8 +6,26 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D
 from keras.callbacks import ModelCheckpoint
+from keras.callbacks import EarlyStopping 
+from keras.callbacks import Callback 
 from keras.utils import np_utils
 from keras import backend as K
+
+class EarlyStoppingByAcc(Callback):
+    def __init__(self, monitor='acc', value=1.0, verbose=0):
+        super(Callback, self).__init__()
+        self.monitor = monitor
+        self.value = value
+        self.verbose = verbose
+
+    def on_epoch_end(self, epoch, logs={}):
+        current = logs.get(self.monitor)
+        if current is None:
+            warnings.warn("Early stopping requires %s available!" % self.monitor, RuntimeWarning)
+        if current == self.value:
+            if self.verbose > 0:
+                print("Epoch %05d: early stopping THR" % epoch)
+            self.model.stop_training = True
 
 class ModelMaker:
   def __init__(self, light_dim, num_hidden_nodes):
@@ -36,11 +54,13 @@ class ModelMaker:
   def reset(self):
     self.model.reset_states()
 
-  def train(self, train_data, train_labels, batch_size, verbose = 1):
-    model_checkpoint = ModelCheckpoint(self.checkpoint_file, monitor='loss')
+  def train(self, train_data, train_labels, batch_size, verbose = 0):
+    early_stopping = EarlyStoppingByAcc(monitor = 'acc')
+    model_checkpoint = ModelCheckpoint(self.checkpoint_file,  save_best_only=True, monitor='acc')
+    callbacks_list = [model_checkpoint, early_stopping]
     self.model.fit(train_data, train_labels,
-      batch_size=batch_size, callbacks=[model_checkpoint], \
-          epochs = 10, verbose=verbose)
+      batch_size=batch_size, callbacks=callbacks_list, \
+          epochs = 50, verbose=0)
 
   def load_weights(self):
     self.model.load_weights(self.checkpoint_file)

@@ -17,13 +17,11 @@ def save_assignment_map(level, cluster_id, width, height, test_data,\
   image_out = np.zeros((height, width, 3), dtype = np.float32)
   image_file_name = "render_images/map_%04d_%04d.png" % (level, cluster_id)
   level, network_id, start, count= network_data 
-  for i in range(start, start+count):
-    x, y, i, r, g, b = test_data[i]
-    xx = int((width - 1) * x)
-    yy = int((height - 1) * y)
-    image_out[yy, xx, 0]  = 255.0
-    image_out[yy, xx, 1]  = 0.0
-    image_out[yy, xx, 2]  = 0.0
+  values = test_data[start:start + count]
+  coords = [(x[0] * (width - 1), x[1] * (height - 1)) for x in values]
+  coords = np.round(np.array(coords)).astype(int)
+  for x in coords:
+    image_out[x[1], x[0], :]  = [255.0, 0.0, 0.0]
   misc.imsave(image_file_name, image_out)
 
 # width = 696
@@ -75,6 +73,7 @@ timed = True
 pixel_clusters = \
     PixelClusters(dirname, num_levels, max_clusters, ensemble_size, timed)
 
+
 flagged = np.ones((height, width), dtype  = bool)
 used = np.zeros((height, width), dtype  = bool)
 errors = np.ndarray((height, width), dtype = np.float32, order='C')
@@ -91,6 +90,14 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
     in reversed(pixel_clusters):
   if level >=  max_levels:
     break
+  palette = generate_palette(len(centers))
+  cluster_map = np.array(render_clusters(width, height, labels, palette))
+  cluster_map = np.transpose(np.reshape(cluster_map, (width, height, 3)),
+      (1, 0, 2))
+  cluster_map_file = "render_images/cluster_map_%d.png" % (level)
+  print("cluster_map.shape = %s " % str(cluster_map.shape))
+  misc.imsave(cluster_map_file, cluster_map)
+
   print("level = %d" % ((level)))
   print("closest.shape = %s\n" % str(closest.shape))
   num_samples = len(indices)
@@ -98,7 +105,7 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   ends = np.zeros(len(batch_sizes), dtype=np.int32)
   for i in range(0, len(batch_sizes)):
     if i > 0:
-      starts[i] = batch_sizes[i] * num_samples + starts[i-1]
+      starts[i] = batch_sizes[i-1] * num_samples + starts[i-1]
   ends = starts + np.array(batch_sizes) * num_samples
   # get number of clusters
   num_clusters = len(centers)

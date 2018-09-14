@@ -12,12 +12,11 @@
 #include <iterator>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <random>
 #include <string>
 #include <thread>
-#include <mutex>
 #include <unordered_map>
-#include <map>
 #include <utility>
 #include <vector>
 
@@ -495,8 +494,7 @@ void assignment_data_to_test_data(
   int num_networks = 0;
   LOG(STATUS) << "ensemble_size = " << ensemble_size << "\n";
   // 1. Put all assignment data into vectors for each network.
-  std::unordered_map<NetworkData, std::vector<int>, HashNetworkData>
-      network_map;
+  std::map<NetworkData, std::vector<int>, CompareNetworkData> network_map;
   int* pos = &assignment_data[0];
   for (int i = 0; i < num_pixels; ++i) {
     int x = i % width, y = i / width;
@@ -566,9 +564,8 @@ void assignment_data_to_test_data(
   *network_data = new int[(*network_data_dim1) * (*network_data_dim2)];
   NetworkData* network_pos = reinterpret_cast<NetworkData*>(*network_data);
   --network_pos;
-  for (int i = 0; i < networks.size(); ++i) {
+  for (int i = 0; i < networks.size(); ++i) 
     *++network_pos = networks[i];
-  }
   for (int i = 0; i < assignment_counts.size(); ++i) {
     if (assignment_counts[i] != ensemble_size) {
       LOG(ERROR) << "assignment_counts[" << i << "]=" << assignment_counts[i]

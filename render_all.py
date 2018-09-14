@@ -22,18 +22,17 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-def save_assignment_map(width, height, test_data, network_data):
+def save_assignment_map(level, cluster_id, width, height, test_data,\
+                        network_data):
   image_out = np.zeros((height, width, 3), dtype = np.float32)
-  image_file_name = "render_images/map.png"
-  network_0 = network_data[0]
-  level, network_id, start, end = network_0
-  for i in range(start, end):
-    x, y, i, r, g, b = test_data[i]
-    xx = int((width - 1) * x)
-    yy = int((height - 1) * y)
-    image_out[yy, xx, 0]  = 255.0
-    image_out[yy, xx, 1]  = 0.0
-    image_out[yy, xx, 2]  = 0.0
+  image_file_name = "render_images/amap_%04d_%04d.png" % (level, cluster_id)
+  print("network_data = %s" % str(network_data))
+  level, network_id, start, count= network_data
+  values = test_data[start:start + count]
+  coords = [(x[0] * (width - 1), x[1] * (height - 1)) for x in values]
+  coords = np.round(np.array(coords)).astype(int)
+  for x in coords:
+    image_out[x[1], x[0], :]  = [255.0, 0.0, 0.0]
   misc.imsave(image_file_name, image_out)
 
 def init(models_dir, img_dir):
@@ -66,8 +65,6 @@ print("assignments.dtype= %s, average_img.dtype = %s"\
 test_data, network_data = kmeans2d.assignment_data_to_test_data(\
   assignments, image_number, num_images, average_img)
 
-save_assignment_map(width, height, test_data, network_data)
-
 print ("test_data.shape = %s, network_data.shape = %s" % \
   (test_data.shape, network_data.shape))
 
@@ -93,7 +90,10 @@ end = 0
     # predictions = model.predict(test_data[start:end], batch_size) 
   
 def predict(arg):
-  level, network_id, start, batch_size= arg
+  level, network_id, start, count= arg
+  save_assignment_map(level, network_id, width, height, test_data,\
+                        [level, network_id, start, count])
+  return
   end = start + batch_size
   (checkpoint_file_name, checkpoint_file) = \
       config.get_checkpoint_file_info(model_dir, level, network_id)
@@ -127,36 +127,35 @@ def main():
   image_out = np.zeros((height, width, 3), dtype = np.float32)
 
   start = time.clock()
-  network_data_to_predict = network_data[0:1]
   with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-    for result in executor.map(predict, network_data_to_predict):
-      (checkpoint_file_name, level, network_id, predictions, test_out) = result 
+    for result in executor.map(predict, network_data):
+      pass
+      # (checkpoint_file_name, level, network_id, predictions, test_out) = result 
       # print("====================================")
-      print("network_data = %s" % (str(network_data_to_predict)))
       # print ("type(image_out) = %s" % type(image_out))
       # print ("type(test_out) = %s" % type(test_out))
       # print("type(predictions) = %s" % type(predictions))
       # print("predictions = %s" % predictions)
       # print("type(predictions[0]) = %s" % type(predictions[0]))
-      predictions = np.asarray(predictions, order='C', dtype='float32')
+      # predictions = np.asarray(predictions, order='C', dtype='float32')
       # print("--predictions = %s" % predictions)
       # print("--type(predictions) = %s" % type(predictions))
       # print("--type(predictions[0]) = %s" % type(predictions[0]))
       # print("predictions.shape = %s" % (str(predictions.shape)))
       # print("test_out.shape = %s" % (str(test_out.shape)))
-      kmeans2d.predictions_to_image(image_out, test_out, predictions)
+      # kmeans2d.predictions_to_image(image_out, test_out, predictions)
       # print("checkpoint_file_name =%s" % (checkpoint_file_name))
       # print("predictions = %s" % (predictions))
       # print("test = %s" % (test_out))
-  image_out = np.divide(image_out, float(ensemble_size))
-  end = time.clock()
-  image_file_name = "render_images/" + str(sys.argv[2]) + '.png'
-  print("time = %5.5f" % (end - start))
-  print("saved %s" % (image_file_name))
-  image_out = image_out - np.min(image_out)
-  image_out = np.divide(image_out, np.max(image_out))
-  image_out = 255.0 * image_out
-  misc.imsave(image_file_name, image_out)
+  # image_out = np.divide(image_out, float(ensemble_size))
+  # end = time.clock()
+  # image_file_name = "render_images/" + str(sys.argv[2]) + '.png'
+  # print("time = %5.5f" % (end - start))
+  # print("saved %s" % (image_file_name))
+  # image_out = image_out - np.min(image_out)
+  # image_out = np.divide(image_out, np.max(image_out))
+  # image_out = 255.0 * image_out
+  # misc.imsave(image_file_name, image_out)
   # for data in network_data:
     # test(data)
 

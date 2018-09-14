@@ -1,5 +1,6 @@
 #include "image.h"
 #include "kmeans.h"
+#include "logger.h"
 #include "types.h"
 
 #define LODEPNG_COMPILE_DISK
@@ -156,23 +157,33 @@ void GetTrainingData(const std::vector<image::Image>& images,
   // Copy out the batch sizes.
   std::copy(cluster_sizes.begin(), cluster_sizes.end(),
             std::back_inserter(batch_sizes));
+  for (int i = 0; i < cluster_sizes.size(); ++i)
+    std::cout << cluster_sizes[i] << " ";
+  std::cout << "\n";
+  LOG(STATUS) << "Compute cluster offsets.\n";
   // Convert to total counts.
   for (int i = 1; i < cluster_offsets.size(); ++i)
     cluster_offsets[i] = cluster_offsets[i - 1] + cluster_sizes[i - 1];
+
   // Compute starts, ends, and pixel offsets for each thread.
   std::vector<int> starts(num_threads, 0);
   std::vector<int> ends(num_threads, 0);
   std::vector<int> pixel_offsets(num_threads, 0);
+  std::vector<int> pixel_counts(num_threads, 0);
   for (int i = 0; i < num_threads; ++i) {
     int block_size = num_centers / num_threads + 1;
     starts[i] = i * block_size;
     ends[i] = std::min(starts[i] + block_size, num_centers);
-    if (i > 0) {
-      for (int j = starts[i]; j < ends[i]; ++j)
-        pixel_offsets[i] += cluster_sizes[j];
-      pixel_offsets[i] = pixel_offsets[i] * sample_size + pixel_offsets[i - 1];
-    }
+    assert(ends[i] >= 0 && ends[i] <= num_centers);
+    assert(starts[i] >= 0 && starts[i] <= num_centers);
+    for (int j = starts[i]; j < ends[i]; ++j)
+      pixel_counts[i] += cluster_sizes[j];
   }
+  for (int i = 1; i < num_threads; ++i)
+    pixel_offsets[i] += pixel_offsets[i - 1] + pixel_counts[i - 1];
+  for (int i = 1; i < num_threads; ++i)
+    assert(pixel_offsets[i] >= 0 &&
+           pixel_offsets[i] < num_pixels * indices.size());
   // Compute a list of pixels for each cluster.
   std::unordered_map<int, std::vector<int>> cluster_to_pixels_map;
   for (int i = 0; i < num_pixels; ++i) {
@@ -181,8 +192,11 @@ void GetTrainingData(const std::vector<image::Image>& images,
       cluster_to_pixels_map.insert(
           std::make_pair(cluster_id, std::vector<int>()));
     cluster_to_pixels_map.find(cluster_id)->second.push_back(i);
+    assert(cluster_to_pixels_map.find(cluster_id)->second.size() <=
+           cluster_sizes[cluster_id]);
   }
   std::vector<std::thread> threads(num_threads);
+  LOG(STATUS) << "Output the training data and labels.\n";
   for (int i = 0; i < num_threads; ++i) {
     threads[i] =
         std::thread([
@@ -197,21 +211,29 @@ void GetTrainingData(const std::vector<image::Image>& images,
                       &images,
                       &average,
                       &train_data,
+                      &cluster_sizes,
                       &train_labels
                     ](int tid)
                          ->void {
+                      TestData* train_data_begin =
+                          reinterpret_cast<TestData*>(*train_data);
                       TestData* train_data_pos =
-                          reinterpret_cast<TestData*>(*train_data) +
-                          pixel_offsets[tid];
+                          train_data_begin + pixel_offsets[tid];
+                      PixelData* train_labels_begin =
+                          reinterpret_cast<PixelData*>(*train_labels);
                       PixelData* train_labels_pos =
-                          reinterpret_cast<PixelData*>(*train_labels) +
-                          pixel_offsets[tid];
+                          train_labels_begin + pixel_offsets[tid];
                       for (int i = starts[tid]; i < ends[tid]; ++i) {
                         const std::vector<int>& pixels =
                             cluster_to_pixels_map.find(i)->second;
+                        assert(pixels.size() == cluster_sizes[i]);
                         for (int j = 0; j < indices.size(); ++j) {
                           for (int k = 0; k < pixels.size(); ++k) {
                             int x = pixels[k] % width, y = pixels[k] / width;
+                            assert(train_data_pos - train_data_begin <
+                                   num_pixels * indices.size());
+                            assert(train_labels_pos - train_labels_begin <
+                                   num_pixels * indices.size());
                             *train_data_pos =
                                 TestData(x, y, indices[j], average(x, y), width,
                                          height, images.size(),

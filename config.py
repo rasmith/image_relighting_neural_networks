@@ -16,8 +16,8 @@ def save_cfg(cfg_dir, average, sampled, assignments, num_images, max_levels):
     f.write("%d\n" % (ensemble_size)) # ensemble_size
     f.write("%d\n" % (max_levels)) # max_levels
     f.write("%s\n" % (' '.join([str(i) for i in sampled]))) # sampled images
-    for x in range(0, width):
-      for y in range(0, height):
+    for y in range(0, height):
+      for x in range(0, width):
           for i in range(0, assignment_size):
             f.write("%d" % assignments[y,x,i])
             if i < assignment_size - 1:

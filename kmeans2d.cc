@@ -512,6 +512,12 @@ void assignment_data_to_test_data(
     }
     pos += ensemble_size + 1;
   }
+  const std::vector<int>& pixels = network_map.find(NetworkData(0, 0))->second;
+  std::cout << "[";
+  for (int i = 0; i < pixels.size(); ++i) {
+    std::cout << "["<< pixels[i]%width <<  " " << pixels[i]/width << "]\n";
+  }
+  std::cout << "]";
   int count = 0;
   for (const auto& entry : network_map) {
     assert(entry.second.size() > 0);

@@ -20,6 +20,9 @@ def save_assignment_map(level, cluster_id, width, height, test_data,\
   values = test_data[start:start + count]
   coords = [(x[0] * (width - 1), x[1] * (height - 1)) for x in values]
   coords = np.round(np.array(coords)).astype(int)
+  if level == 0 and network_id == 0:
+    np.set_printoptions(threshold=np.nan)
+    print("coords = %s" % str(coords))
   for x in coords:
     image_out[x[1], x[0], :]  = [255.0, 0.0, 0.0]
   misc.imsave(image_file_name, image_out)
@@ -98,8 +101,8 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   print("cluster_map.shape = %s " % str(cluster_map.shape))
   misc.imsave(cluster_map_file, cluster_map)
 
-  print("level = %d" % ((level)))
-  print("closest.shape = %s\n" % str(closest.shape))
+  # print("level = %d" % ((level)))
+  # print("closest.shape = %s\n" % str(closest.shape))
   num_samples = len(indices)
   starts = np.zeros(len(batch_sizes), dtype=np.int32)
   ends = np.zeros(len(batch_sizes), dtype=np.int32)
@@ -109,20 +112,20 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   ends = starts + np.array(batch_sizes) * num_samples
   # get number of clusters
   num_clusters = len(centers)
-  print("num_centers = %d\n" % len(centers))
-  print ("len(batch_sizes) = %d\n" % len(batch_sizes))
+  # print("num_centers = %d\n" % len(centers))
+  # print ("len(batch_sizes) = %d\n" % len(batch_sizes))
   cluster_ids = get_flagged_clusters(range(0, len(centers)), closest, flagged)
-  print("len(cluster_ids) = %d\n" % len(cluster_ids))
+  # print("len(cluster_ids) = %d\n" % len(cluster_ids))
 
   for cluster_id in cluster_ids:
     (checkpoint_file_name, checkpoint_file) = \
         config.get_checkpoint_file_info(models_dir, level, cluster_id)
-    print("[%d] %d/%d checkpoint_file = %s" %
-          (level, cluster_id, len(centers) - 1, checkpoint_file))
+    # print("[%d] %d/%d checkpoint_file = %s" %
+          # (level, cluster_id, len(centers) - 1, checkpoint_file))
     count = ends[cluster_id] - starts[cluster_id]
     network_data = np.array([level, cluster_id, starts[cluster_id], count])
-    print("level = %d cluster_id = %d  start = %d count = %d\n"%\
-      (level, cluster_id, starts[cluster_id], count))
+    # print("level = %d cluster_id = %d  start = %d count = %d\n"%\
+      # (level, cluster_id, starts[cluster_id], count))
     save_assignment_map(level, cluster_id, width, height,\
       train_data, network_data)
     if not os.path.exists(checkpoint_file):
@@ -157,9 +160,9 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
     for k in range(0, ensemble_size):
       test, target = kmeans2d.closest_k_test_target(int(k), int(cluster_id),\
                                               closest, train_data, train_labels) 
-      print("[%d] %d/%d, %d/%d checkpoint_file = %s, ensemble %d" %
-            (level, cluster_index, len(cluster_ids) - 1, cluster_id, \
-                len(centers) - 1, checkpoint_file, k))
+      # print("[%d] %d/%d, %d/%d checkpoint_file = %s, ensemble %d" %
+            # (level, cluster_index, len(cluster_ids) - 1, cluster_id, \
+                # len(centers) - 1, checkpoint_file, k))
       with tf.device('/cpu:0'):
         predictions = model.predict(test, batch_size) 
         kmeans2d.predictions_to_errors(cxx_order, ensemble_size,\
@@ -180,6 +183,27 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
         assignments[y, x, 1:] = closest[y, x, :]
         used[y, x] = 1
         
+  np.set_printoptions(threshold=np.nan)
+  print("closest[0, 0, :] = %s" % str(closest[0, 0, :]))
+  print("closest[1, 0, :] = %s" % str(closest[1, 0, :]))
+  print("closest[2, 0, :] = %s" % str(closest[2, 0, :]))
+  print("closest[0, 1, :] = %s" % str(closest[0, 1, :]))
+  print("closest[1, 1, :] = %s" % str(closest[1, 1, :]))
+  print("closest[2, 1, :] = %s" % str(closest[2, 1, :]))
+  print("closest[0, 2, :] = %s" % str(closest[0, 2, :]))
+  print("closest[1, 2, :] = %s" % str(closest[1, 2, :]))
+  print("closest[2, 2, :] = %s" % str(closest[2, 2, :]))
+  print("assignments[0, 0, :] = %s" % str(assignments[0, 0, :]))
+  print("assignments[1, 0, :] = %s" % str(assignments[1, 0, :]))
+  print("assignments[2, 0, :] = %s" % str(assignments[2, 0, :]))
+  print("assignments[0, 1, :] = %s" % str(assignments[0, 1, :]))
+  print("assignments[1, 1, :] = %s" % str(assignments[1, 1, :]))
+  print("assignments[2, 1, :] = %s" % str(assignments[2, 1, :]))
+  print("assignments[0, 2, :] = %s" % str(assignments[0, 2, :]))
+  print("assignments[1, 2, :] = %s" % str(assignments[1, 2, :]))
+  print("assignments[2, 2, :] = %s" % str(assignments[2, 2, :]))
+
+
   # Save pixel assignments to file.
   config.save_cfg(cfg_dir, average, indices, assignments, num_images, level)
 

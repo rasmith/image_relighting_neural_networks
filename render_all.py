@@ -26,11 +26,14 @@ def save_assignment_map(level, cluster_id, width, height, test_data,\
                         network_data):
   image_out = np.zeros((height, width, 3), dtype = np.float32)
   image_file_name = "render_images/amap_%04d_%04d.png" % (level, cluster_id)
-  print("network_data = %s" % str(network_data))
+  # print("network_data = %s" % str(network_data))
   level, network_id, start, count= network_data
   values = test_data[start:start + count]
   coords = [(x[0] * (width - 1), x[1] * (height - 1)) for x in values]
   coords = np.round(np.array(coords)).astype(int)
+  if level == 0 and network_id == 0:
+    np.set_printoptions(threshold=np.nan)
+    print("coords = %s" % str(coords))
   for x in coords:
     image_out[x[1], x[0], :]  = [255.0, 0.0, 0.0]
   misc.imsave(image_file_name, image_out)
@@ -47,6 +50,15 @@ image_number = int(sys.argv[2])
 (model_dir, img_dir, width, height, num_images, ensemble_size,  max_levels, \
     sampled, assignments, average_img) = config.load_cfg(dirname)
 
+print("assignments[0, 0, :] = %s" % str(assignments[0, 0, :]))
+print("assignments[1, 0, :] = %s" % str(assignments[1, 0, :]))
+print("assignments[2, 0, :] = %s" % str(assignments[2, 0, :]))
+print("assignments[0, 1, :] = %s" % str(assignments[0, 1, :]))
+print("assignments[1, 1, :] = %s" % str(assignments[1, 1, :]))
+print("assignments[2, 1, :] = %s" % str(assignments[2, 1, :]))
+print("assignments[0, 2, :] = %s" % str(assignments[0, 2, :]))
+print("assignments[1, 2, :] = %s" % str(assignments[1, 2, :]))
+print("assignments[2, 2, :] = %s" % str(assignments[2, 2, :]))
 init(model_dir, img_dir)
 
 # Need to get [[L, i, i, i, i, i],

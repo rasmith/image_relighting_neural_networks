@@ -55,15 +55,13 @@ class ModelMaker:
     self.model.reset_states()
 
   def train(self, train_data, train_labels, batch_size, verbose = 0):
-    train_data = np.asfortrainarray(train_data, dtype='float32')
-    train_labels = np.asfortrainarray(train_labels, dtype='float32')
     early_stopping = EarlyStoppingByAcc(monitor = 'acc')
     model_checkpoint = ModelCheckpoint(self.checkpoint_file,\
                                        save_best_only=True, monitor='acc')
     callbacks_list = [model_checkpoint, early_stopping]
     self.model.fit(train_data, train_labels,
       batch_size=batch_size, callbacks=callbacks_list, \
-          epochs = 50, verbose=0)
+          epochs = 100, verbose=0)
     score = self.model.evaluate(train_data, train_labels)
     print("score = %s" % str(score))
 

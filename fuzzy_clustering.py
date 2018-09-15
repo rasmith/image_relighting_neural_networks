@@ -81,7 +81,6 @@ timed = True
 pixel_clusters = \
     PixelClusters(dirname, num_levels, max_clusters, ensemble_size, timed)
 
-
 flagged = np.ones((height, width), dtype  = bool)
 used = np.zeros((height, width), dtype  = bool)
 errors = np.ndarray((height, width), dtype = np.float32, order='C')

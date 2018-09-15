@@ -581,6 +581,8 @@ void assignment_data_to_test_data(
   }
 }
 
+// Should be the prediction from one neural network to be mapped into
+// the desired image.
 void predictions_to_image(float* image_out, int image_out_dim1,
                           int image_out_dim2, int image_out_dim3, float* test,
                           int test_dim1, int test_dim2, float* predictions,
@@ -593,10 +595,11 @@ void predictions_to_image(float* image_out, int image_out_dim1,
   for (float* predictions_pos = predictions;
        predictions_pos < predictions + predictions_dim1 * predictions_dim2;
        predictions_pos += predictions_dim2) {
-    int x = (width - 1) * (*test_pos);
-    int y = (height - 1) * (*(test_pos + 1));
-    for (int j = 0; j < image_out_dim3; ++j)
+    int x = std::round((width - 1.0) * (*test_pos));
+    int y = std::round((height - 1.0) * (*(test_pos + 1)));
+    for (int j = 0; j < image_out_dim3; ++j) {
       image_out[image_out_dim3 * (y * width + x) + j] += *(predictions_pos + j);
+    }
     test_pos += test_dim2;
   }
 }

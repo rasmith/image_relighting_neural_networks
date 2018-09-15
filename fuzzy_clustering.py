@@ -20,12 +20,17 @@ def save_assignment_map(level, cluster_id, width, height, test_data,\
   values = test_data[start:start + count]
   coords = [(x[0] * (width - 1), x[1] * (height - 1)) for x in values]
   coords = np.round(np.array(coords)).astype(int)
-  if level == 0 and network_id == 0:
-    np.set_printoptions(threshold=np.nan)
-    print("coords = %s" % str(coords))
   for x in coords:
     image_out[x[1], x[0], :]  = [255.0, 0.0, 0.0]
   misc.imsave(image_file_name, image_out)
+
+def update_input_map(level, cluster_id, width, height, test_data,\
+                        network_data, input_map):
+  level, network_id, start, count= network_data 
+  for t in test_data[start:start + count]:
+    x = int(np.round(t[0] * (width - 1)))
+    y = int(np.round(t[1] * (height - 1)))
+    input_map[y, x, :]  = 255.0*t[3:]
 
 # width = 696
 # height = 464
@@ -93,6 +98,7 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
     in reversed(pixel_clusters):
   if level >=  max_levels:
     break
+  input_map = np.zeros((height, width, 3), dtype = np.float32)
   palette = generate_palette(len(centers))
   cluster_map = np.array(render_clusters(width, height, labels, palette))
   cluster_map = np.transpose(np.reshape(cluster_map, (width, height, 3)),
@@ -128,6 +134,10 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
       # (level, cluster_id, starts[cluster_id], count))
     save_assignment_map(level, cluster_id, width, height,\
       train_data, network_data)
+    update_input_map(level, cluster_id, width, height,\
+      train_data, network_data, input_map)
+    # save_labels_map(level, cluster_id, width, height,\
+      # train_data, network_data)
     if not os.path.exists(checkpoint_file):
       start = time.time()
       with tf.device('/cpu:0'):
@@ -183,29 +193,9 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
         assignments[y, x, 1:] = closest[y, x, :]
         used[y, x] = 1
         
-  np.set_printoptions(threshold=np.nan)
-  print("closest[0, 0, :] = %s" % str(closest[0, 0, :]))
-  print("closest[1, 0, :] = %s" % str(closest[1, 0, :]))
-  print("closest[2, 0, :] = %s" % str(closest[2, 0, :]))
-  print("closest[0, 1, :] = %s" % str(closest[0, 1, :]))
-  print("closest[1, 1, :] = %s" % str(closest[1, 1, :]))
-  print("closest[2, 1, :] = %s" % str(closest[2, 1, :]))
-  print("closest[0, 2, :] = %s" % str(closest[0, 2, :]))
-  print("closest[1, 2, :] = %s" % str(closest[1, 2, :]))
-  print("closest[2, 2, :] = %s" % str(closest[2, 2, :]))
-  print("assignments[0, 0, :] = %s" % str(assignments[0, 0, :]))
-  print("assignments[1, 0, :] = %s" % str(assignments[1, 0, :]))
-  print("assignments[2, 0, :] = %s" % str(assignments[2, 0, :]))
-  print("assignments[0, 1, :] = %s" % str(assignments[0, 1, :]))
-  print("assignments[1, 1, :] = %s" % str(assignments[1, 1, :]))
-  print("assignments[2, 1, :] = %s" % str(assignments[2, 1, :]))
-  print("assignments[0, 2, :] = %s" % str(assignments[0, 2, :]))
-  print("assignments[1, 2, :] = %s" % str(assignments[1, 2, :]))
-  print("assignments[2, 2, :] = %s" % str(assignments[2, 2, :]))
-
-
   # Save pixel assignments to file.
   config.save_cfg(cfg_dir, average, indices, assignments, num_images, level)
+  misc.imsave("render_images/input_map.png", input_map)
 
   del train_data
   del train_labels

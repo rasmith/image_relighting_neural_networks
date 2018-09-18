@@ -12,6 +12,12 @@ import config
 
 from cluster import *
 
+def save_accuracy_map(accuracy_map):
+  image_out = 255.0 * accuracy_map
+  image_file_name = "render_images/accuracy_map.png" 
+  misc.imsave(image_file_name, image_out)
+
+
 def save_assignment_map(level, cluster_id, width, height, test_data,\
                         network_data):
   image_out = np.zeros((height, width, 3), dtype = np.float32)
@@ -31,6 +37,25 @@ def update_input_map(level, cluster_id, width, height, test_data,\
     x = int(np.round(t[0] * (width - 1)))
     y = int(np.round(t[1] * (height - 1)))
     input_map[y, x, :]  = 255.0*t[3:]
+
+def update_label_map(level, cluster_id, width, height, test_data,\
+                        label_data, network_data, label_map):
+  level, network_id, start, count= network_data 
+  for i in range(start, start + count):
+    t = test_data[i]
+    l = label_data[i]
+    x = int(np.round(t[0] * (width - 1)))
+    y = int(np.round(t[1] * (height - 1)))
+    label_map[y, x, :]  = 255.0 * l
+
+def update_accuracy_map(network_data, test_data, score, accuracy_map):
+  level, network_id, start, count= network_data 
+  for t in test_data[start:start + count]:
+    x = int(np.round(t[0] * (width - 1)))
+    y = int(np.round(t[1] * (height - 1)))
+    accuracy_map[y, x, 0] = 255.0 * score[1]
+    accuracy_map[y, x, 1] = 255.0 * score[1]
+    accuracy_map[y, x, 2] = 255.0 * score[1]
 
 # width = 696
 # height = 464
@@ -84,6 +109,7 @@ pixel_clusters = \
 flagged = np.ones((height, width), dtype  = bool)
 used = np.zeros((height, width), dtype  = bool)
 errors = np.ndarray((height, width), dtype = np.float32, order='C')
+accuracy_map = np.ndarray((height, width, 3), dtype = np.float32, order='C')
 
 (models_dir, cfg_dir) = init(dirname)
 print ("models_dir = %s\n" % (models_dir))
@@ -95,9 +121,12 @@ assignments = np.zeros((height, width, ensemble_size + 1), dtype = 'int')
 for indices, cxx_order, centers, labels, closest, average, train_data, \
     train_labels, batch_sizes\
     in reversed(pixel_clusters):
+  print("train_data order = %s" % (str(np.isfortran(train_data))))
+  print("train_labels order = %s" % (str(np.isfortran(train_labels))))
   if level >=  max_levels:
     break
   input_map = np.zeros((height, width, 3), dtype = np.float32)
+  label_map = np.zeros((height, width, 3), dtype = np.float32)
   palette = generate_palette(len(centers))
   cluster_map = np.array(render_clusters(width, height, labels, palette))
   cluster_map = np.transpose(np.reshape(cluster_map, (width, height, 3)),
@@ -135,6 +164,8 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
       train_data, network_data)
     update_input_map(level, cluster_id, width, height,\
       train_data, network_data, input_map)
+    update_label_map(level, cluster_id, width, height,\
+      train_data, train_labels, network_data, label_map)
     # save_labels_map(level, cluster_id, width, height,\
       # train_data, network_data)
     if not os.path.exists(checkpoint_file):
@@ -143,10 +174,11 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
         model = ModelMaker(light_dim, num_hidden_nodes)
         model.set_checkpoint_file(checkpoint_file)
         model.compile()
-        model.train(train_data[starts[cluster_id]:ends[cluster_id], :], \
+        score = model.train(train_data[starts[cluster_id]:ends[cluster_id], :], \
             train_labels[starts[cluster_id]:ends[cluster_id], :], 
             batch_sizes[cluster_id])
         K.clear_session()
+        update_accuracy_map(network_data, train_data, score, accuracy_map)
       end = time.time();
       print("[%d] %d/%d time to train %f\n" % \
           (level, cluster_id, len(centers) - 1, end - start))
@@ -195,6 +227,8 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   # Save pixel assignments to file.
   config.save_cfg(cfg_dir, average, indices, assignments, num_images, level)
   misc.imsave("render_images/input_map.png", input_map)
+  misc.imsave("render_images/label_map.png", label_map)
+  save_accuracy_map(accuracy_map)
 
   del train_data
   del train_labels

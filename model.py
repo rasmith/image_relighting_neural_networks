@@ -47,8 +47,9 @@ class ModelMaker:
     self.checkpoint_file = file_name
 
   def compile(self):
+    sgd = keras.optimizers.SGD(lr=0.01, nesterov=True)
     self.model.compile(loss='mean_squared_error',
-                  optimizer='adam',
+                  optimizer=sgd,
                   metrics=['accuracy'])
 
   def reset(self):
@@ -61,9 +62,10 @@ class ModelMaker:
     callbacks_list = [model_checkpoint, early_stopping]
     self.model.fit(train_data, train_labels,
       batch_size=batch_size, callbacks=callbacks_list, \
-          epochs = 100, verbose=0)
+          epochs = 1000, verbose=0)
     score = self.model.evaluate(train_data, train_labels)
     print("score = %s" % str(score))
+    return score
 
 
   def load_weights(self):

@@ -6,8 +6,6 @@ from scipy import misc
 import numpy as np
 from multiprocessing import Pool
 from model import ModelMaker
-import tensorflow as tf
-from keras import backend as K
 import config
 
 from cluster import *
@@ -170,18 +168,16 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
       # train_data, network_data)
     if not os.path.exists(checkpoint_file):
       start = time.time()
-      with tf.device('/cpu:0'):
-        model = ModelMaker(light_dim, num_hidden_nodes)
-        model.set_checkpoint_file(checkpoint_file)
-        model.compile()
-        score = model.train(train_data[starts[cluster_id]:ends[cluster_id], :], \
-            train_labels[starts[cluster_id]:ends[cluster_id], :], 
-            batch_sizes[cluster_id])
-        K.clear_session()
-        update_accuracy_map(network_data, train_data, score, accuracy_map)
-      end = time.time();
-      print("[%d] %d/%d time to train %f\n" % \
-          (level, cluster_id, len(centers) - 1, end - start))
+      model = ModelMaker(light_dim, num_hidden_nodes)
+      model.set_checkpoint_file(checkpoint_file)
+      model.compile()
+      score = model.train(train_data[starts[cluster_id]:ends[cluster_id], :], \
+          train_labels[starts[cluster_id]:ends[cluster_id], :], 
+          batch_sizes[cluster_id])
+      update_accuracy_map(network_data, train_data, score, accuracy_map)
+    end = time.time();
+    print("[%d] %d/%d time to train %f\n" % \
+        (level, cluster_id, len(centers) - 1, end - start))
   
   channels = 3
 
@@ -204,10 +200,9 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
       # print("[%d] %d/%d, %d/%d checkpoint_file = %s, ensemble %d" %
             # (level, cluster_index, len(cluster_ids) - 1, cluster_id, \
                 # len(centers) - 1, checkpoint_file, k))
-      with tf.device('/cpu:0'):
-        predictions = model.predict(test, batch_size) 
-        kmeans2d.predictions_to_errors(cxx_order, ensemble_size,\
-            test, target, predictions, errors);
+      predictions = model.predict(test, batch_size) 
+      kmeans2d.predictions_to_errors(cxx_order, ensemble_size,\
+          test, target, predictions, errors);
       del test
       del target
     cluster_index = cluster_index + 1

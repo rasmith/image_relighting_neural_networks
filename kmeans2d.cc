@@ -515,7 +515,7 @@ void assignment_data_to_test_data(
   const std::vector<int>& pixels = network_map.find(NetworkData(0, 0))->second;
   std::cout << "[";
   for (int i = 0; i < pixels.size(); ++i) {
-    std::cout << "["<< pixels[i]%width <<  " " << pixels[i]/width << "]\n";
+    std::cout << "[" << pixels[i] % width << " " << pixels[i] / width << "]\n";
   }
   std::cout << "]";
   int count = 0;
@@ -570,8 +570,7 @@ void assignment_data_to_test_data(
   *network_data = new int[(*network_data_dim1) * (*network_data_dim2)];
   NetworkData* network_pos = reinterpret_cast<NetworkData*>(*network_data);
   --network_pos;
-  for (int i = 0; i < networks.size(); ++i) 
-    *++network_pos = networks[i];
+  for (int i = 0; i < networks.size(); ++i) *++network_pos = networks[i];
   for (int i = 0; i < assignment_counts.size(); ++i) {
     if (assignment_counts[i] != ensemble_size) {
       LOG(ERROR) << "assignment_counts[" << i << "]=" << assignment_counts[i]
@@ -603,3 +602,8 @@ void predictions_to_image(float* image_out, int image_out_dim1,
     test_pos += test_dim2;
   }
 }
+
+void train_network(const string& save_file, float* train_data,
+                   int train_data_dim1, int train_data_dim2,
+                   float* train_labels, int train_labels_dim1,
+                   int train_labels_dim2, int num_hidden_nodes) {}

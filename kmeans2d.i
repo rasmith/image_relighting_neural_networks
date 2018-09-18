@@ -39,6 +39,9 @@
 (float* train_data, int train_data_dim1, int train_data_dim2)};
 
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
+(float* train_labels, int train_labels_dim1, int train_labels_dim2)};
+
+%apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* target_data, int target_data_dim1, int target_data_dim2)};
 
 %apply (float** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
@@ -47,10 +50,6 @@
 %apply (float** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
 (float** target, int* target_dim1, int* target_dim2)};
 
-/*void predictions_to_image(float* image_out, int image_out_dim1,*/
-                          /*int image_out_dim2, int image_out_dim3, float* test,*/
-                          /*int test_dim1, int test_dim2, float* predictions,*/
-                          /*int predictions_dim1, int predictions_dim2);*/
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* test, int test_dim1, int test_dim2)};
 
@@ -70,10 +69,6 @@ int predicted_images_dim3, int predicted_images_dim4)};
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* errors, int errors_dim1, int errors_dim2)};
 
-/*void predictions_to_image(float* image_out, int image_out_dim1,*/
-                          /*int image_out_dim2, int image_out_dim3, float* test,*/
-                          /*int test_dim1, int test_dim2, float* predictions,*/
-                          /*int predictions_dim1, int predictions_dim2);*/
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* totals, int totals_dim1, int totals_dim2)};
 
@@ -96,14 +91,6 @@ int predicted_images_dim3, int predicted_images_dim4)};
 
 %apply (float* INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {\
 (float* image_out, int image_out_dim1, int image_out_dim2, int image_out_dim3)};
-
-/*void assignment_data_to_test_data(*/
-    /*int* assignment_data, int assignment_data_dim_1, int assignment_data_dim_2,*/
-    /*int assignment_data_dim_3, int image_number, int num_images,*/
-    /*float* average_image, int average_image_dim_1, int average_image_dim_2,*/
-    /*int average_image_dim_3, float** test_data, int* test_data_dim_1,*/
-    /*int* test_data_dim_2, int** ensemble_data, int* ensemble_data_dim_1,*/
-    /*int* ensemble_data_dim_2);*/
 
 %apply (float** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
 (float** test_data, int* test_data_dim1, int* test_data_dim2)};

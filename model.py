@@ -39,9 +39,9 @@ class ModelMaker:
     self.model.add(Dense(self.num_hidden_nodes, \
                        activation = 'tanh', \
                        input_dim = self.input_dim))
-    self.model.add(Dense(self.num_hidden_nodes));
+    self.model.add(Dense(self.num_hidden_nodes, activation = 'tanh'));
     # output labels r, g, b
-    self.model.add(Dense(self.color_dim))
+    self.model.add(Dense(self.color_dim, activation = 'tanh'))
 
   def set_checkpoint_file(self, file_name):
     self.checkpoint_file = file_name

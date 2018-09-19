@@ -26,6 +26,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_PATH}
 
 set(PYTHON_LIBRARY "/usr/lib64/libpython3.6m.so")
 set(PYTHON_INCLUDE_DIR "/usr/include/python3.6m")
+
 #set(PYTHON_LIBRARY "/Users/randallsmith/anaconda/lib/libpython3.6m.dylib")
 #set(PYTHON_INCLUDE_DIR "/Users/randallsmith/anaconda/include/python3.6m")
 
@@ -38,10 +39,19 @@ set(NUMPY_CORE_INCLUDE
 set(NUMPY_CORE_LIBS
 "/Users/randallsmith/anaconda/lib/python3.6/site-packages/numpy/core/")
 
+set(OPENANN_LIBRARIES "/opt/OpenANN/lib")
+set(OPENANN_INCLUDE "/opt/OpenANN/include")
+
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 #include_directories("${NUMPY_CORE_INCLUDE}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/glm")
+
+include_directories("${OPENANN_INCLUDE}")
  
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+message(STATUS "EIGEN3_INCLUDE_DIRS=${EIGEN3_INCLUDE_DIR}")
+
 #find_package(Curses REQUIRED)
 
 # Compile and link kmeans_test executable.
@@ -52,7 +62,10 @@ add_executable(kmeans_test
                image.cc 
                kmeans_training_data.cc 
                lodepng.cc)
-target_link_libraries (kmeans_test ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries (kmeans_test 
+  ${OPENANN_LIBRARIES}/libalglib.so
+  ${OPENANN_LIBRARIES}/libopenann.so
+  ${CMAKE_THREAD_LIBS_INIT})
 
 # Compile and link kdtree_test executable.
 add_executable(kdtree_test kdtree_test.cc kdtree.cc)
@@ -65,7 +78,10 @@ target_link_libraries (quickselect_test ${CMAKE_THREAD_LIBS_INIT})
 # Compile and link quickselect_test executable.
 add_executable(kmeans2d_test kmeans2d_test.cc kmeans2d.cc kdtree.cc
     image.cc kmeans_training_data.cc lodepng.cc)
-target_link_libraries (kmeans2d_test ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries (kmeans2d_test 
+  ${OPENANN_LIBRARIES}/libalglib.so
+  ${OPENANN_LIBRARIES}/libopenann.so
+  ${CMAKE_THREAD_LIBS_INIT})
 
 find_package(SWIG REQUIRED)
 include(${SWIG_USE_FILE})
@@ -85,6 +101,8 @@ swig_add_module(kmeans2d python kmeans2d.i kmeans2d.cc kdtree.cc
     image.cc kmeans_training_data.cc lodepng.cc)
 swig_link_libraries(kmeans2d 
 	${PYTHON_LIBRARIES} 
+  ${OPENANN_LIBRARIES}/libalglib.so
+  ${OPENANN_LIBRARIES}/libopenann.so
 	${CMAKE_THREAD_LIBS_INIT}
 )
 #target_link_libraries(_kmeans2d 

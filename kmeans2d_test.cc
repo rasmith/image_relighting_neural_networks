@@ -53,7 +53,7 @@ void TransformMatlabToC(int width, int height, int channels,
 
 // LoadBinaryMatlabData -
 //  path - path to .bin file exported from Matlab using:
-//                 fwrite(fid,x,'float',0,'l');
+//                 fwrite(fid,x,'double',0,'l');
 //         where 'x' is an matrix in Matlab.
 //  width - width of data
 //  height - height of data
@@ -90,15 +90,15 @@ void PrintValues(Iterator begin, Iterator end, std::ostream& out) {
   for (Iterator i = begin; i != end; ++i, ++j) out << j << " " << *i << "\n";
 }
 
-void GenerateRandomImage(int width, int height, int channels, float* image) {
+void GenerateRandomImage(int width, int height, int channels, double* image) {
   for (int i = 0; i < width * height * channels; ++i) {
-    image[i] = std::rand() / static_cast<float>(RAND_MAX);
+    image[i] = std::rand() / static_cast<double>(RAND_MAX);
     assert(i >= 0 && i < width * height * channels);
   }
 }
 
 void GenerateRandomImage(int width, int height, int channels,
-                         std::vector<float>& image) {
+                         std::vector<double>& image) {
   image.resize(width * height * channels);
   GenerateRandomImage(width, height, channels, &image[0]);
 }
@@ -107,12 +107,12 @@ void GenerateRandomImage(int width, int height, int channels,
                          std::vector<PixelData>& image) {
   image.resize(width * height);
   GenerateRandomImage(width, height, channels,
-                      reinterpret_cast<float*>(&image[0]));
+                      reinterpret_cast<double*>(&image[0]));
 }
 
 void GenerateTestData(int width, int height, int channels, int num_samples,
-                      const std::vector<float>& image,
-                      std::vector<float>& test) {
+                      const std::vector<double>& image,
+                      std::vector<double>& test) {
   // Pair int-int to use to generate random samples.
   typedef std::pair<int, int> IntInt;
   auto cmp = [](IntInt a, IntInt b) { return a.second < b.second; };
@@ -131,17 +131,17 @@ void GenerateTestData(int width, int height, int channels, int num_samples,
     int x = k % width;
     int y = k / width;
     q.pop();
-    test[i] = x / static_cast<float>(width - 1);
-    test[i + 1] = y / static_cast<float>(height - 1);
+    test[i] = x / static_cast<double>(width - 1);
+    test[i + 1] = y / static_cast<double>(height - 1);
   }
 }
 
-std::string PixelToString(float* p) {
+std::string PixelToString(double* p) {
   return "[" + std::to_string(p[0]) + "," + std::to_string(p[1]) + "," +
          std::to_string(p[2]) + "]";
 }
 
-bool EqualsPixel(float* p, float* q) {
+bool EqualsPixel(double* p, double* q) {
   return p[0] == q[0] && p[1] == q[1] && p[2] == q[2];
 }
 
@@ -161,7 +161,7 @@ void GenerateRandomPermutation(int n, std::vector<int>& values) {
 void GenerateTestAndAssignmentData(
     int width, int height, int channels, int ensemble_size, int num_levels,
     int num_networks, int* num_images, int* image_number,
-    std::vector<float>& average, std::vector<TestData>& test_data,
+    std::vector<double>& average, std::vector<TestData>& test_data,
     std::vector<int>& assignments, std::vector<NetworkData>& network_data) {
   LOG(DEBUG) << "GenerateTestAndAssignmentData\n";
   const int assignment_data_size = ensemble_size + 1;
@@ -205,7 +205,7 @@ void GenerateTestAndAssignmentData(
     int pixels_at_level =
         std::min(num_pixels / num_levels + 1, static_cast<int>(pixels.size()));
     int pixels_per_network =
-        std::ceil(static_cast<float>(ensemble_size * pixels_at_level) /
+        std::ceil(static_cast<double>(ensemble_size * pixels_at_level) /
                   networks_at_level);
     int current_network = 0;
     LOG(STATUS) << "GenerateTestAndAssignmentData: networks_at_level= "
@@ -251,7 +251,7 @@ void GenerateTestAndAssignmentData(
       assert(assignment_data_size * pixel_index <
              assignment_data_size * width * height);
       assignments[assignment_data_size * pixel_index] = level;
-      float* rgb = &average[pixel_index * channels];
+      double* rgb = &average[pixel_index * channels];
       TestData data(x, y, *image_number, rgb, width, height, *num_images,
                     PixelConversion::DefaultConversion());
       for (int j = 0; j < ensemble_size; ++j) {
@@ -295,7 +295,7 @@ void GenerateTestAndAssignmentData(
 void TestPredictionsToErrors(int width, int height, int channels,
                              int ensemble_size) {
 
-  constexpr int test_size = sizeof(TestData) / sizeof(float);
+  constexpr int test_size = sizeof(TestData) / sizeof(double);
   const static char data_dir[] =
       "/home/agrippa/projects/image_relighting_neural_networks/"
       "predictions_to_errors_test_data/";
@@ -311,25 +311,25 @@ void TestPredictionsToErrors(int width, int height, int channels,
   int num_pixels = width * height;
   std::vector<int> order;
 
-  const float rgb[3] = {0.0f, 0.0f, 0.0f};
+  const double rgb[3] = {0.0, 0.0, 0.0};
   std::vector<TestData> test(num_pixels);
   for (int i = 0; i < num_pixels; ++i)
     test[i] =
-        TestData(i % width, i / width, 0.0f, &rgb[0], width, height, 2.0f);
+        TestData(i % width, i / width, 0.0, &rgb[0], width, height, 2.0);
 
-  std::vector<float> errors;
+  std::vector<double> errors;
   LoadBinaryMatlabData(error_path, width, height, 1, errors);
-  std::vector<float> predictions;
+  std::vector<double> predictions;
   LoadBinaryMatlabData(prediction_path, width, height, channels, predictions);
-  std::vector<float> target;
+  std::vector<double> target;
   LoadBinaryMatlabData(target_path, width, height, channels, target);
   const PixelData* target_pixel_data =
       reinterpret_cast<const PixelData*>(&target[0]);
   const PixelData* predictions_pixel_data =
       reinterpret_cast<const PixelData*>(&predictions[0]);
-  std::vector<float> errors_out(width * height, 0.0f);
+  std::vector<double> errors_out(width * height, 0.0);
   predictions_to_errors(
-      order, ensemble_size, reinterpret_cast<float*>(&test[0]), num_pixels,
+      order, ensemble_size, reinterpret_cast<double*>(&test[0]), num_pixels,
       test_size, &target[0], num_pixels, channels, &predictions[0], num_pixels,
       channels, &errors_out[0], height, width);
   for (int i = 0; i < num_pixels; ++i) {
@@ -354,7 +354,7 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
                                   int num_levels, int num_networks,
                                   int ensemble_size) {
   // Generate random test data.
-  std::vector<float> average_image;
+  std::vector<double> average_image;
   std::vector<TestData> test_data;
   std::vector<NetworkData> network_data;
   std::vector<int> assignment_data;
@@ -364,7 +364,7 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
   int* network_data_out = nullptr;
   int network_data_dim1 = -1;
   int network_data_dim2 = -1;
-  float* test_data_out = nullptr;
+  double* test_data_out = nullptr;
   int test_data_dim1 = -1;
   int test_data_dim2 = -1;
   GenerateTestAndAssignmentData(width, height, channels, ensemble_size,
@@ -540,14 +540,14 @@ void TestAssignmentDataToTestData(int width, int height, int channels,
 bool TestPredictionsToImage(int width, int height, int channels,
                             int num_samples) {
   // Generate a random image to test against.
-  std::vector<float> image;
+  std::vector<double> image;
   GenerateRandomImage(width, height, channels, image);
   // Make some test data
-  std::vector<float> test;
+  std::vector<double> test;
   GenerateTestData(width, height, channels, num_samples, image, test);
   // Generate the "predictions".
   int test_data_size = channels + 3;
-  std::vector<float> predictions(num_samples * test_data_size);
+  std::vector<double> predictions(num_samples * test_data_size);
   for (int i = 0; i < num_samples * test_data_size; i += test_data_size) {
     int x = test[i];
     int y = test[i + 1];
@@ -555,15 +555,15 @@ bool TestPredictionsToImage(int width, int height, int channels,
       predictions[i + j] = image[channels * (y * width + x) + j];
   }
   // Run the target function to test.
-  std::vector<float> image_out(width * height * channels);
+  std::vector<double> image_out(width * height * channels);
   predictions_to_image(&image_out[0], width, height, channels, &test[0],
                        num_samples, channels + 3, &predictions[0], num_samples,
                        channels);
   for (int i = 0; i < num_samples * test_data_size; i += test_data_size) {
     int x = test[i];
     int y = test[i + 1];
-    float* target_pixel = &image[channels * (y * width + x)];
-    float* test_pixel = &image[channels * (y * width + x)];
+    double* target_pixel = &image[channels * (y * width + x)];
+    double* test_pixel = &image[channels * (y * width + x)];
     if (!EqualsPixel(target_pixel, test_pixel)) {
       LOG(DEBUG) << "TestPredictionsToImage: (" << x << "," << y
                  << ") does not match. Target = " << PixelToString(target_pixel)
@@ -576,11 +576,11 @@ bool TestPredictionsToImage(int width, int height, int channels,
 
 // void closest_k_test_target(int k, int cluster_id, int* closest,
 // int closest_dim1, int closest_dim2, int closest_dim3,
-// float* train_data, int train_data_dim1,
-// int train_data_dim2, float* target_data,
+// double* train_data, int train_data_dim1,
+// int train_data_dim2, double* target_data,
 // int target_data_dim1, int target_data_dim2,
-// float** test, int* test_dim1, int* test_dim2,
-// float** target, int* target_dim1, int* target_dim2) {
+// double** test, int* test_dim1, int* test_dim2,
+// double** target, int* target_dim1, int* target_dim2) {
 
 void TestClosestKTestTarget(int width, int height, int channels,
                             int ensemble_size, int num_images, int cluster_size,
@@ -603,48 +603,48 @@ void TestClosestKTestTarget(int width, int height, int channels,
     for (int j = 0; j < num_pixels; ++j) {
       int x = j % width, y = j / width;
       train_data[i * num_pixels + j] =
-          TestData(x, y, i, reinterpret_cast<float*>(&image[j]), width, height,
+          TestData(x, y, i, reinterpret_cast<double*>(&image[j]), width, height,
                    num_images);
       target_data[i * num_pixels + j] = image[j];
     }
     for (int j = 0; j < cluster_size; ++j) {
       int c = cluster[j], x = c % width, y = c / width;
       check_test[i * cluster_size + j] =
-          TestData(x, y, i, reinterpret_cast<float*>(&image[c]), width, height,
+          TestData(x, y, i, reinterpret_cast<double*>(&image[c]), width, height,
                    num_images);
       check_target[i * cluster_size + j] = image[c];
       closest[ensemble_size * c + k] = cluster_id;
     }
   }
-  float* test_in = nullptr;
-  float* target_in = nullptr;
+  double* test_in = nullptr;
+  double* target_in = nullptr;
   int target_dim1, target_dim2, test_dim1, test_dim2;
   closest_k_test_target(
       k, cluster_id, reinterpret_cast<int*>(&closest[0]), height, width,
-      ensemble_size, reinterpret_cast<float*>(&train_data[0]),
-      num_pixels * num_images, sizeof(TestData) / sizeof(float),
-      reinterpret_cast<float*>(&target_data[0]), num_pixels * num_images,
-      sizeof(PixelData) / sizeof(float), &test_in, &test_dim1, &test_dim2,
+      ensemble_size, reinterpret_cast<double*>(&train_data[0]),
+      num_pixels * num_images, sizeof(TestData) / sizeof(double),
+      reinterpret_cast<double*>(&target_data[0]), num_pixels * num_images,
+      sizeof(PixelData) / sizeof(double), &test_in, &test_dim1, &test_dim2,
       &target_in, &target_dim1, &target_dim2);
   if (test_dim1 != num_images * cluster_size) {
     LOG(ERROR) << "test_dim1 should be " << num_images * cluster_size
                << " but got " << test_dim1 << "\n";
     assert(test_dim1 == num_images * cluster_size);
   }
-  if (test_dim2 != sizeof(TestData) / sizeof(float)) {
-    LOG(ERROR) << "target_dim2 should be " << sizeof(TestData) / sizeof(float)
+  if (test_dim2 != sizeof(TestData) / sizeof(double)) {
+    LOG(ERROR) << "target_dim2 should be " << sizeof(TestData) / sizeof(double)
                << " but got " << target_dim2 << "\n";
-    assert(test_dim2 == sizeof(TestData) / sizeof(float));
+    assert(test_dim2 == sizeof(TestData) / sizeof(double));
   }
   if (target_dim1 != num_images * cluster_size) {
     LOG(ERROR) << "target_dim1 should be " << num_images * cluster_size
                << " but got " << target_dim1 << "\n";
     assert(target_dim1 == num_images * cluster_size);
   }
-  if (target_dim2 != sizeof(PixelData) / sizeof(float)) {
-    LOG(ERROR) << "target_dim2 should be " << sizeof(TestData) / sizeof(float)
+  if (target_dim2 != sizeof(PixelData) / sizeof(double)) {
+    LOG(ERROR) << "target_dim2 should be " << sizeof(TestData) / sizeof(double)
                << " but got " << target_dim2 << "\n";
-    assert(target_dim2 == sizeof(PixelData) / sizeof(float));
+    assert(target_dim2 == sizeof(PixelData) / sizeof(double));
   }
   for (int i = 0; i < num_images; ++i) {
     for (int j = 0; j < cluster_size; ++j) {

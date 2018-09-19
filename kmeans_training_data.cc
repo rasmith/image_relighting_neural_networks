@@ -87,7 +87,7 @@ void ComputeAverageImage(const std::vector<image::Image>& images,
                          image::Image& average) {
   uint32_t width = images[0].width(), height = images[0].height(),
            num_threads = 8;
-  std::vector<float> sum(width * height * 3, 0.0f);
+  std::vector<double> sum(width * height * 3, 0.0);
   uint32_t count = 0;
   for (int i = 0; i < indices.size(); ++i) {
     const image::Image& img = images[indices[i]];
@@ -95,15 +95,15 @@ void ComputeAverageImage(const std::vector<image::Image>& images,
       for (int x = 0; x < width; ++x) {
         image::Pixel p = img(x, y);
         int i = 3 * (y * width + x);
-        sum[i] += static_cast<float>(p.r);
-        sum[i + 1] += static_cast<float>(p.g);
-        sum[i + 2] += static_cast<float>(p.b);
+        sum[i] += static_cast<double>(p.r);
+        sum[i + 1] += static_cast<double>(p.g);
+        sum[i + 2] += static_cast<double>(p.b);
       }
     }
     ++count;
   }
   for (int i = 0; i < width * height * 3; ++i)
-    sum[i] /= static_cast<float>(count);
+    sum[i] /= static_cast<double>(count);
   average.SetDimensions(width, height);
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
@@ -121,8 +121,8 @@ void ComputeAverageImage(const std::vector<image::Image>& images,
 void GetTrainingData(const std::vector<image::Image>& images,
                      std::vector<int>& indices, int num_centers,
                      const std::vector<int>& labels, image::Image& average,
-                     float** train_data, int* train_data_dim1,
-                     int* train_data_dim2, float** train_labels,
+                     double** train_data, int* train_data_dim1,
+                     int* train_data_dim2, double** train_labels,
                      int* train_labels_dim1, int* train_labels_dim2,
                      std::vector<int>& batch_sizes) {
   // std::cout << "GetTrainingData:images.size()  = " << images.size() << "\n";
@@ -133,8 +133,8 @@ void GetTrainingData(const std::vector<image::Image>& images,
   // std::cout << "GetTrainingData:max_index = "
   //<< *std::max_element(indices.begin(),
   // indices.begin() + indices.size()) << "\n";
-  const uint32_t data_size = sizeof(TestData) / sizeof(float);
-  const uint32_t label_size = sizeof(PixelData) / sizeof(float);
+  const uint32_t data_size = sizeof(TestData) / sizeof(double);
+  const uint32_t label_size = sizeof(PixelData) / sizeof(double);
   uint32_t width = images[0].width(), height = images[0].height(),
            num_threads = 8;
   uint32_t sample_size = indices.size();
@@ -142,10 +142,10 @@ void GetTrainingData(const std::vector<image::Image>& images,
   uint32_t total_pixels = sample_size * num_pixels;
   *train_data_dim1 = total_pixels;
   *train_data_dim2 = data_size;
-  *train_data = new float[(*train_data_dim1) * (*train_data_dim2)];
+  *train_data = new double[(*train_data_dim1) * (*train_data_dim2)];
   *train_labels_dim1 = total_pixels;
   *train_labels_dim2 = label_size;
-  *train_labels = new float[(*train_labels_dim1) * (*train_labels_dim2)];
+  *train_labels = new double[(*train_labels_dim1) * (*train_labels_dim2)];
   std::vector<uint32_t> cluster_sizes(num_centers, 0);
   std::vector<uint32_t> cluster_offsets(num_centers, 0);
   // std::cout << "GetTrainingData:width  = " << width << "\n";
@@ -257,22 +257,22 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
   std::cout << "PickRandomIndices\n";
   std::cout << "total = " << total << "\n";
   std::cout << "amount = " << amount << "\n";
-  auto cmp = [](std::pair<int, float> left, std::pair<int, float> right) {
+  auto cmp = [](std::pair<int, double> left, std::pair<int, double> right) {
     return left.second < right.second;
   };
-  std::priority_queue<std::pair<int, float>, std::deque<std::pair<int, float>>,
-                      decltype(cmp)> q(cmp);
+  std::priority_queue<std::pair<int, double>,
+                      std::deque<std::pair<int, double>>, decltype(cmp)> q(cmp);
 #define USE_STD_UNIFORM_RANDOM_DEVICE 0
 #if USE_STD_UNIFORM_RANDOM_DEVICE
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> dis(0.0f, 1.0f);
+  std::uniform_real_distribution<double> dis(0.0, 1.0);
   for (int i = 0; i < total; ++i) q.push(std::make_pair(i, dis(gen)));
 #else
   int seed = 12345;
   srand(seed);
   for (int i = 0; i < total; ++i)
-    q.push(std::make_pair(i, static_cast<float>(rand()) / RAND_MAX));
+    q.push(std::make_pair(i, static_cast<double>(rand()) / RAND_MAX));
 #endif
   indices.clear();
   for (int i = 0; i < amount; ++i) {
@@ -300,9 +300,9 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
 
 void KmeansDataAndLabels(
     const std::string& directory, int num_centers, int& width, int& height,
-    float** training_data, int* training_data_dim1, int* training_data_dim2,
-    float** training_labels, int* training_labels_dim1,
-    int* training_labels_dim2, float** average_img, int* average_dim1,
+    double** training_data, int* training_data_dim1, int* training_data_dim2,
+    double** training_labels, int* training_labels_dim1,
+    int* training_labels_dim2, double** average_img, int* average_dim1,
     int* average_dim2, int* average_dim3, std::vector<int>& indices,
     std::vector<int>& order, std::vector<glm::vec2>& centers,
     std::vector<int>& labels, std::vector<int>& batch_sizes) {
@@ -329,7 +329,7 @@ void KmeansDataAndLabels(
   ComputeAverageImage(images, indices, average);
   // Return average img to user in normalized form.
   // std::cout << "write out average image\n";
-  *average_img = new float[width * height * 3];
+  *average_img = new double[width * height * 3];
   *average_dim1 = height;
   *average_dim2 = width;
   *average_dim3 = 3;

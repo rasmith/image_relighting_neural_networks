@@ -24,7 +24,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 def save_assignment_map(level, cluster_id, width, height, test_data,\
                         network_data):
-  image_out = np.zeros((height, width, 3), dtype = np.float32)
+  image_out = np.zeros((height, width, 3), dtype = np.float64)
   image_file_name = "render_images/amap_%04d_%04d.png" % (level, cluster_id)
   # print("network_data = %s" % str(network_data))
   level, network_id, start, count= network_data
@@ -83,7 +83,7 @@ light_dim = 1
 num_hidden_nodes = 15 
 start = 0
 end = 0
-input_map = np.zeros((height, width, 3), dtype = np.float32)
+input_map = np.zeros((height, width, 3), dtype = np.float64)
   
 def predict(arg):
   level, network_id, start, batch_size = arg
@@ -109,7 +109,7 @@ def predict(arg):
           test_data[start:end])
 
 def main():
-  image_out = np.zeros((height, width, 3), dtype = np.float32)
+  image_out = np.zeros((height, width, 3), dtype = np.float64)
 
   start = time.clock()
   with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
@@ -121,7 +121,7 @@ def main():
       # print("type(predictions) = %s" % type(predictions))
       # print("predictions = %s" % predictions)
       # print("type(predictions[0]) = %s" % type(predictions[0]))
-      # predictions = np.asarray(predictions, order='C', dtype='float32')
+      # predictions = np.asarray(predictions, order='C', dtype='float64')
       # print("--predictions = %s" % predictions)
       # print("--type(predictions) = %s" % type(predictions))
       # print("--type(predictions[0]) = %s" % type(predictions[0]))
@@ -129,7 +129,7 @@ def main():
       # print("test_out.shape = %s" % (str(test_out.shape)))
       print("isfortran = %s" % (str(np.isfortran(predictions))))
       kmeans2d.predictions_to_image(image_out, test_out, predictions)
-      prediction_out = np.zeros((height, width, 3), dtype = np.float32)
+      prediction_out = np.zeros((height, width, 3), dtype = np.float64)
       kmeans2d.predictions_to_image(prediction_out, test_out, predictions)
       prediction_file_name = "render_images/prediction_%04d_%04d.png" %\
         (level, network_id)

@@ -33,11 +33,11 @@ void KdTree::AssignPoints(const std::vector<glm::vec2>& input_points) {
 }
 
 void KdTree::RecursiveNearestNeighbor(int id, const glm::vec2& query,
-                                      float min_distance, int depth, int* best,
-                                      float* best_distance) const {
+                                      double min_distance, int depth, int* best,
+                                      double* best_distance) const {
   const KdNode& node = nodes_[id];
   if (node.type == KdNode::kLeaf) {
-    float distance = glm::distance2(query, node.info.leaf.position);
+    double distance = glm::distance2(query, node.info.leaf.position);
     if (distance < *best_distance && min_distance < distance) {
       *best = node.info.leaf.location;
       *best_distance = distance;
@@ -53,7 +53,7 @@ void KdTree::RecursiveNearestNeighbor(int id, const glm::vec2& query,
                                                 : node.info.internal.left);
   RecursiveNearestNeighbor(near, query, min_distance, depth + 1, best,
                            best_distance);
-  float split_distance =
+  double split_distance =
       fabs(query[node.split_dimension] - node.info.internal.split_value);
   if (split_distance * split_distance < *best_distance && far != -1)
     RecursiveNearestNeighbor(far, query, min_distance, depth + 1, best,

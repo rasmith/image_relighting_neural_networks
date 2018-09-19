@@ -22,6 +22,8 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 
+#include <Eigen/Core>
+#include <OpenANN/OpenANN>
 #include <glm/glm.hpp>
 #include <glm/gtx/color_space.hpp>
 #include <glm/gtx/norm.hpp>
@@ -46,13 +48,13 @@ void assign_labels_thread(int tid, int num_threads, int width, int height,
   int block_size = num_pixels / num_threads + 1;
   int t_start = tid * block_size;
   int t_end = std::min(t_start + block_size, num_pixels);
-  std::vector<float> distances(block_size, std::numeric_limits<float>::max());
+  std::vector<double> distances(block_size, std::numeric_limits<double>::max());
   for (int j = t_start; j < t_end; ++j) {
     int x = j % width;
     int y = j / width;
     glm::vec2 pixel(x, y);
     int best = -1;
-    float best_distance = std::numeric_limits<float>::max();
+    double best_distance = std::numeric_limits<double>::max();
     tree.NearestNeighbor(pixel, &best, &best_distance);
     distances[j - t_start] = best_distance;
     labels[j] = best;
@@ -84,8 +86,8 @@ void update_centers_thread(int tid, int num_threads, int width, int height,
   int block_size = num_pixels / num_threads + 1;
   int t_start = tid * block_size;
   int t_end = std::min(t_start + block_size, num_pixels);
-  std::vector<float> distances(block_size, std::numeric_limits<float>::max());
-  std::fill(centers.begin(), centers.end(), glm::vec2(0.0f));
+  std::vector<double> distances(block_size, std::numeric_limits<double>::max());
+  std::fill(centers.begin(), centers.end(), glm::vec2(0.0));
   std::fill(counts.begin(), counts.end(), 0);
   for (int j = t_start; j < t_end; ++j) {
     int x = j % width;
@@ -123,7 +125,7 @@ void update_centers_threaded(int num_threads, int width, int height,
                     },
                     i);
   }
-  std::fill(centers.begin(), centers.end(), glm::vec2(0.0f));
+  std::fill(centers.begin(), centers.end(), glm::vec2(0.0));
   for (int i = 0; i < num_threads; ++i) threads[i].join();
   std::vector<int> counts(centers.size(), 0);
   for (int i = 0; i < counts.size(); ++i) {
@@ -135,9 +137,9 @@ void update_centers_threaded(int num_threads, int width, int height,
   for (int i = 0; i < centers.size(); ++i) centers[i] /= counts[i];
 }
 
-float compute_difference(const std::vector<glm::vec2>& centers1,
+double compute_difference(const std::vector<glm::vec2>& centers1,
                          const std::vector<glm::vec2>& centers2) {
-  float diff = 0;
+  double diff = 0;
   for (int i = 0; i < centers1.size(); ++i)
     diff += glm::distance2(centers1[i], centers2[i]);
   return diff;
@@ -153,7 +155,7 @@ void kmeans(int width, int height, std::vector<glm::vec2>& centers,
   std::chrono::duration<double> elapsed = end - start;
 
   std::vector<glm::vec2> old_centers(centers.size());
-  float diff = std::numeric_limits<float>::max();
+  double diff = std::numeric_limits<double>::max();
   while (diff > 1e-5) {
     std::copy(centers.begin(), centers.end(), old_centers.begin());
     kdtree::KdTree tree;
@@ -198,17 +200,17 @@ void kmeans(int width, int height, std::vector<glm::vec2>& centers,
 // target_dim2 - number of samples
 void closest_k_test_target(int k, int cluster_id, int* closest,
                            int closest_dim1, int closest_dim2, int closest_dim3,
-                           float* train_data, int train_data_dim1,
-                           int train_data_dim2, float* target_data,
+                           double* train_data, int train_data_dim1,
+                           int train_data_dim2, double* target_data,
                            int target_data_dim1, int target_data_dim2,
-                           float** test, int* test_dim1, int* test_dim2,
-                           float** target, int* target_dim1, int* target_dim2) {
+                           double** test, int* test_dim1, int* test_dim2,
+                           double** target, int* target_dim1, int* target_dim2) {
   // closest_k_test_target(
   // k, cluster_id, reinterpret_cast<int*>(&closest[0]), height, width,
-  // ensemble_size, reinterpret_cast<float*>(&train_data[0]),
-  // num_pixels * num_images, sizeof(TestData) / sizeof(float),
-  // reinterpret_cast<float*>(&target_data[0]), num_pixels * num_images,
-  // sizeof(PixelData) / sizeof(float), &test_in, &test_dim1, &test_dim2,
+  // ensemble_size, reinterpret_cast<double*>(&train_data[0]),
+  // num_pixels * num_images, sizeof(TestData) / sizeof(double),
+  // reinterpret_cast<double*>(&target_data[0]), num_pixels * num_images,
+  // sizeof(PixelData) / sizeof(double), &test_in, &test_dim1, &test_dim2,
   //&target_in, &target_dim1, &target_dim2);
   // Train data configuratian.
   int num_images = train_data_dim1 / (closest_dim1 * closest_dim2);
@@ -227,11 +229,11 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
 
   // Set test and target dimensions.
   *test_dim1 = cluster_size * num_images;
-  *test_dim2 = sizeof(TestData) / sizeof(float);
-  *test = new float[(*test_dim1) * (*test_dim2)];
+  *test_dim2 = sizeof(TestData) / sizeof(double);
+  *test = new double[(*test_dim1) * (*test_dim2)];
   *target_dim1 = cluster_size * num_images;
-  *target_dim2 = sizeof(PixelData) / sizeof(float);
-  *target = new float[(*target_dim1) * (*target_dim2)];
+  *target_dim2 = sizeof(PixelData) / sizeof(double);
+  *target = new double[(*target_dim1) * (*target_dim2)];
   LOG(DEBUG) << "closest_k_test_target: test_dim1 = " << *test_dim1
              << " test_dim2 = " << *test_dim2
              << " total = " << (*test_dim1) * (*test_dim2) << "\n";
@@ -287,10 +289,10 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
 }
 
 void predictions_to_errors(std::vector<int>& order, int ensemble_size,
-                           float* test, int test_dim1, int test_dim2,
-                           float* target, int target_dim1, int target_dim2,
-                           float* predictions, int predictions_dim1,
-                           int predictions_dim2, float* errors, int errors_dim1,
+                           double* test, int test_dim1, int test_dim2,
+                           double* target, int target_dim1, int target_dim2,
+                           double* predictions, int predictions_dim1,
+                           int predictions_dim2, double* errors, int errors_dim1,
                            int errors_dim2) {
   LOG(DEBUG) << "predictions_to_errors:ensemble_size = " << ensemble_size
              << "\n";
@@ -306,7 +308,7 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
   int height = errors_dim1;
   int width = errors_dim2;
   int num_pixels = height * width;
-  std::vector<float> thread_errors(num_threads * num_pixels, 0.0f);
+  std::vector<double> thread_errors(num_threads * num_pixels, 0.0);
   std::vector<std::thread> threads(num_threads);
   for (int t = 0; t < num_threads; ++t) {
     threads[t] = std::thread([
@@ -328,26 +330,26 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                                &num_threads
                              ](int tid)
                                   ->void {
-                               float* errors = &thread_errors[tid * num_pixels];
+                               double* errors = &thread_errors[tid * num_pixels];
                                int block_size = test_dim1 / num_threads + 1;
                                int start = tid * block_size;
                                int end =
                                    std::min(start + block_size, test_dim1);
-                               float* test_pos = test + test_dim2 * start;
-                               float* target_pos = target + target_dim2 * start;
-                               float* predictions_pos =
+                               double* test_pos = test + test_dim2 * start;
+                               double* target_pos = target + target_dim2 * start;
+                               double* predictions_pos =
                                    predictions + predictions_dim2 * start;
                                for (int i = start; i < end; ++i) {
                                  int x = round(*(test_pos) * (width - 1));
                                  int y = round(*(test_pos + 1) * (height - 1));
                                  int index = y * width + x;
-                                 float total = 0;
+                                 double total = 0;
                                  for (int c = 0; c < 3; ++c)
                                    total += target_pos[c];
-                                 if (total == 0.0f) total = 1.0f;
+                                 if (total == 0.0) total = 1.0;
                                  for (int c = 0; c < 3; ++c) {
                                    int k = y * width + x;
-                                   float e = predictions_pos[c] - target_pos[c];
+                                   double e = predictions_pos[c] - target_pos[c];
                                    errors[k] += (e * e) / (total * total);
                                  }
                                  target_pos += target_dim2;
@@ -364,7 +366,7 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
   }
 }
 
-void closest_n(int width, int height, int n, std::vector<float>& centers,
+void closest_n(int width, int height, int n, std::vector<double>& centers,
                int** closest, int* dim1, int* dim2, int* dim3) {
   *dim1 = height;
   *dim2 = width;
@@ -396,9 +398,9 @@ void closest_n(int width, int height, int n, std::vector<float>& centers,
             uint32_t x = i % width;
             uint32_t y = i / width;
             glm::vec2 pixel(x, y);
-            float min_distance = -std::numeric_limits<float>::max();
+            double min_distance = -std::numeric_limits<double>::max();
             for (int k = 0; k < n; ++k) {
-              float best_distance = std::numeric_limits<float>::max();
+              double best_distance = std::numeric_limits<double>::max();
               int best = -1;
               tree.NearestNeighbor(pixel, min_distance, &best, &best_distance);
               min_distance = best_distance;
@@ -411,7 +413,7 @@ void closest_n(int width, int height, int n, std::vector<float>& centers,
   for (int i = 0; i < num_threads; ++i) threads[i].join();
 }
 
-void kmeans2d(int width, int height, std::vector<float>& centers,
+void kmeans2d(int width, int height, std::vector<double>& centers,
               std::vector<int>& labels) {
   std::vector<glm::vec2> glm_centers(centers.size() / 2);
   kmeans(width, height, glm_centers, labels);
@@ -434,12 +436,12 @@ struct TupleHash {
 
 void kmeans_training_data(const std::string& directory, int num_centers,
                           int* width, int* height, std::vector<int>& indices,
-                          std::vector<int>& order, std::vector<float>& centers,
+                          std::vector<int>& order, std::vector<double>& centers,
                           std::vector<int>& labels,
-                          std::vector<int>& batch_sizes, float** train_data,
+                          std::vector<int>& batch_sizes, double** train_data,
                           int* train_data_dim1, int* train_data_dim2,
-                          float** train_labels, int* train_labels_dim1,
-                          int* train_labels_dim2, float** average,
+                          double** train_labels, int* train_labels_dim1,
+                          int* train_labels_dim2, double** average,
                           int* average_dim1, int* average_dim2,
                           int* average_dim3) {
   int width_out = -1, height_out = -1;
@@ -483,8 +485,8 @@ void kmeans_training_data(const std::string& directory, int num_centers,
 void assignment_data_to_test_data(
     int* assignment_data, int assignment_data_dim1, int assignment_data_dim2,
     int assignment_data_dim3, int image_number, int num_images,
-    float* average_image, int average_image_dim1, int average_image_dim2,
-    int average_image_dim3, float** test_data, int* test_data_dim1,
+    double* average_image, int average_image_dim1, int average_image_dim2,
+    int average_image_dim3, double** test_data, int* test_data_dim1,
     int* test_data_dim2, int** network_data, int* network_data_dim1,
     int* network_data_dim2) {
   int width = assignment_data_dim2;
@@ -530,8 +532,8 @@ void assignment_data_to_test_data(
   assert(count == num_pixels * ensemble_size);
   // 2. Allocate test data.
   *test_data_dim1 = num_pixels * ensemble_size;
-  *test_data_dim2 = sizeof(TestData) / sizeof(float);
-  *test_data = new float[(*test_data_dim1) * (*test_data_dim2)];
+  *test_data_dim2 = sizeof(TestData) / sizeof(double);
+  *test_data = new double[(*test_data_dim1) * (*test_data_dim2)];
   TestData* test_pos = reinterpret_cast<TestData*>(*test_data);
   // 3. Transform assignment data into test data.
   std::vector<int> assignment_counts(num_pixels, 0);
@@ -582,16 +584,16 @@ void assignment_data_to_test_data(
 
 // Should be the prediction from one neural network to be mapped into
 // the desired image.
-void predictions_to_image(float* image_out, int image_out_dim1,
-                          int image_out_dim2, int image_out_dim3, float* test,
-                          int test_dim1, int test_dim2, float* predictions,
+void predictions_to_image(double* image_out, int image_out_dim1,
+                          int image_out_dim2, int image_out_dim3, double* test,
+                          int test_dim1, int test_dim2, double* predictions,
                           int predictions_dim1, int predictions_dim2) {
   int height = image_out_dim1;
   int width = image_out_dim2;
   int channels = image_out_dim3;
-  float* test_pos = test;
+  double* test_pos = test;
   assert(predictions_dim2 == image_out_dim3);
-  for (float* predictions_pos = predictions;
+  for (double* predictions_pos = predictions;
        predictions_pos < predictions + predictions_dim1 * predictions_dim2;
        predictions_pos += predictions_dim2) {
     int x = std::round((width - 1.0) * (*test_pos));
@@ -603,18 +605,27 @@ void predictions_to_image(float* image_out, int image_out_dim1,
   }
 }
 
-void train_network(const std::string& save_file, float* train_data,
+void train_network(const std::string& save_file, double* train_data,
                    int train_data_dim1, int train_data_dim2,
-                   float* train_labels, int train_labels_dim1,
+                   double* train_labels, int train_labels_dim1,
                    int train_labels_dim2, int num_hidden_nodes,
-                   float* accuracy) {
-  *accuracy = 0.0f;
+                   double* accuracy) {
+  OpenANN::Net network;
+  Eigen::MatrixXd in, out;
+  ImageDataSet training_set(in, out);
+  network.inputLayer(training_set.inputs())
+      .fullyConnectedLayer(num_hidden_nodes, OpenANN::TANH)
+      .fullyConnectedLayer(num_hidden_nodes, OpenANN::TANH)
+      .outputLayer(training_set.outputs(), OpenANN::TANH)
+      .trainingSet(training_set);
+  network.initialize();
+  *accuracy = 0.0;
 }
 
-void predict(const std::string& save_file, float* test_data, int test_data_dim1,
-             int test_data_dim2, float** predictions, int* predictions_dim1,
+void predict(const std::string& save_file, double* test_data, int test_data_dim1,
+             int test_data_dim2, double** predictions, int* predictions_dim1,
              int* predictions_dim2) {
   *predictions_dim1 = test_data_dim1;
-  *predictions_dim2 = sizeof(PixelData) / sizeof(float);
-  *predictions = new float[(*predictions_dim1) * (*predictions_dim2)];
+  *predictions_dim2 = sizeof(PixelData) / sizeof(double);
+  *predictions = new double[(*predictions_dim1) * (*predictions_dim2)];
 }

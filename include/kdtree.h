@@ -25,7 +25,7 @@ struct PointWrapper {
   PointWrapper(const PointWrapper& p)
       : position(p.position), location(p.location) {}
   PointWrapper(const glm::vec2& p, int i) : position(p), location(i) {}
-  float operator[](int i) const { return position[i]; }
+  double operator[](int i) const { return position[i]; }
   glm::vec2 position;
   int location;
 };
@@ -54,7 +54,7 @@ struct KdNode {
       InternalInfo() {}
       int left;
       int right;
-      float split_value;
+      double split_value;
     } internal;
     struct LeafInfo {
       LeafInfo() {}
@@ -92,15 +92,15 @@ class KdTree {
     std::copy(build_nodes_.begin(), build_nodes_.end(), nodes_);
     build_nodes_.clear();
   }
-  void NearestNeighbor(const glm::vec2 query, float min_distance, int* best,
-                       float* best_distance) const {
+  void NearestNeighbor(const glm::vec2 query, double min_distance, int* best,
+                       double* best_distance) const {
     *best = -1;
-    *best_distance = std::numeric_limits<float>::max();
+    *best_distance = std::numeric_limits<double>::max();
     RecursiveNearestNeighbor(0, query, min_distance, 0, best, best_distance);
   }
   void NearestNeighbor(const glm::vec2 query, int* best,
-                       float* best_distance) const {
-    NearestNeighbor(query, -std::numeric_limits<float>::max(), best,
+                       double* best_distance) const {
+    NearestNeighbor(query, -std::numeric_limits<double>::max(), best,
                     best_distance);
   }
 
@@ -109,8 +109,8 @@ class KdTree {
   void RecursiveBuild(int id, int first, int last, unsigned char dim,
                       int depth);
   void RecursiveNearestNeighbor(int id, const glm::vec2& query,
-                                float min_distance, int depth, int* best,
-                                float* best_distance) const;
+                                double min_distance, int depth, int* best,
+                                double* best_distance) const;
   std::vector<glm::vec2> points_;
   KdNode* nodes_;
   int num_nodes_;

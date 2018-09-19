@@ -48,7 +48,7 @@ def load_cfg(dirname):
           assignments[y, x, i] = int(values[i])
         j = j + 1
   average_img = misc.imread(cfg_dir + '/average.png',\
-      mode = 'RGB').astype('float32') / 255.0
+      mode = 'RGB').astype('float64') / 255.0
   return model_dir, img_dir, width, height, num_images, ensemble_size, \
       max_levels, sampled, assignments, average_img
 

@@ -6,16 +6,35 @@
 #include <algorithm>
 #include <tuple>
 
+#include <Eigen/Core>
+#include <OpenANN/OpenANN>
+#include <OpenANN/io/DirectStorageDataSet.h>
 #include <glm/glm.hpp>
 
+class ImageDataSet : public OpenANN::DataSet {
+ public:
+  ImageDataSet(const Eigen::MatrixXd& inputs, const Eigen::MatrixXd& outputs)
+      : in(inputs), out(outputs), dataSet(&in, &out) {}
+  virtual int samples() { return dataSet.samples(); }
+  virtual int inputs() { return dataSet.inputs(); }
+  virtual int outputs() { return dataSet.outputs(); }
+  virtual Eigen::VectorXd& getInstance(int i) { return dataSet.getInstance(i); }
+  virtual Eigen::VectorXd& getTarget(int i) { return dataSet.getTarget(i); }
+  virtual void finishIteration(OpenANN::Learner& learner) {}
+
+ private:
+  Eigen::MatrixXd in, out;
+  OpenANN::DirectStorageDataSet dataSet;
+};
+
 struct CoordinateData {
-  float x;
-  float y;
+  double x;
+  double y;
   CoordinateData(int xx, int yy, int width, int height)
-      : x(xx / static_cast<float>(width)), y(yy / static_cast<float>(height)) {}
-  CoordinateData(float xx, float yy) : x(xx), y(yy) {}
-  float& operator[](int i) { return (&x)[i]; }
-  float operator[](int i) const { return (&x)[i]; }
+      : x(xx / static_cast<double>(width)), y(yy / static_cast<double>(height)) {}
+  CoordinateData(double xx, double yy) : x(xx), y(yy) {}
+  double& operator[](int i) { return (&x)[i]; }
+  double operator[](int i) const { return (&x)[i]; }
 };
 
 struct PixelConversion {
@@ -23,19 +42,19 @@ struct PixelConversion {
     kZeroToPositiveOne,
     kNegativeOneToPositiveOne
   };
-  static float Convert(uint8_t x, PixelConversion::ConversionType conversion) {
+  static double Convert(uint8_t x, PixelConversion::ConversionType conversion) {
     return (conversion == kZeroToPositiveOne
-                ? glm::clamp(x / 255.0f, 0.0f, 1.0f)
-                : glm::clamp(2.0f * (x / 255.0f) - 1.0f, -1.0f, 1.0f));
+                ? glm::clamp(x / 255.0, 0.0, 1.0)
+                : glm::clamp(2.0 * (x / 255.0) - 1.0, -1.0, 1.0));
   }
-  static float Convert(float x, PixelConversion::ConversionType conversion) {
-    return (conversion == kZeroToPositiveOne ? x : glm::clamp(2.0f * x - 1.0f,
-                                                              -1.0f, 1.0f));
+  static double Convert(double x, PixelConversion::ConversionType conversion) {
+    return (conversion == kZeroToPositiveOne ? x : glm::clamp(2.0 * x - 1.0,
+                                                              -1.0, 1.0));
   }
-  static float Unconvert(float x, PixelConversion::ConversionType conversion) {
+  static double Unconvert(double x, PixelConversion::ConversionType conversion) {
     return (conversion == kZeroToPositiveOne
-                ? glm::clamp(x, 0.0f, 1.0f)
-                : glm::clamp(0.5f * (x + 1.0f), 0.0f, 1.0f));
+                ? glm::clamp(x, 0.0, 1.0)
+                : glm::clamp(0.5 * (x + 1.0), 0.0, 1.0));
   }
   static PixelConversion::ConversionType DefaultConversion() {
     return kZeroToPositiveOne;
@@ -43,12 +62,12 @@ struct PixelConversion {
 };
 
 struct PixelData {
-  float r;
-  float g;
-  float b;
-  PixelData() : r(0.0f), g(0.0f), b(0.0f) {}
-  PixelData(float rr, float gg, float bb) : r(rr), g(gg), b(bb) {}
-  PixelData(float rr, float gg, float bb,
+  double r;
+  double g;
+  double b;
+  PixelData() : r(0.0), g(0.0), b(0.0) {}
+  PixelData(double rr, double gg, double bb) : r(rr), g(gg), b(bb) {}
+  PixelData(double rr, double gg, double bb,
             ::PixelConversion::ConversionType conversion)
       : r(::PixelConversion::Convert(rr, conversion)),
         g(::PixelConversion::Convert(gg, conversion)),
@@ -57,15 +76,15 @@ struct PixelData {
       : r(::PixelConversion::Convert(p.r, conversion)),
         g(::PixelConversion::Convert(p.g, conversion)),
         b(::PixelConversion::Convert(p.b, conversion)) {}
-  float& operator[](int i) { return (&r)[i]; }
-  float operator[](int i) const { return (&r)[i]; }
+  double& operator[](int i) { return (&r)[i]; }
+  double operator[](int i) const { return (&r)[i]; }
   bool operator==(const PixelData& p) const {
     return r == p.r && g == p.g && b == p.b;
   }
   bool operator!=(const PixelData& p) const { return !(*this == p); }
 };
-static_assert(sizeof(PixelData) == 3 * sizeof(int),
-              "PixelData size should be  3 * sizeof(int) but was not.");
+static_assert(sizeof(PixelData) == 3 * sizeof(double),
+              "PixelData size should be  3 * sizeof(double) but was not.");
 
 struct AssignmentData {
   int level;
@@ -98,34 +117,34 @@ struct TestData {
     kZeroToPositiveOne,
     kNegativeOneToPositiveOne
   };
-  float x;
-  float y;
-  float i;
-  float r;
-  float g;
-  float b;
-  TestData() : x(0.0f), y(0.0f), i(0.0f), r(0.0f), g(0.0f), b(0.0f) {}
-  TestData(int ix, int iy, int in, const float* rgb, int width, int height,
+  double x;
+  double y;
+  double i;
+  double r;
+  double g;
+  double b;
+  TestData() : x(0.0), y(0.0), i(0.0), r(0.0), g(0.0), b(0.0) {}
+  TestData(int ix, int iy, int in, const double* rgb, int width, int height,
            int num_images)
-      : x(static_cast<float>(ix) / (std::max(width - 1, 1))),
-        y(static_cast<float>(iy) / (std::max(height - 1, 1))),
-        i(static_cast<float>(in) / (std::max(num_images - 1, 1))),
+      : x(static_cast<double>(ix) / (std::max(width - 1, 1))),
+        y(static_cast<double>(iy) / (std::max(height - 1, 1))),
+        i(static_cast<double>(in) / (std::max(num_images - 1, 1))),
         r(rgb[0]),
         g(rgb[1]),
         b(rgb[2]) {}
-  TestData(int ix, int iy, int in, const float* rgb, int width, int height,
+  TestData(int ix, int iy, int in, const double* rgb, int width, int height,
            int num_images, ::PixelConversion::ConversionType conversion)
-      : x(static_cast<float>(ix) / (std::max(width - 1, 1))),
-        y(static_cast<float>(iy) / (std::max(height - 1, 1))),
-        i(static_cast<float>(in) / (std::max(num_images - 1, 1))),
+      : x(static_cast<double>(ix) / (std::max(width - 1, 1))),
+        y(static_cast<double>(iy) / (std::max(height - 1, 1))),
+        i(static_cast<double>(in) / (std::max(num_images - 1, 1))),
         r(::PixelConversion::Convert(rgb[0], conversion)),
         g(::PixelConversion::Convert(rgb[1], conversion)),
         b(::PixelConversion::Convert(rgb[2], conversion)) {}
   TestData(int ix, int iy, int in, const image::Pixel& p, int width, int height,
            int num_images, ::PixelConversion::ConversionType conversion)
-      : x(static_cast<float>(ix) / (std::max(width - 1, 1))),
-        y(static_cast<float>(iy) / (std::max(height - 1, 1))),
-        i(static_cast<float>(in) / (std::max(num_images - 1, 1))),
+      : x(static_cast<double>(ix) / (std::max(width - 1, 1))),
+        y(static_cast<double>(iy) / (std::max(height - 1, 1))),
+        i(static_cast<double>(in) / (std::max(num_images - 1, 1))),
         r(::PixelConversion::Convert(p.r, conversion)),
         g(::PixelConversion::Convert(p.g, conversion)),
         b(::PixelConversion::Convert(p.b, conversion)) {}
@@ -134,10 +153,10 @@ struct TestData {
                             g == a.g && b == a.b);
   }
   bool operator!=(const TestData& a) { return !((*this) == a); }
-  bool equalsXy(float xx, float yy) const { return xx == x && yy == y; }
+  bool equalsXy(double xx, double yy) const { return xx == x && yy == y; }
 };
-static_assert(sizeof(TestData) == 6 * sizeof(float),
-              "TestData size should be  6 * sizeof(float) but was not.");
+static_assert(sizeof(TestData) == 6 * sizeof(double),
+              "TestData size should be  6 * sizeof(double) but was not.");
 
 struct CompareTestData {
   bool operator()(const TestData& a, const TestData& b) const {

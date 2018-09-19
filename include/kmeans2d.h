@@ -2,21 +2,21 @@
 
 #include <vector>
 
-void kmeans2d(int width, int height, std::vector<float>& centers,
+void kmeans2d(int width, int height, std::vector<double>& centers,
               std::vector<int>& labels);
 
 void kmeans_training_data(const std::string& directory, int num_centers,
                           int* width, int* height, std::vector<int>& indices,
-                          std::vector<int>& order, std::vector<float>& centers,
+                          std::vector<int>& order, std::vector<double>& centers,
                           std::vector<int>& labels,
-                          std::vector<int>& batch_sizes, float** train_data,
+                          std::vector<int>& batch_sizes, double** train_data,
                           int* train_data_dim1, int* train_data_dim2,
-                          float** train_labels, int* train_labels_dim1,
-                          int* train_labels_dim2, float** average,
+                          double** train_labels, int* train_labels_dim1,
+                          int* train_labels_dim2, double** average,
                           int* average_dim1, int* average_dim2,
                           int* average_dim3);
 
-void closest_n(int width, int height, int n, std::vector<float>& centers,
+void closest_n(int width, int height, int n, std::vector<double>& centers,
                int** closest, int* dim1, int* dim2, int* dim3);
 
 // k - get the k closest pixels
@@ -42,11 +42,11 @@ void closest_n(int width, int height, int n, std::vector<float>& centers,
 //- target_data_dim2
 void closest_k_test_target(int k, int cluster_id, int* closest,
                            int closest_dim1, int closest_dim2, int closest_dim3,
-                           float* train_data, int train_data_dim1,
-                           int train_data_dim2, float* target_data,
+                           double* train_data, int train_data_dim1,
+                           int train_data_dim2, double* target_data,
                            int target_data_dim1, int target_data_dim2,
-                           float** test, int* test_dim1, int* test_dim2,
-                           float** target, int* target_dim1, int* target_dim2);
+                           double** test, int* test_dim1, int* test_dim2,
+                           double** target, int* target_dim1, int* target_dim2);
 
 // order - specifies order of each image for purposes of sampling input dataset
 //      - if an image is not chosen, the value of order[i] = -1
@@ -64,10 +64,10 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
 //                 - of the form: rgb rgb rgb...
 // predictions_dim2 - should be 3
 void predictions_to_errors(std::vector<int>& order, int ensemble_size,
-                           float* test, int test_dim1, int test_dim2,
-                           float* target, int target_dim1, int target_dim2,
-                           float* predictions, int predictions_dim1,
-                           int predictions_dim2, float* errors, int errors_dim1,
+                           double* test, int test_dim1, int test_dim2,
+                           double* target, int target_dim1, int target_dim2,
+                           double* predictions, int predictions_dim1,
+                           int predictions_dim2, double* errors, int errors_dim1,
                            int errors_dim2);
 
 // assignment_data_to_test_data
@@ -97,8 +97,8 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
 void assignment_data_to_test_data(
     int* assignment_data, int assignment_data_dim1, int assignment_data_dim2,
     int assignment_data_dim3, int image_number, int num_images,
-    float* average_image, int average_image_dim1, int average_image_dim2,
-    int average_image_dim3, float** test_data, int* test_data_dim1,
+    double* average_image, int average_image_dim1, int average_image_dim2,
+    int average_image_dim3, double** test_data, int* test_data_dim1,
     int* test_data_dim2, int** ensemble_data, int* ensemble_data_dim1,
     int* ensemble_data_dim2);
 
@@ -114,17 +114,17 @@ void assignment_data_to_test_data(
 //  predictions - predictions to put into image out
 //  predictions_dim1 - num predictions
 //  predictions_dim2 - prediction size
-void predictions_to_image(float* image_out, int image_out_dim1,
-                          int image_out_dim2, int image_out_dim3, float* test,
-                          int test_dim1, int test_dim2, float* predictions,
+void predictions_to_image(double* image_out, int image_out_dim1,
+                          int image_out_dim2, int image_out_dim3, double* test,
+                          int test_dim1, int test_dim2, double* predictions,
                           int predictions_dim1, int predictions_dim2);
 
-void train_network(const std::string& save_file, float* train_data,
+void train_network(const std::string& save_file, double* train_data,
                    int train_data_dim1, int train_data_dim2,
-                   float* train_labels, int train_labels_dim1,
+                   double* train_labels, int train_labels_dim1,
                    int train_labels_dim2, int num_hidden_nodes,
-                   float* accuracy);
+                   double* accuracy);
 
-void predict(const std::string& save_file, float* test_data, int test_data_dim1,
-             int test_data_dim2, float** predictions, int* predictions_dim1,
+void predict(const std::string& save_file, double* test_data, int test_data_dim1,
+             int test_data_dim2, double** predictions, int* predictions_dim1,
              int* predictions_dim2);

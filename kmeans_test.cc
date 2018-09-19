@@ -38,18 +38,18 @@ void print_vector(const std::vector<T>& centers) {
 }
 
 void GenerateColorRamp(int num_centers, std::vector<image::Pixel>& colors) {
-  float v = 0.5f;
-  float s = 0.5f;
-  float min_h = 0.0f;
-  float max_h = 360.0f;
-  float step = (max_h - min_h) / num_centers;
-  float h = 0.0f;
+  double v = 0.5;
+  double s = 0.5;
+  double min_h = 0.0;
+  double max_h = 360.0;
+  double step = (max_h - min_h) / num_centers;
+  double h = 0.0;
   colors.resize(num_centers);
   for (int i = 0; i < num_centers; ++i) {
     glm::vec3 rgb = glm::rgbColor(glm::vec3(h, s, v));
-    colors[i] = image::Pixel(static_cast<uint8_t>(255.0f * rgb[0]),
-                             static_cast<uint8_t>(255.0f * rgb[1]),
-                             static_cast<uint8_t>(255.0f * rgb[2]));
+    colors[i] = image::Pixel(static_cast<uint8_t>(255.0 * rgb[0]),
+                             static_cast<uint8_t>(255.0 * rgb[1]),
+                             static_cast<uint8_t>(255.0 * rgb[2]));
     h += step;
   }
 }
@@ -78,13 +78,13 @@ int main(int argc, char** argv) {
       "/Users/randallsmith/image_relighting_neural_networks/data/bull/rgb";
   int width = 640;
   int height = 480;
-  float* training_data = nullptr;
-  float* training_labels = nullptr;
+  double* training_data = nullptr;
+  double* training_labels = nullptr;
   int training_data_dim1 = 0;
   int training_data_dim2 = 0;
   int training_labels_dim1 = 0;
   int training_labels_dim2 = 0;
-  float* average = nullptr;
+  double* average = nullptr;
   int average_dim1 = 0;
   int average_dim2 = 0;
   int average_dim3 = 0;
@@ -99,9 +99,9 @@ int main(int argc, char** argv) {
     num_centers = 0x1 << i;
     auto start = std::chrono::high_resolution_clock::now();
     // void KmeansDataAndLabels(const std::string& directory, int num_centers,
-    // int& width, int& height, float** training_data,
+    // int& width, int& height, double** training_data,
     // int* training_data_dim1, int* training_data_dim2,
-    // float** training_labels, int* training_labels_dim1,
+    // double** training_labels, int* training_labels_dim1,
     // int* training_labels_dim2,
     // std::vector<glm::vec2>& centers,
     // std::vector<int>& labels,

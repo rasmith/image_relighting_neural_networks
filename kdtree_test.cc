@@ -10,8 +10,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
 
-float RandomFloat(float min_value, float max_value) {
-  return std::rand() / static_cast<float>(RAND_MAX) * (max_value - min_value) +
+double RandomFloat(double min_value, double max_value) {
+  return std::rand() / static_cast<double>(RAND_MAX) * (max_value - min_value) +
          min_value;
 }
 
@@ -23,9 +23,9 @@ glm::vec2 RandomPoint(const glm::vec2* extents) {
 int NearestNeighborNaive(const std::vector<glm::vec2>& points,
                          const glm::vec2& query) {
   int best = -1;
-  float best_distance = std::numeric_limits<float>::max();
+  double best_distance = std::numeric_limits<double>::max();
   for (int i = 0; i < points.size(); ++i) {
-    float distance = glm::distance2(query, points[i]);
+    double distance = glm::distance2(query, points[i]);
     if (distance < best_distance) {
       best_distance = distance;
       best = i;
@@ -41,11 +41,11 @@ std::ostream& operator<<(std::ostream& out, const glm::vec2& p) {
 
 int main(int argc, char** argv) {
   std::vector<glm::vec2> points;
-  glm::vec2 extents[2] = {glm::vec2(0.0f, 1023.0f), glm::vec2(0.0f, 1023.0f)};
-  glm::vec2 extents2[2] = {glm::vec2(0.0f, 16000.0f), glm::vec2(0.0f, 16000.0f)};
+  glm::vec2 extents[2] = {glm::vec2(0.0, 1023.0), glm::vec2(0.0, 1023.0)};
+  glm::vec2 extents2[2] = {glm::vec2(0.0, 16000.0), glm::vec2(0.0, 16000.0)};
   for (int i = 0; i < 1024; ++i) {
     for (int j = 0; j < 1024; ++j) {
-      points.push_back(glm::vec2(static_cast<float>(i), static_cast<float>(j)));
+      points.push_back(glm::vec2(static_cast<double>(i), static_cast<double>(j)));
     }
   }
   // for (int i = 0; i < size; ++i)
@@ -87,14 +87,14 @@ int main(int argc, char** argv) {
   auto start_kd = std::chrono::high_resolution_clock::now();
   std::srand(0);
   int tree_closest= -1;
-  float best_distance = std::numeric_limits<float>::max();
+  double best_distance = std::numeric_limits<double>::max();
   for (int i = 0; i < trials; ++i) {
     glm::vec2 query = RandomPoint(extents2);
     tree.NearestNeighbor(query, &tree_closest, &best_distance);
 #if 0
-    float tree_distance = glm::distance(points[tree_closest], query);
+    double tree_distance = glm::distance(points[tree_closest], query);
     int naive_closest = NearestNeighborNaive(points, query);
-    float naive_distance = glm::distance(points[naive_closest], query);
+    double naive_distance = glm::distance(points[naive_closest], query);
     bool passed = (fabs(naive_distance - tree_distance) < 1e-5);
     if (!passed) {
       std::cout << "query = " << query << "\n";

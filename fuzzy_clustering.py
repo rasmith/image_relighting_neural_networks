@@ -17,7 +17,7 @@ def save_accuracy_map(accuracy_map):
 
 def save_assignment_map(level, cluster_id, width, height, test_data,\
                         network_data):
-  image_out = np.zeros((height, width, 3), dtype = np.float32)
+  image_out = np.zeros((height, width, 3), dtype = np.float64)
   image_file_name = "render_images/map_%04d_%04d.png" % (level, cluster_id)
   level, network_id, start, count= network_data 
   values = test_data[start:start + count]
@@ -61,7 +61,7 @@ def get_parameters(directory):
   current_dir = os.getcwd()
   os.chdir(directory)
   png_files = glob.glob("*.png")
-  img = misc.imread(png_files[0], mode = 'RGB').astype('float32') / 255.0
+  img = misc.imread(png_files[0], mode = 'RGB').astype('float64') / 255.0
   height, width, channels = img.shape
   num_images = len(png_files)
   os.chdir(current_dir)
@@ -105,8 +105,8 @@ pixel_clusters = \
 
 flagged = np.ones((height, width), dtype  = bool)
 used = np.zeros((height, width), dtype  = bool)
-errors = np.ndarray((height, width), dtype = np.float32, order='C')
-accuracy_map = np.ndarray((height, width, 3), dtype = np.float32, order='C')
+errors = np.ndarray((height, width), dtype = np.float64, order='C')
+accuracy_map = np.ndarray((height, width, 3), dtype = np.float64, order='C')
 
 (models_dir, cfg_dir) = init(dirname)
 print ("models_dir = %s\n" % (models_dir))
@@ -122,8 +122,8 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   print("train_labels order = %s" % (str(np.isfortran(train_labels))))
   if level >=  max_levels:
     break
-  input_map = np.zeros((height, width, 3), dtype = np.float32)
-  label_map = np.zeros((height, width, 3), dtype = np.float32)
+  input_map = np.zeros((height, width, 3), dtype = np.float64)
+  label_map = np.zeros((height, width, 3), dtype = np.float64)
   palette = generate_palette(len(centers))
   cluster_map = np.array(render_clusters(width, height, labels, palette))
   cluster_map = np.transpose(np.reshape(cluster_map, (width, height, 3)),

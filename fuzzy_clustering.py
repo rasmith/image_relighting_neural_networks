@@ -167,7 +167,8 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
       # train_data, network_data)
     if not os.path.exists(checkpoint_file):
       start = time.time()
-      accuracy = kmeans2d.train_network(train_data, train_labels)
+      accuracy = kmeans2d.train_network(checkpoint_file, train_data,\
+          train_labels, num_hidden_nodes)
       update_accuracy_map(network_data, train_data, accuracy, accuracy_map)
     end = time.time();
     print("[%d] %d/%d time to train %f\n" % \
@@ -191,7 +192,6 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
             # (level, cluster_index, len(cluster_ids) - 1, cluster_id, \
                 # len(centers) - 1, checkpoint_file, k))
       predictions = kmeans2d.predict(test)
-      # PREDICT AND COMPUTE ERRORS HERE
       kmeans2d.predictions_to_errors(cxx_order, ensemble_size,\
           test, target, predictions, errors);
       del test

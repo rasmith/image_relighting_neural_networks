@@ -119,7 +119,12 @@ void predictions_to_image(float* image_out, int image_out_dim1,
                           int test_dim1, int test_dim2, float* predictions,
                           int predictions_dim1, int predictions_dim2);
 
-void train_network(const string& save_file, float* train_data,
+void train_network(const std::string& save_file, float* train_data,
                    int train_data_dim1, int train_data_dim2,
                    float* train_labels, int train_labels_dim1,
-                   int train_labels_dim2, int num_hidden_nodes);
+                   int train_labels_dim2, int num_hidden_nodes,
+                   float* accuracy);
+
+void predict(const std::string& save_file, float* test_data, int test_data_dim1,
+             int test_data_dim2, float** predictions, int* predictions_dim1,
+             int* predictions_dim2);

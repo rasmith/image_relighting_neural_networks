@@ -603,7 +603,18 @@ void predictions_to_image(float* image_out, int image_out_dim1,
   }
 }
 
-void train_network(const string& save_file, float* train_data,
+void train_network(const std::string& save_file, float* train_data,
                    int train_data_dim1, int train_data_dim2,
                    float* train_labels, int train_labels_dim1,
-                   int train_labels_dim2, int num_hidden_nodes) {}
+                   int train_labels_dim2, int num_hidden_nodes,
+                   float* accuracy) {
+  *accuracy = 0.0f;
+}
+
+void predict(const std::string& save_file, float* test_data, int test_data_dim1,
+             int test_data_dim2, float** predictions, int* predictions_dim1,
+             int* predictions_dim2) {
+  *predictions_dim1 = test_data_dim1;
+  *predictions_dim2 = sizeof(PixelData) / sizeof(float);
+  *predictions = new float[(*predictions_dim1) * (*predictions_dim2)];
+}

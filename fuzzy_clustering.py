@@ -5,7 +5,6 @@ import os
 from scipy import misc
 import numpy as np
 from multiprocessing import Pool
-from model import ModelMaker
 import config
 
 from cluster import *
@@ -46,14 +45,14 @@ def update_label_map(level, cluster_id, width, height, test_data,\
     y = int(np.round(t[1] * (height - 1)))
     label_map[y, x, :]  = 255.0 * l
 
-def update_accuracy_map(network_data, test_data, score, accuracy_map):
+def update_accuracy_map(network_data, test_data, accuracy, accuracy_map):
   level, network_id, start, count= network_data 
   for t in test_data[start:start + count]:
     x = int(np.round(t[0] * (width - 1)))
     y = int(np.round(t[1] * (height - 1)))
-    accuracy_map[y, x, 0] = 255.0 * score[1]
-    accuracy_map[y, x, 1] = 255.0 * score[1]
-    accuracy_map[y, x, 2] = 255.0 * score[1]
+    accuracy_map[y, x, 0] = 255.0 * accuracy
+    accuracy_map[y, x, 1] = 255.0 * accuracy
+    accuracy_map[y, x, 2] = 255.0 * accuracy
 
 # width = 696
 # height = 464
@@ -168,13 +167,8 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
       # train_data, network_data)
     if not os.path.exists(checkpoint_file):
       start = time.time()
-      model = ModelMaker(light_dim, num_hidden_nodes)
-      model.set_checkpoint_file(checkpoint_file)
-      model.compile()
-      score = model.train(train_data[starts[cluster_id]:ends[cluster_id], :], \
-          train_labels[starts[cluster_id]:ends[cluster_id], :], 
-          batch_sizes[cluster_id])
-      update_accuracy_map(network_data, train_data, score, accuracy_map)
+      accuracy = kmeans2d.train_network(train_data, train_labels)
+      update_accuracy_map(network_data, train_data, accuracy, accuracy_map)
     end = time.time();
     print("[%d] %d/%d time to train %f\n" % \
         (level, cluster_id, len(centers) - 1, end - start))
@@ -190,17 +184,14 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
     print("batch_size = %d\n" % (batch_size))
     (checkpoint_file_name, checkpoint_file) = \
         config.get_checkpoint_file_info(models_dir, level, cluster_id)
-    model = ModelMaker(light_dim, num_hidden_nodes)
-    model.set_checkpoint_file(checkpoint_file)
-    model.compile()
-    model.load_weights()
     for k in range(0, ensemble_size):
       test, target = kmeans2d.closest_k_test_target(int(k), int(cluster_id),\
                                               closest, train_data, train_labels) 
       # print("[%d] %d/%d, %d/%d checkpoint_file = %s, ensemble %d" %
             # (level, cluster_index, len(cluster_ids) - 1, cluster_id, \
                 # len(centers) - 1, checkpoint_file, k))
-      predictions = model.predict(test, batch_size) 
+      predictions = kmeans2d.predict(test)
+      # PREDICT AND COMPUTE ERRORS HERE
       kmeans2d.predictions_to_errors(cxx_order, ensemble_size,\
           test, target, predictions, errors);
       del test

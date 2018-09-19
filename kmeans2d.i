@@ -16,6 +16,7 @@
 
 %apply int *OUTPUT { int* width };
 %apply int *OUTPUT { int* height };
+%apply float* OUTPUT {float* accuracy};
 
 %apply (float** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
 (float** train_data, int* train_data_dim1, int* train_data_dim2)};
@@ -49,6 +50,9 @@
 
 %apply (float** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
 (float** target, int* target_dim1, int* target_dim2)};
+
+%apply (float** ARGOUTVIEWM_ARRAY2, int* DIM1, int* DIM2) {\
+(float** predictions, int* predictions_dim1, int* predictions_dim2)};
 
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (float* test, int test_dim1, int test_dim2)};

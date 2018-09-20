@@ -53,7 +53,7 @@ def load_cfg(dirname):
       max_levels, sampled, assignments, average_img
 
 def get_checkpoint_file_info(models_dir, level, cluster_id):
-  checkpoint_file_name = ('model_%05d-%05d.hdf5' % (level, cluster_id))
+  checkpoint_file_name = ('model_%05d-%05d.dat' % (level, cluster_id))
   checkpoint_file = models_dir+ '/' + checkpoint_file_name 
   return (checkpoint_file_name, checkpoint_file)
 

@@ -64,6 +64,9 @@
 (double* train, int train_dim1, int train_dim2)};
 
 %apply (double* INPLACE_ARRAY2, int DIM1, int DIM2) {\
+(double* test_data, int test_data_dim1, int test_data_dim2)};
+
+%apply (double* INPLACE_ARRAY2, int DIM1, int DIM2) {\
 (double* predictions, int predictions_dim1, int predictions_dim2)};
 
 %apply (double* INPLACE_ARRAY4, int DIM1, int DIM2, int DIM3, int DIM4) {\

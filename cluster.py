@@ -45,8 +45,9 @@ class PixelClusters:
     if self.timed:
       start = time.time()
     width, height, train_data, train_labels, average = \
-      kmeans2d.kmeans_training_data(self.directory, num_centers, self.cxx_indices,\
-              self.cxx_order,  cxx_centroids, cxx_labels, cxx_batch_sizes)
+      kmeans2d.kmeans_training_data(self.directory, num_centers, \
+              self.cxx_indices, self.cxx_order,  cxx_centroids, \
+              cxx_labels, cxx_batch_sizes)
     print("len(cxx_indices) = %d\n" % self.cxx_indices.size())
     print("len(cxx_order) = %d\n" % self.cxx_order.size())
     print("len(cxx_batch_sizes) = %d\n" % cxx_batch_sizes.size())

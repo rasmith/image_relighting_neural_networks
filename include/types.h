@@ -14,24 +14,27 @@
 class ImageDataSet : public OpenANN::DataSet {
  public:
   ImageDataSet(const Eigen::MatrixXd& inputs, const Eigen::MatrixXd& outputs)
-      : in(inputs), out(outputs), dataSet(&in, &out) {}
-  virtual int samples() { return dataSet.samples(); }
-  virtual int inputs() { return dataSet.inputs(); }
-  virtual int outputs() { return dataSet.outputs(); }
-  virtual Eigen::VectorXd& getInstance(int i) { return dataSet.getInstance(i); }
-  virtual Eigen::VectorXd& getTarget(int i) { return dataSet.getTarget(i); }
+      : in_(inputs), out_(outputs), data_set_(&in_, &out_) {}
+  virtual int samples() { return data_set_.samples(); }
+  virtual int inputs() { return data_set_.inputs(); }
+  virtual int outputs() { return data_set_.outputs(); }
+  virtual Eigen::VectorXd& getInstance(int i) {
+    return data_set_.getInstance(i);
+  }
+  virtual Eigen::VectorXd& getTarget(int i) { return data_set_.getTarget(i); }
   virtual void finishIteration(OpenANN::Learner& learner) {}
 
  private:
-  Eigen::MatrixXd in, out;
-  OpenANN::DirectStorageDataSet dataSet;
+  Eigen::MatrixXd in_, out_;
+  OpenANN::DirectStorageDataSet data_set_;
 };
 
 struct CoordinateData {
   double x;
   double y;
   CoordinateData(int xx, int yy, int width, int height)
-      : x(xx / static_cast<double>(width)), y(yy / static_cast<double>(height)) {}
+      : x(xx / static_cast<double>(width)),
+        y(yy / static_cast<double>(height)) {}
   CoordinateData(double xx, double yy) : x(xx), y(yy) {}
   double& operator[](int i) { return (&x)[i]; }
   double operator[](int i) const { return (&x)[i]; }
@@ -51,7 +54,8 @@ struct PixelConversion {
     return (conversion == kZeroToPositiveOne ? x : glm::clamp(2.0 * x - 1.0,
                                                               -1.0, 1.0));
   }
-  static double Unconvert(double x, PixelConversion::ConversionType conversion) {
+  static double Unconvert(double x,
+                          PixelConversion::ConversionType conversion) {
     return (conversion == kZeroToPositiveOne
                 ? glm::clamp(x, 0.0, 1.0)
                 : glm::clamp(0.5 * (x + 1.0), 0.0, 1.0));

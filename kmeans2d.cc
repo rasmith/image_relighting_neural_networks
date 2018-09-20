@@ -24,9 +24,14 @@
 
 #include <Eigen/Core>
 #include <OpenANN/OpenANN>
+#include <OpenANN/Evaluation.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/color_space.hpp>
 #include <glm/gtx/norm.hpp>
+
+#ifdef PARALLEL_CORES
+#include <omp.h>
+#endif
 
 void init_centers(int num_threads, int num_centers, int width, int height,
                   std::vector<glm::vec2>& centers) {
@@ -46,7 +51,7 @@ void assign_labels_thread(int tid, int num_threads, int width, int height,
                           std::vector<int>& labels) {
   int num_pixels = width * height;
   int block_size = num_pixels / num_threads + 1;
-  int t_start = tid * block_size;
+  int t_start = std::min(tid * block_size, num_pixels);
   int t_end = std::min(t_start + block_size, num_pixels);
   std::vector<double> distances(block_size, std::numeric_limits<double>::max());
   for (int j = t_start; j < t_end; ++j) {
@@ -84,7 +89,7 @@ void update_centers_thread(int tid, int num_threads, int width, int height,
                            std::vector<int>& counts) {
   int num_pixels = width * height;
   int block_size = num_pixels / num_threads + 1;
-  int t_start = tid * block_size;
+  int t_start = std::min(tid * block_size, num_pixels);
   int t_end = std::min(t_start + block_size, num_pixels);
   std::vector<double> distances(block_size, std::numeric_limits<double>::max());
   std::fill(centers.begin(), centers.end(), glm::vec2(0.0));
@@ -138,7 +143,7 @@ void update_centers_threaded(int num_threads, int width, int height,
 }
 
 double compute_difference(const std::vector<glm::vec2>& centers1,
-                         const std::vector<glm::vec2>& centers2) {
+                          const std::vector<glm::vec2>& centers2) {
   double diff = 0;
   for (int i = 0; i < centers1.size(); ++i)
     diff += glm::distance2(centers1[i], centers2[i]);
@@ -204,7 +209,8 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
                            int train_data_dim2, double* target_data,
                            int target_data_dim1, int target_data_dim2,
                            double** test, int* test_dim1, int* test_dim2,
-                           double** target, int* target_dim1, int* target_dim2) {
+                           double** target, int* target_dim1,
+                           int* target_dim2) {
   // closest_k_test_target(
   // k, cluster_id, reinterpret_cast<int*>(&closest[0]), height, width,
   // ensemble_size, reinterpret_cast<double*>(&train_data[0]),
@@ -263,8 +269,8 @@ void closest_k_test_target(int k, int cluster_id, int* closest,
           // Write out the test and target data.
           int num_pixels = width * height;
           int block_size = num_images / num_threads + 1;
-          int start = tid * block_size;
-          int end = std::min(num_images, start + block_size);
+          int start = std::min(tid * block_size, num_images);
+          int end = std::min(start + block_size, num_images);
           block_size = end - start;
           // Output.
           TestData* test_out =
@@ -292,8 +298,8 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                            double* test, int test_dim1, int test_dim2,
                            double* target, int target_dim1, int target_dim2,
                            double* predictions, int predictions_dim1,
-                           int predictions_dim2, double* errors, int errors_dim1,
-                           int errors_dim2) {
+                           int predictions_dim2, double* errors,
+                           int errors_dim1, int errors_dim2) {
   LOG(DEBUG) << "predictions_to_errors:ensemble_size = " << ensemble_size
              << "\n";
   LOG(DEBUG) << "predictions_to_errors:test_dim1 = " << test_dim1 << "\n";
@@ -311,53 +317,52 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
   std::vector<double> thread_errors(num_threads * num_pixels, 0.0);
   std::vector<std::thread> threads(num_threads);
   for (int t = 0; t < num_threads; ++t) {
-    threads[t] = std::thread([
-                               &order,
-                               &height,
-                               &width,
-                               &num_pixels,
-                               &ensemble_size,
-                               &test,
-                               &test_dim1,
-                               &test_dim2,
-                               &target,
-                               &target_dim1,
-                               &target_dim2,
-                               &predictions,
-                               &predictions_dim1,
-                               &predictions_dim2,
-                               &thread_errors,
-                               &num_threads
-                             ](int tid)
-                                  ->void {
-                               double* errors = &thread_errors[tid * num_pixels];
-                               int block_size = test_dim1 / num_threads + 1;
-                               int start = tid * block_size;
-                               int end =
-                                   std::min(start + block_size, test_dim1);
-                               double* test_pos = test + test_dim2 * start;
-                               double* target_pos = target + target_dim2 * start;
-                               double* predictions_pos =
-                                   predictions + predictions_dim2 * start;
-                               for (int i = start; i < end; ++i) {
-                                 int x = round(*(test_pos) * (width - 1));
-                                 int y = round(*(test_pos + 1) * (height - 1));
-                                 int index = y * width + x;
-                                 double total = 0;
-                                 for (int c = 0; c < 3; ++c)
-                                   total += target_pos[c];
-                                 if (total == 0.0) total = 1.0;
-                                 for (int c = 0; c < 3; ++c) {
-                                   int k = y * width + x;
-                                   double e = predictions_pos[c] - target_pos[c];
-                                   errors[k] += (e * e) / (total * total);
-                                 }
-                                 target_pos += target_dim2;
-                                 predictions_pos += predictions_dim2;
-                                 test_pos += test_dim2;
-                               }
-                             },
-                             t);
+    threads[t] =
+        std::thread([
+                      &order,
+                      &height,
+                      &width,
+                      &num_pixels,
+                      &ensemble_size,
+                      &test,
+                      &test_dim1,
+                      &test_dim2,
+                      &target,
+                      &target_dim1,
+                      &target_dim2,
+                      &predictions,
+                      &predictions_dim1,
+                      &predictions_dim2,
+                      &thread_errors,
+                      &num_threads
+                    ](int tid)
+                         ->void {
+                      double* errors = &thread_errors[tid * num_pixels];
+                      int block_size = test_dim1 / num_threads + 1;
+                      int start = std::min(tid * block_size, test_dim1);
+                      int end = std::min(start + block_size, test_dim1);
+                      double* test_pos = test + test_dim2 * start;
+                      double* target_pos = target + target_dim2 * start;
+                      double* predictions_pos =
+                          predictions + predictions_dim2 * start;
+                      for (int i = start; i < end; ++i) {
+                        int x = round(*(test_pos) * (width - 1));
+                        int y = round(*(test_pos + 1) * (height - 1));
+                        int index = y * width + x;
+                        double total = 0;
+                        for (int c = 0; c < 3; ++c) total += target_pos[c];
+                        if (total == 0.0) total = 1.0;
+                        for (int c = 0; c < 3; ++c) {
+                          int k = y * width + x;
+                          double e = predictions_pos[c] - target_pos[c];
+                          errors[k] += (e * e) / (total * total);
+                        }
+                        target_pos += target_dim2;
+                        predictions_pos += predictions_dim2;
+                        test_pos += test_dim2;
+                      }
+                    },
+                    t);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
   for (int i = 0; i < num_threads; ++i) {
@@ -392,8 +397,8 @@ void closest_n(int width, int height, int n, std::vector<double>& centers,
          &height ](int tid)
                       ->void {
           uint32_t block_size = num_pixels / num_threads + 1;
-          uint32_t start = block_size * tid;
-          uint32_t end = std::min(num_pixels, start + block_size);
+          uint32_t start = std::min(block_size * tid, num_pixels);
+          uint32_t end = std::min(start + block_size, num_pixels);
           for (uint32_t i = start; i < end; ++i) {
             uint32_t x = i % width;
             uint32_t y = i / width;
@@ -515,11 +520,11 @@ void assignment_data_to_test_data(
     pos += ensemble_size + 1;
   }
   const std::vector<int>& pixels = network_map.find(NetworkData(0, 0))->second;
-  std::cout << "[";
-  for (int i = 0; i < pixels.size(); ++i) {
-    std::cout << "[" << pixels[i] % width << " " << pixels[i] / width << "]\n";
-  }
-  std::cout << "]";
+  //std::cout << "[";
+  //for (int i = 0; i < pixels.size(); ++i) {
+    //std::cout << "[" << pixels[i] % width << " " << pixels[i] / width << "]\n";
+  //}
+  //std::cout << "]";
   int count = 0;
   for (const auto& entry : network_map) {
     assert(entry.second.size() > 0);
@@ -611,21 +616,45 @@ void train_network(const std::string& save_file, double* train_data,
                    int train_labels_dim2, int num_hidden_nodes,
                    double* accuracy) {
   OpenANN::Net network;
-  Eigen::MatrixXd in, out;
-  ImageDataSet training_set(in, out);
+  Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+      out_map(train_labels, train_labels_dim1, train_labels_dim2);
+  Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+      in_map(train_data, train_data_dim1, train_data_dim2);
+  ImageDataSet training_set(in_map, out_map);
+  OpenANN::useAllCores();
   network.inputLayer(training_set.inputs())
       .fullyConnectedLayer(num_hidden_nodes, OpenANN::TANH)
       .fullyConnectedLayer(num_hidden_nodes, OpenANN::TANH)
       .outputLayer(training_set.outputs(), OpenANN::TANH)
       .trainingSet(training_set);
   network.initialize();
-  *accuracy = 0.0;
+  OpenANN::StoppingCriteria stop;
+  stop.maximalIterations = 1000;
+  stop.minimalSearchSpaceStep = 1e-13;
+  stop.minimalValueDifferences = 1e-13;
+  OpenANN::train(network, "LMA", OpenANN::MSE, stop, true);
+  network.save(save_file);
+  *accuracy = OpenANN::accuracy(network, training_set);
 }
 
-void predict(const std::string& save_file, double* test_data, int test_data_dim1,
-             int test_data_dim2, double** predictions, int* predictions_dim1,
-             int* predictions_dim2) {
+void predict(const std::string& save_file, double* test_data,
+             int test_data_dim1, int test_data_dim2, double** predictions,
+             int* predictions_dim1, int* predictions_dim2) {
+  OpenANN::useAllCores();
+  std::ifstream ifs(save_file);
+  OpenANN::Net network;
+  network.load(ifs);
   *predictions_dim1 = test_data_dim1;
   *predictions_dim2 = sizeof(PixelData) / sizeof(double);
   *predictions = new double[(*predictions_dim1) * (*predictions_dim2)];
+  Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+      test_data_map(test_data, test_data_dim1, test_data_dim2);
+  Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+      predictions_map(*predictions, *predictions_dim1, *predictions_dim2);
+  const Eigen::MatrixXd& input = test_data_map;
+  predictions_map = network(input);
 }

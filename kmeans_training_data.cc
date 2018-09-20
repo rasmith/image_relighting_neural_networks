@@ -72,7 +72,7 @@ void LoadImages(const std::string& dirname, std::vector<image::Image>& images) {
         std::thread([&num_threads, &file_names, &images ](int tid)->void {
                       uint32_t num_files = file_names.size();
                       uint32_t block_size = num_files / num_threads + 1;
-                      uint32_t start = tid * block_size;
+                      uint32_t start = std::min(tid * block_size, num_files);
                       uint32_t end = std::min(start + block_size, num_files);
                       for (int j = start; j < end; ++j)
                         DecodePng(file_names[j].c_str(), images[j]);
@@ -157,6 +157,7 @@ void GetTrainingData(const std::vector<image::Image>& images,
   // Copy out the batch sizes.
   std::copy(cluster_sizes.begin(), cluster_sizes.end(),
             std::back_inserter(batch_sizes));
+  std::cout << "cluster_sizes = ";
   for (int i = 0; i < cluster_sizes.size(); ++i)
     std::cout << cluster_sizes[i] << " ";
   std::cout << "\n";
@@ -172,9 +173,17 @@ void GetTrainingData(const std::vector<image::Image>& images,
   std::vector<int> pixel_counts(num_threads, 0);
   for (int i = 0; i < num_threads; ++i) {
     int block_size = num_centers / num_threads + 1;
-    starts[i] = i * block_size;
+    starts[i] = std::min(i * block_size, num_centers);
     ends[i] = std::min(starts[i] + block_size, num_centers);
     assert(ends[i] >= 0 && ends[i] <= num_centers);
+    if (!(starts[i] >= 0 && starts[i] <= num_centers)) {
+      std::cout << "num_centers = " << num_centers << "\n";
+      std::cout << "starts = ";
+      for (int i = 0; i < num_threads; ++i) {
+        std::cout << starts[i] << " ";
+      }
+      std::cout << "\n";
+    }
     assert(starts[i] >= 0 && starts[i] <= num_centers);
     for (int j = starts[i]; j < ends[i]; ++j)
       pixel_counts[i] += cluster_sizes[j];
@@ -288,14 +297,14 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
                                       indices.begin() + indices.size()) << "\n";
   std::sort(indices.begin(), indices.end(), cmp2);
   order.resize(total, -1);
-  std::cout << "indices = ";
-  for (int i = 0; i < indices.size(); ++i) std::cout << indices[i] << " ";
-  std::cout << "\n";
-  for (int i = 0; i < indices.size(); ++i) order[indices[i]] = i;
-  std::cout << "total = " << total << "\n";
-  std::cout << "order= ";
-  for (int i = 0; i < order.size(); ++i) std::cout << order[i] << " ";
-  std::cout << "\n";
+  // std::cout << "indices = ";
+  // for (int i = 0; i < indices.size(); ++i) std::cout << indices[i] << " ";
+  // std::cout << "\n";
+  // for (int i = 0; i < indices.size(); ++i) order[indices[i]] = i;
+  // std::cout << "total = " << total << "\n";
+  // std::cout << "order= ";
+  // for (int i = 0; i < order.size(); ++i) std::cout << order[i] << " ";
+  // std::cout << "\n";
 }
 
 void KmeansDataAndLabels(

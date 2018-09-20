@@ -8,8 +8,12 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 # Set library path.`
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
+
 find_package(Threads REQUIRED)
 
+message(STATUS "COMPILER_SUPPORT_OPENMP = ${COMPILER_SUPPORT_OPENMP}")
+
+add_definitions(-DPARALLEL_CORES=24)
 # Set C++ flags.
 #set(CMAKE_CXX_FLAGS
   #"${CMAKE_CXX_FLAGS} -std=c++11 -g -fsanitize=address -fno-omit-frame-pointer")
@@ -18,7 +22,7 @@ find_package(Threads REQUIRED)
 #set(CMAKE_CXX_FLAGS 
   #"${CMAKE_CXX_FLAGS} -std=c++11 -g ")
 set(CMAKE_CXX_FLAGS 
-  "${CMAKE_CXX_FLAGS} -std=c++11 -O3 ")
+  "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -Wno-deprecated-register")
 
 # Set the module path (mainly for FindXXX.cmake files)
 set(CMAKE_MODULE_PATH ${CMAKE_PATH}

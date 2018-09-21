@@ -1,5 +1,4 @@
 #include "image.h"
-#include "kdtree.h"
 #include "kmeans_training_data.h"
 #include "logger.h"
 #include "types.h"
@@ -371,52 +370,6 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
   }
 }
 
-void closest_n(int width, int height, int n, std::vector<double>& centers,
-               int** closest, int* dim1, int* dim2, int* dim3) {
-  *dim1 = height;
-  *dim2 = width;
-  *dim3 = n;
-  *closest = new int[(*dim1) * (*dim2) * (*dim3)];
-  std::vector<glm::vec2> glm_centers(centers.size() / 2);
-  for (int i = 0; i < centers.size() / 2; ++i)
-    glm_centers[i] = glm::vec2(centers[2 * i], centers[2 * i + 1]);
-  kdtree::KdTree tree;
-  tree.AssignPoints(glm_centers);
-  tree.Build();
-  uint32_t num_threads = 8;
-  uint32_t num_pixels = width * height;
-  std::vector<std::thread> threads(num_threads);
-  for (int i = 0; i < num_threads; ++i) {
-    threads[i] = std::thread(
-        [&num_threads,
-         &num_pixels,
-         &closest,
-         &tree,
-         &n,
-         &width,
-         &height ](int tid)
-                      ->void {
-          uint32_t block_size = num_pixels / num_threads + 1;
-          uint32_t start = std::min(block_size * tid, num_pixels);
-          uint32_t end = std::min(start + block_size, num_pixels);
-          for (uint32_t i = start; i < end; ++i) {
-            uint32_t x = i % width;
-            uint32_t y = i / width;
-            glm::vec2 pixel(x, y);
-            double min_distance = -std::numeric_limits<double>::max();
-            for (int k = 0; k < n; ++k) {
-              double best_distance = std::numeric_limits<double>::max();
-              int best = -1;
-              tree.NearestNeighbor(pixel, min_distance, &best, &best_distance);
-              min_distance = best_distance;
-              (*closest)[k + n * (x + y * width)] = best;
-            }
-          }
-        },
-        i);
-  }
-  for (int i = 0; i < num_threads; ++i) threads[i].join();
-}
 
 void kmeans2d(int width, int height, std::vector<double>& centers,
               std::vector<int>& labels) {
@@ -428,34 +381,24 @@ void kmeans2d(int width, int height, std::vector<double>& centers,
   }
 }
 
-//test, batch_sizes, levels, cluster_ids = \
-      //kmeans2d.assignments_to_predict_data(assignments, average)
-typedef std::pair<int, int> Tuple;
-typedef std::vector<Tuple> Tuples;
-struct TupleHash {
-  std::size_t operator()(const Tuple& t) const {
-    std::hash<std::string> h;
-    return h(std::to_string(t.first) + "-" + std::to_string(t.second));
-  }
-};
-
 void kmeans_training_data(const std::string& directory, int num_centers,
                           int* width, int* height, std::vector<int>& indices,
                           std::vector<int>& order, std::vector<double>& centers,
                           std::vector<int>& labels,
-                          std::vector<int>& batch_sizes, int* closest,
-                          int closest_dim1, int closest_dim2, int closest_dim3,
-                          double** train_data, int* train_data_dim1,
-                          int* train_data_dim2, double** train_labels,
-                          int* train_labels_dim1, int* train_labels_dim2,
-                          double** average, int* average_dim1,
-                          int* average_dim2, int* average_dim3) {
+                          std::vector<int>& batch_sizes, double** train_data,
+                          int* train_data_dim1, int* train_data_dim2,
+                          double** train_labels, int* train_labels_dim1,
+                          int* train_labels_dim2, double** average,
+                          int* average_dim1, int* average_dim2,
+                          int* average_dim3 int** closest, int* closest_dim1,
+                          int* closest_dim2, int* closest_dim3) {
   int width_out = -1, height_out = -1;
   std::vector<glm::vec2> glm_centers(num_centers);
   KmeansDataAndLabels(directory, num_centers, width_out, height_out, train_data,
                       train_data_dim1, train_data_dim2, train_labels,
                       train_labels_dim1, train_labels_dim2, average,
-                      average_dim1, average_dim2, average_dim3, indices, order,
+                      average_dim1, average_dim2, average_dim3, closest,
+                      closest_dim1, closest_dim2, closest_dim3, indices, order,
                       glm_centers, labels, batch_sizes);
   *width = width_out;
   *height = height_out;

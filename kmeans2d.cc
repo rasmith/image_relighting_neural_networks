@@ -1,4 +1,5 @@
 #include "image.h"
+#include "kdtree.h"
 #include "kmeans_training_data.h"
 #include "logger.h"
 #include "types.h"
@@ -370,7 +371,6 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
   }
 }
 
-
 void kmeans2d(int width, int height, std::vector<double>& centers,
               std::vector<int>& labels) {
   std::vector<glm::vec2> glm_centers(centers.size() / 2);
@@ -390,7 +390,7 @@ void kmeans_training_data(const std::string& directory, int num_centers,
                           double** train_labels, int* train_labels_dim1,
                           int* train_labels_dim2, double** average,
                           int* average_dim1, int* average_dim2,
-                          int* average_dim3 int** closest, int* closest_dim1,
+                          int* average_dim3, int** closest, int* closest_dim1,
                           int* closest_dim2, int* closest_dim3) {
   int width_out = -1, height_out = -1;
   std::vector<glm::vec2> glm_centers(num_centers);

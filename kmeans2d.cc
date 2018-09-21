@@ -381,7 +381,7 @@ void kmeans2d(int width, int height, std::vector<double>& centers,
   }
 }
 
-void kmeans_training_data(const std::string& directory, int num_centers,
+void kmeans_training_data(const std::string& directory, int num_centers, int ensemble_size, 
                           int* width, int* height, std::vector<int>& indices,
                           std::vector<int>& order, std::vector<double>& centers,
                           std::vector<int>& labels,
@@ -394,12 +394,12 @@ void kmeans_training_data(const std::string& directory, int num_centers,
                           int* closest_dim2, int* closest_dim3) {
   int width_out = -1, height_out = -1;
   std::vector<glm::vec2> glm_centers(num_centers);
-  KmeansDataAndLabels(directory, num_centers, width_out, height_out, train_data,
-                      train_data_dim1, train_data_dim2, train_labels,
-                      train_labels_dim1, train_labels_dim2, average,
-                      average_dim1, average_dim2, average_dim3, closest,
-                      closest_dim1, closest_dim2, closest_dim3, indices, order,
-                      glm_centers, labels, batch_sizes);
+  KmeansDataAndLabels(
+      directory, num_centers, ensemble_size, width_out, height_out,  train_data,
+      train_data_dim1, train_data_dim2, train_labels, train_labels_dim1,
+      train_labels_dim2, average, average_dim1, average_dim2, average_dim3,
+      closest, closest_dim1, closest_dim2, closest_dim3, indices, order,
+      glm_centers, labels, batch_sizes);
   *width = width_out;
   *height = height_out;
   centers.resize(2 * num_centers);

@@ -119,17 +119,14 @@ void ComputeAverageImage(const std::vector<image::Image>& images,
                   LodePNGColorType::LCT_RGB, 8);
 }
 
-void GetClosestN(int width, int height, int n, std::vector<double>& centers,
+void GetClosestN(int width, int height, int n, std::vector<glm::vec2>& centers,
                  int** closest, int* dim1, int* dim2, int* dim3) {
   *dim1 = height;
   *dim2 = width;
   *dim3 = n;
   *closest = new int[(*dim1) * (*dim2) * (*dim3)];
-  std::vector<glm::vec2> glm_centers(centers.size() / 2);
-  for (int i = 0; i < centers.size() / 2; ++i)
-    glm_centers[i] = glm::vec2(centers[2 * i], centers[2 * i + 1]);
   kdtree::KdTree tree;
-  tree.AssignPoints(glm_centers);
+  tree.AssignPoints(centers);
   tree.Build();
   uint32_t num_threads = 8;
   uint32_t num_pixels = width * height;
@@ -366,25 +363,18 @@ void PickRandomIndices(uint32_t total, uint32_t amount,
                                       indices.begin() + indices.size()) << "\n";
   std::sort(indices.begin(), indices.end(), cmp2);
   order.resize(total, -1);
-  // std::cout << "indices = ";
-  // for (int i = 0; i < indices.size(); ++i) std::cout << indices[i] << " ";
-  // std::cout << "\n";
-  // for (int i = 0; i < indices.size(); ++i) order[indices[i]] = i;
-  // std::cout << "total = " << total << "\n";
-  // std::cout << "order= ";
-  // for (int i = 0; i < order.size(); ++i) std::cout << order[i] << " ";
-  // std::cout << "\n";
 }
 
 void KmeansDataAndLabels(
-    const std::string& directory, int num_centers, int& width, int& height,
-    double** training_data, int* training_data_dim1, int* training_data_dim2,
-    double** training_labels, int* training_labels_dim1,
-    int* training_labels_dim2, double** average_img, int* average_dim1,
-    int* average_dim2, int* average_dim3, int** closest, int* closest_dim1,
-    int* closest_dim2, int* closest_dim3, std::vector<int>& indices,
-    std::vector<int>& order, std::vector<glm::vec2>& centers,
-    std::vector<int>& labels, std::vector<int>& batch_sizes) { 
+    const std::string& directory, int num_centers, int ensemble_size,
+    int& width, int& height, double** training_data, int* training_data_dim1,
+    int* training_data_dim2, double** training_labels,
+    int* training_labels_dim1, int* training_labels_dim2, double** average_img,
+    int* average_dim1, int* average_dim2, int* average_dim3, int** closest,
+    int* closest_dim1, int* closest_dim2, int* closest_dim3,
+    std::vector<int>& indices, std::vector<int>& order,
+    std::vector<glm::vec2>& centers, std::vector<int>& labels,
+    std::vector<int>& batch_sizes) {
   std::cout << "KmeansDataAndLabels\n";
   std::vector<image::Image> images;
   // Load images.
@@ -425,6 +415,8 @@ void KmeansDataAndLabels(
   labels.resize(width * height);
   std::cout << "kmeans\n";
   kmeans(width, height, centers, labels);
+  GetClosestN(width, height, ensemble_size, centers, closest, closest_dim1,
+              closest_dim2, closest_dim3);
   // Get labels and data.
   GetTrainingData(images, indices, num_centers, labels, average, training_data,
                   training_data_dim1, training_data_dim2, training_labels,

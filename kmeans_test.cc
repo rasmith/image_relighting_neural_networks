@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
     //std::vector<int>& order, std::vector<glm::vec2>& centers,
     //std::vector<int>& labels, std::vector<int>& batch_sizes);
     KmeansDataAndLabels(
-        dirname, num_centers, width, height, &training_data,
+        dirname, num_centers, 1, width, height, &training_data,
         &training_data_dim1, &training_data_dim2, &training_labels,
         &training_labels_dim1, &training_labels_dim2, &average, &average_dim1,
         &average_dim2, &average_dim3, &closest, &closest_dim1, &closest_dim2,

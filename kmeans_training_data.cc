@@ -185,14 +185,35 @@ void GetTrainingData(const std::vector<image::Image>& images,
       std::cout << "\n";
     }
     assert(starts[i] >= 0 && starts[i] <= num_centers);
-    for (int j = starts[i]; j < ends[i]; ++j)
-      pixel_counts[i] += cluster_sizes[j];
+    for (int j = starts[i]; j < ends[i]; ++j) {
+      pixel_counts[i] += sample_size * cluster_sizes[j];
+    }
   }
   for (int i = 1; i < num_threads; ++i)
     pixel_offsets[i] += pixel_offsets[i - 1] + pixel_counts[i - 1];
-  for (int i = 1; i < num_threads; ++i)
+  for (int i = 1; i < num_threads; ++i) {
+    if (!(pixel_offsets[i] >= 0 &&
+          pixel_offsets[i] < num_pixels * indices.size())) {
+      std::cout << "num_centers = " << num_centers << "\n";
+      std::cout << "num_threads = " << num_threads << "\n";
+      std::cout << "starts = ";
+      for (int i = 0; i < num_threads; ++i) std::cout << starts[i] << " ";
+      std::cout << "\n";
+      std::cout << "ends = ";
+      for (int i = 0; i < num_threads; ++i) std::cout << ends[i] << " ";
+      std::cout << "\n";
+      std::cout << "pixel_offsets = ";
+      for (int i = 0; i < num_threads; ++i) std::cout << pixel_offsets[i] << " ";
+      std::cout << "\n";
+      std::cout << "pixel_counts = ";
+      for (int i = 0; i < num_threads; ++i) std::cout << pixel_counts[i] << " ";
+      std::cout << "\n";
+      std::cout << " num_pixels * indices.size() = "
+                << num_pixels* indices.size() << "\n";
+    }
     assert(pixel_offsets[i] >= 0 &&
-           pixel_offsets[i] < num_pixels * indices.size());
+           pixel_offsets[i] <= num_pixels * indices.size());
+  }
   // Compute a list of pixels for each cluster.
   std::unordered_map<int, std::vector<int>> cluster_to_pixels_map;
   for (int i = 0; i < num_pixels; ++i) {

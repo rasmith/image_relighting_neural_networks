@@ -2,8 +2,9 @@
 
 #include "image.h"
 
-#include <iostream>
 #include <algorithm>
+#include <chrono>
+#include <iostream>
 #include <tuple>
 
 #include <Eigen/Core>
@@ -13,8 +14,14 @@
 
 class ImageDataSet : public OpenANN::DataSet {
  public:
-  ImageDataSet(const Eigen::MatrixXd& inputs, const Eigen::MatrixXd& outputs)
-      : in_(inputs), out_(outputs), data_set_(&in_, &out_) {}
+  ImageDataSet(const Eigen::MatrixXd& inputs, const Eigen::MatrixXd& outputs,
+               const std::string& save_file)
+      : in_(inputs),
+        out_(outputs),
+        data_set_(&in_, &out_),
+        iteration_(0),
+        last_(std::chrono::high_resolution_clock::now()),
+        save_file_(save_file) {}
   virtual int samples() { return data_set_.samples(); }
   virtual int inputs() { return data_set_.inputs(); }
   virtual int outputs() { return data_set_.outputs(); }
@@ -22,11 +29,24 @@ class ImageDataSet : public OpenANN::DataSet {
     return data_set_.getInstance(i);
   }
   virtual Eigen::VectorXd& getTarget(int i) { return data_set_.getTarget(i); }
-  virtual void finishIteration(OpenANN::Learner& learner) {}
+  virtual void finishIteration(OpenANN::Learner& learner) {
+    ++iteration_;
+    std::chrono::system_clock::time_point current =
+        std::chrono::high_resolution_clock::now();
+    float seconds = std::chrono::duration_cast<std::chrono::microseconds>(
+                        current - last_).count() /
+                    1000000.0f;
+    //std::cout << save_file_ << ":[" << iteration_ << "] "
+              //<< " time for iteration: " << seconds << "s\n";
+    last_ = current;
+  }
 
  private:
   Eigen::MatrixXd in_, out_;
   OpenANN::DirectStorageDataSet data_set_;
+  int iteration_;
+  std::chrono::system_clock::time_point last_;
+  std::string save_file_;
 };
 
 struct CoordinateData {

@@ -622,7 +622,7 @@ void train_network(const std::string& save_file, double* train_data,
   Eigen::Map<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
       in_map(train_data, train_data_dim1, train_data_dim2);
-  ImageDataSet training_set(in_map, out_map);
+  ImageDataSet training_set(in_map, out_map, save_file);
   OpenANN::useAllCores();
   network.inputLayer(training_set.inputs())
       .fullyConnectedLayer(num_hidden_nodes, OpenANN::TANH)
@@ -631,9 +631,9 @@ void train_network(const std::string& save_file, double* train_data,
       .trainingSet(training_set);
   network.initialize();
   OpenANN::StoppingCriteria stop;
-  stop.maximalIterations = 1000;
-  stop.minimalSearchSpaceStep = 1e-13;
-  stop.minimalValueDifferences = 1e-13;
+  stop.maximalIterations = 50;
+  stop.minimalSearchSpaceStep = 1e-3;
+  stop.minimalValueDifferences = 1e-3;
   OpenANN::train(network, "LMA", OpenANN::MSE, stop, true);
   network.save(save_file);
   *accuracy = OpenANN::accuracy(network, training_set);

@@ -443,12 +443,13 @@ void kmeans_training_data(const std::string& directory, int num_centers,
                           int* width, int* height, std::vector<int>& indices,
                           std::vector<int>& order, std::vector<double>& centers,
                           std::vector<int>& labels,
-                          std::vector<int>& batch_sizes, double** train_data,
-                          int* train_data_dim1, int* train_data_dim2,
-                          double** train_labels, int* train_labels_dim1,
-                          int* train_labels_dim2, double** average,
-                          int* average_dim1, int* average_dim2,
-                          int* average_dim3) {
+                          std::vector<int>& batch_sizes, int* closest,
+                          int closest_dim1, int closest_dim2, int closest_dim3,
+                          double** train_data, int* train_data_dim1,
+                          int* train_data_dim2, double** train_labels,
+                          int* train_labels_dim1, int* train_labels_dim2,
+                          double** average, int* average_dim1,
+                          int* average_dim2, int* average_dim3) {
   int width_out = -1, height_out = -1;
   std::vector<glm::vec2> glm_centers(num_centers);
   KmeansDataAndLabels(directory, num_centers, width_out, height_out, train_data,
@@ -520,11 +521,11 @@ void assignment_data_to_test_data(
     pos += ensemble_size + 1;
   }
   const std::vector<int>& pixels = network_map.find(NetworkData(0, 0))->second;
-  //std::cout << "[";
-  //for (int i = 0; i < pixels.size(); ++i) {
-    //std::cout << "[" << pixels[i] % width << " " << pixels[i] / width << "]\n";
+  // std::cout << "[";
+  // for (int i = 0; i < pixels.size(); ++i) {
+  // std::cout << "[" << pixels[i] % width << " " << pixels[i] / width << "]\n";
   //}
-  //std::cout << "]";
+  // std::cout << "]";
   int count = 0;
   for (const auto& entry : network_map) {
     assert(entry.second.size() > 0);

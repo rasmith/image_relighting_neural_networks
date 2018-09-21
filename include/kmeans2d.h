@@ -9,12 +9,13 @@ void kmeans_training_data(const std::string& directory, int num_centers,
                           int* width, int* height, std::vector<int>& indices,
                           std::vector<int>& order, std::vector<double>& centers,
                           std::vector<int>& labels,
-                          std::vector<int>& batch_sizes, double** train_data,
-                          int* train_data_dim1, int* train_data_dim2,
-                          double** train_labels, int* train_labels_dim1,
-                          int* train_labels_dim2, double** average,
-                          int* average_dim1, int* average_dim2,
-                          int* average_dim3);
+                          std::vector<int>& batch_sizes, int* closest,
+                          int closest_dim1, int closest_dim2, int closest_dim3,
+                          double** train_data, int* train_data_dim1,
+                          int* train_data_dim2, double** train_labels,
+                          int* train_labels_dim1, int* train_labels_dim2,
+                          double** average, int* average_dim1,
+                          int* average_dim2, int* average_dim3);
 
 void closest_n(int width, int height, int n, std::vector<double>& centers,
                int** closest, int* dim1, int* dim2, int* dim3);
@@ -67,8 +68,8 @@ void predictions_to_errors(std::vector<int>& order, int ensemble_size,
                            double* test, int test_dim1, int test_dim2,
                            double* target, int target_dim1, int target_dim2,
                            double* predictions, int predictions_dim1,
-                           int predictions_dim2, double* errors, int errors_dim1,
-                           int errors_dim2);
+                           int predictions_dim2, double* errors,
+                           int errors_dim1, int errors_dim2);
 
 // assignment_data_to_test_data
 //
@@ -125,6 +126,6 @@ void train_network(const std::string& save_file, double* train_data,
                    int train_labels_dim2, int num_hidden_nodes,
                    double* accuracy);
 
-void predict(const std::string& save_file, double* test_data, int test_data_dim1,
-             int test_data_dim2, double** predictions, int* predictions_dim1,
-             int* predictions_dim2);
+void predict(const std::string& save_file, double* test_data,
+             int test_data_dim1, int test_data_dim2, double** predictions,
+             int* predictions_dim1, int* predictions_dim2);

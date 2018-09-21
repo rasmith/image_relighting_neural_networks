@@ -44,10 +44,13 @@ class PixelClusters:
     cxx_batch_sizes = kmeans2d.VectorInt()
     if self.timed:
       start = time.time()
+    k = self.ensemble_size;
+    closest = kmeans2d.closest_n(width, height, k, cxx_centroids)
+    cxx_centroids.clear()
     width, height, train_data, train_labels, average = \
       kmeans2d.kmeans_training_data(self.directory, num_centers, \
               self.cxx_indices, self.cxx_order,  cxx_centroids, \
-              cxx_labels, cxx_batch_sizes)
+              cxx_labels, cxx_batch_sizes, closest)
     print("len(cxx_indices) = %d\n" % self.cxx_indices.size())
     print("len(cxx_order) = %d\n" % self.cxx_order.size())
     print("len(cxx_batch_sizes) = %d\n" % cxx_batch_sizes.size())
@@ -59,9 +62,6 @@ class PixelClusters:
       print("iteration = %d elapsed = %s" % (self.iteration, str(elapsed)))
     centroids = [[cxx_centroids[i], cxx_centroids[i+1]] \
         for i in range(0, num_centers)]
-    k = self.ensemble_size;
-    closest = kmeans2d.closest_n(width, height, k, cxx_centroids)
-    cxx_centroids.clear()
     indices = [self.cxx_indices[i] for i in range(0, self.cxx_indices.size())]
     labels = [cxx_labels[i] for i in range(0, cxx_labels.size())]
     cxx_labels.clear()

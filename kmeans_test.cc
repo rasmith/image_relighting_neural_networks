@@ -100,25 +100,8 @@ int main(int argc, char** argv) {
   for (int i = 1; i < 16; ++i) {
     num_centers = 0x1 << i;
     auto start = std::chrono::high_resolution_clock::now();
-    // void KmeansDataAndLabels(const std::string& directory, int num_centers,
-    // int& width, int& height, double** training_data,
-    // int* training_data_dim1, int* training_data_dim2,
-    // double** training_labels, int* training_labels_dim1,
-    // int* training_labels_dim2,
-    // std::vector<glm::vec2>& centers,
-    // std::vector<int>& labels,
-    // std::vector<int>& batch_sizes);
     int* closest;
     int closest_dim1, closest_dim2, closest_dim3;
-//void KmeansDataAndLabels(
-    //const std::string& directory, int num_centers, int& width, int& height,
-    //double** training_data, int* training_data_dim1, int* training_data_dim2,
-    //double** training_labels, int* training_labels_dim1,
-    //int* training_labels_dim2, double** average_img, int* average_dim1,
-    //int* average_dim2, int* average_dim3, int** closest, int* closest_dim1,
-    //int* closest_dim2, int* closest_dim3, std::vector<int>& indices,
-    //std::vector<int>& order, std::vector<glm::vec2>& centers,
-    //std::vector<int>& labels, std::vector<int>& batch_sizes);
     KmeansDataAndLabels(
         dirname, num_centers, 1, width, height, &training_data,
         &training_data_dim1, &training_data_dim2, &training_labels,

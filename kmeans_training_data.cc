@@ -165,10 +165,11 @@ void GetClosestN(int width, int height, int n, std::vector<glm::vec2>& centers,
 void GetTrainingData(const std::vector<image::Image>& images,
                      std::vector<int>& indices, int num_centers,
                      const std::vector<int>& labels, image::Image& average,
-                     double** train_data, int* train_data_dim1,
-                     int* train_data_dim2, double** train_labels,
-                     int* train_labels_dim1, int* train_labels_dim2,
-                     std::vector<int>& batch_sizes) {
+                     int* closest, int closest_dim1, int closest_dim2,
+                     int closest_dim3, double** train_data,
+                     int* train_data_dim1, int* train_data_dim2,
+                     double** train_labels, int* train_labels_dim1,
+                     int* train_labels_dim2, std::vector<int>& batch_sizes) {
   // std::cout << "GetTrainingData:images.size()  = " << images.size() << "\n";
   // std::cout << "GetTrainingData:indices.size() = " << indices.size() << "\n";
   // std::cout << "GetTrainingData:min_index = "
@@ -184,6 +185,7 @@ void GetTrainingData(const std::vector<image::Image>& images,
   uint32_t sample_size = indices.size();
   uint32_t num_pixels = width * height;
   uint32_t total_pixels = sample_size * num_pixels;
+  int ensemble_size = closest_dim3;
   *train_data_dim1 = total_pixels;
   *train_data_dim2 = data_size;
   *train_data = new double[(*train_data_dim1) * (*train_data_dim2)];
@@ -196,8 +198,15 @@ void GetTrainingData(const std::vector<image::Image>& images,
   // std::cout << "GetTrainingData:height  = " << height << "\n";
   // std::cout << "GetTrainingData:labels.size= " << labels.size() << "\n";
   // Count pixels per cluster.
-  for (int i = 0; i < labels.size(); ++i) ++cluster_sizes[labels[i]];
-  batch_sizes.clear();
+  // NOTE: Using closest here, so that clusters are trained on all pixels
+  // they are responsible for.
+  int* closest_pos = closest;
+  assert(closest_dim1 == height);
+  assert(closest_dim2 == width);
+  for (int i = 0; i < num_pixels; ++i) {
+    for (int j = 0; j < closest_dim3; ++i) ++cluster_sizes[closest_pos[j]];
+    closest_pos += closest_dim3;
+  }
   // Copy out the batch sizes.
   std::copy(cluster_sizes.begin(), cluster_sizes.end(),
             std::back_inserter(batch_sizes));
@@ -261,14 +270,18 @@ void GetTrainingData(const std::vector<image::Image>& images,
   }
   // Compute a list of pixels for each cluster.
   std::unordered_map<int, std::vector<int>> cluster_to_pixels_map;
+  closest_pos = closest;
   for (int i = 0; i < num_pixels; ++i) {
-    int cluster_id = labels[i];
-    if (cluster_to_pixels_map.find(cluster_id) == cluster_to_pixels_map.end())
-      cluster_to_pixels_map.insert(
-          std::make_pair(cluster_id, std::vector<int>()));
-    cluster_to_pixels_map.find(cluster_id)->second.push_back(i);
-    assert(cluster_to_pixels_map.find(cluster_id)->second.size() <=
-           cluster_sizes[cluster_id]);
+    for (int j = 0; j < ensemble_size; ++j) {
+      int cluster_id = closest_pos[j];
+      if (cluster_to_pixels_map.find(cluster_id) == cluster_to_pixels_map.end())
+        cluster_to_pixels_map.insert(
+            std::make_pair(cluster_id, std::vector<int>()));
+      cluster_to_pixels_map.find(cluster_id)->second.push_back(i);
+      assert(cluster_to_pixels_map.find(cluster_id)->second.size() <=
+             cluster_sizes[cluster_id]);
+    }
+    closest_pos += ensemble_size;
   }
   std::vector<std::thread> threads(num_threads);
   LOG(STATUS) << "Output the training data and labels.\n";
@@ -418,7 +431,8 @@ void KmeansDataAndLabels(
   GetClosestN(width, height, ensemble_size, centers, closest, closest_dim1,
               closest_dim2, closest_dim3);
   // Get labels and data.
-  GetTrainingData(images, indices, num_centers, labels, average, training_data,
+  GetTrainingData(images, indices, num_centers, labels, average, *closest,
+                  *closest_dim1, *closest_dim2, *closest_dim3, training_data,
                   training_data_dim1, training_data_dim2, training_labels,
                   training_labels_dim1, training_labels_dim2, batch_sizes);
 }

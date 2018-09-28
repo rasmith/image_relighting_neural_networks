@@ -36,8 +36,8 @@ class ImageDataSet : public OpenANN::DataSet {
     float seconds = std::chrono::duration_cast<std::chrono::microseconds>(
                         current - last_).count() /
                     1000000.0f;
-    //std::cout << save_file_ << ":[" << iteration_ << "] "
-              //<< " time for iteration: " << seconds << "s\n";
+    std::cout << save_file_ << ":[" << iteration_ << "] "
+              << " time for iteration: " << seconds << "s\n";
     last_ = current;
   }
 
@@ -244,5 +244,12 @@ inline std::ostream& operator<<(std::ostream& out, const AssignmentData& a) {
 
 inline std::ostream& operator<<(std::ostream& out, const PixelData& p) {
   out << "{r:" << p.r << ", g:" << p.g << ", b:" << p.b << "}\n";
+  return out;
+}
+
+inline std::ostream& operator<<(std::ostream& out, const image::Pixel& p) {
+  out << "{r:" << static_cast<uint32_t>(p.r)
+      << ", g:" << static_cast<uint32_t>(p.g)
+      << ", b:" << static_cast<uint32_t>(p.b) << "}\n";
   return out;
 }

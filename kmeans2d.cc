@@ -381,6 +381,10 @@ void kmeans2d(int width, int height, std::vector<double>& centers,
   }
 }
 
+    //width, height, train_data, train_labels, closest, average = \
+      //kmeans2d.kmeans_training_data(self.directory, num_centers, k, \
+              //self.cxx_indices, self.cxx_order, cxx_centroids, \
+              //cxx_labels, cxx_batch_sizes)
 void kmeans_training_data(
     const std::string& directory, int num_centers, int ensemble_size,
     int* width, int* height, std::vector<int>& indices, std::vector<int>& order,
@@ -573,9 +577,9 @@ void train_network(const std::string& save_file, double* train_data,
       .trainingSet(training_set);
   network.initialize();
   OpenANN::StoppingCriteria stop;
-  stop.maximalIterations = 50;
-  stop.minimalSearchSpaceStep = 1e-3;
-  stop.minimalValueDifferences = 1e-3;
+  stop.maximalIterations = 1000;
+  stop.minimalSearchSpaceStep = 1e-13;
+  stop.minimalValueDifferences = 1e-13;
   OpenANN::train(network, "LMA", OpenANN::MSE, stop, true);
   network.save(save_file);
   *accuracy = OpenANN::accuracy(network, training_set);

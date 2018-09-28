@@ -64,6 +64,7 @@ void LoadImages(const std::string& dirname, std::vector<image::Image>& images) {
       file_names.push_back(dirname + "/" + std::string(entry->d_name));
   }
   closedir(dir);
+  std::sort(file_names.begin(), file_names.end());
   // Load all images threaded.
   images.resize(file_names.size(), image::Image());
   uint32_t num_threads = 8;
@@ -184,14 +185,7 @@ void GetTrainingData(const std::vector<image::Image>& images,
            num_threads = 8;
   uint32_t sample_size = indices.size();
   uint32_t num_pixels = width * height;
-  uint32_t total_pixels = sample_size * num_pixels;
   int ensemble_size = closest_dim3;
-  *train_data_dim1 = total_pixels;
-  *train_data_dim2 = data_size;
-  *train_data = new double[(*train_data_dim1) * (*train_data_dim2)];
-  *train_labels_dim1 = total_pixels;
-  *train_labels_dim2 = label_size;
-  *train_labels = new double[(*train_labels_dim1) * (*train_labels_dim2)];
   std::vector<uint32_t> cluster_sizes(num_centers, 0);
   std::vector<uint32_t> cluster_offsets(num_centers, 0);
   // std::cout << "GetTrainingData:width  = " << width << "\n";
@@ -204,16 +198,25 @@ void GetTrainingData(const std::vector<image::Image>& images,
   assert(closest_dim1 == height);
   assert(closest_dim2 == width);
   for (int i = 0; i < num_pixels; ++i) {
-    for (int j = 0; j < closest_dim3; ++i) ++cluster_sizes[closest_pos[j]];
-    closest_pos += closest_dim3;
+    for (int j = 0; j < ensemble_size; ++j) ++cluster_sizes[closest_pos[j]];
+    closest_pos += ensemble_size;
   }
+  int total_cluster_pixel_count = 0;
+  for (int i = 0; i < cluster_sizes.size(); ++i)
+    total_cluster_pixel_count += cluster_sizes[i];
+  *train_data_dim1 = total_cluster_pixel_count * sample_size;
+  *train_data_dim2 = data_size;
+  *train_data = new double[(*train_data_dim1) * (*train_data_dim2)];
+  *train_labels_dim1 = total_cluster_pixel_count * sample_size;
+  *train_labels_dim2 = label_size;
+  *train_labels = new double[(*train_labels_dim1) * (*train_labels_dim2)];
   // Copy out the batch sizes.
   std::copy(cluster_sizes.begin(), cluster_sizes.end(),
             std::back_inserter(batch_sizes));
-  std::cout << "cluster_sizes = ";
-  for (int i = 0; i < cluster_sizes.size(); ++i)
-    std::cout << cluster_sizes[i] << " ";
-  std::cout << "\n";
+  //std::cout << "cluster_sizes = ";
+  //for (int i = 0; i < cluster_sizes.size(); ++i)
+    //std::cout << cluster_sizes[i] << " ";
+  //std::cout << "\n";
   LOG(STATUS) << "Compute cluster offsets.\n";
   // Convert to total counts.
   for (int i = 1; i < cluster_offsets.size(); ++i)
@@ -246,7 +249,7 @@ void GetTrainingData(const std::vector<image::Image>& images,
     pixel_offsets[i] += pixel_offsets[i - 1] + pixel_counts[i - 1];
   for (int i = 1; i < num_threads; ++i) {
     if (!(pixel_offsets[i] >= 0 &&
-          pixel_offsets[i] < num_pixels * indices.size())) {
+          pixel_offsets[i] < total_cluster_pixel_count * sample_size)) {
       std::cout << "num_centers = " << num_centers << "\n";
       std::cout << "num_threads = " << num_threads << "\n";
       std::cout << "starts = ";
@@ -262,11 +265,11 @@ void GetTrainingData(const std::vector<image::Image>& images,
       std::cout << "pixel_counts = ";
       for (int i = 0; i < num_threads; ++i) std::cout << pixel_counts[i] << " ";
       std::cout << "\n";
-      std::cout << " num_pixels * indices.size() = "
-                << num_pixels* indices.size() << "\n";
+      std::cout << " total_cluster_pixel_count  = "
+                << total_cluster_pixel_count* sample_size << "\n";
     }
     assert(pixel_offsets[i] >= 0 &&
-           pixel_offsets[i] <= num_pixels * indices.size());
+           pixel_offsets[i] <= total_cluster_pixel_count * sample_size);
   }
   // Compute a list of pixels for each cluster.
   std::unordered_map<int, std::vector<int>> cluster_to_pixels_map;
@@ -285,57 +288,56 @@ void GetTrainingData(const std::vector<image::Image>& images,
   }
   std::vector<std::thread> threads(num_threads);
   LOG(STATUS) << "Output the training data and labels.\n";
+  LOG(STATUS) << "num_centers = " << num_centers << "\n";
   for (int i = 0; i < num_threads; ++i) {
-    threads[i] =
-        std::thread([
-                      &width,
-                      &height,
-                      &num_pixels,
-                      &starts,
-                      &ends,
-                      &pixel_offsets,
-                      &cluster_to_pixels_map,
-                      &indices,
-                      &images,
-                      &average,
-                      &train_data,
-                      &cluster_sizes,
-                      &train_labels
-                    ](int tid)
-                         ->void {
-                      TestData* train_data_begin =
-                          reinterpret_cast<TestData*>(*train_data);
-                      TestData* train_data_pos =
-                          train_data_begin + pixel_offsets[tid];
-                      PixelData* train_labels_begin =
-                          reinterpret_cast<PixelData*>(*train_labels);
-                      PixelData* train_labels_pos =
-                          train_labels_begin + pixel_offsets[tid];
-                      for (int i = starts[tid]; i < ends[tid]; ++i) {
-                        const std::vector<int>& pixels =
-                            cluster_to_pixels_map.find(i)->second;
-                        assert(pixels.size() == cluster_sizes[i]);
-                        for (int j = 0; j < indices.size(); ++j) {
-                          for (int k = 0; k < pixels.size(); ++k) {
-                            int x = pixels[k] % width, y = pixels[k] / width;
-                            assert(train_data_pos - train_data_begin <
-                                   num_pixels * indices.size());
-                            assert(train_labels_pos - train_labels_begin <
-                                   num_pixels * indices.size());
-                            *train_data_pos =
-                                TestData(x, y, indices[j], average(x, y), width,
-                                         height, images.size(),
-                                         PixelConversion::DefaultConversion());
-                            *train_labels_pos =
-                                PixelData(images[indices[j]](x, y),
-                                          PixelConversion::DefaultConversion());
-                            ++train_data_pos;
-                            ++train_labels_pos;
-                          }
-                        }
-                      }
-                    },
-                    i);
+    threads[i] = std::thread(
+        [
+          &width,
+          &height,
+          &num_pixels,
+          &starts,
+          &ends,
+          &pixel_offsets,
+          &cluster_to_pixels_map,
+          &indices,
+          &images,
+          &average,
+          &train_data,
+          &cluster_sizes,
+          &total_cluster_pixel_count,
+          &train_labels
+        ](int tid)
+             ->void {
+          TestData* train_data_begin = reinterpret_cast<TestData*>(*train_data);
+          TestData* train_data_pos = train_data_begin + pixel_offsets[tid];
+          PixelData* train_labels_begin =
+              reinterpret_cast<PixelData*>(*train_labels);
+          PixelData* train_labels_pos = train_labels_begin + pixel_offsets[tid];
+          for (int i = starts[tid]; i < ends[tid]; ++i) {
+            if (i == 345) std::cout << "i = 345\n";
+            const std::vector<int>& pixels =
+                cluster_to_pixels_map.find(i)->second;
+            assert(pixels.size() == cluster_sizes[i]);
+            for (int j = 0; j < indices.size(); ++j) {
+              for (int k = 0; k < pixels.size(); ++k) {
+                int x = pixels[k] % width, y = pixels[k] / width;
+                assert(train_data_pos - train_data_begin <
+                       total_cluster_pixel_count * indices.size());
+                assert(train_labels_pos - train_labels_begin <
+                       total_cluster_pixel_count * indices.size());
+                *train_data_pos = TestData(
+                    x, y, indices[j], average(x, y), width, height,
+                    images.size(), PixelConversion::DefaultConversion());
+                *train_labels_pos =
+                    PixelData(images[indices[j]](x, y),
+                              PixelConversion::DefaultConversion());
+                ++train_data_pos;
+                ++train_labels_pos;
+              }
+            }
+          }
+        },
+        i);
   }
   for (int i = 0; i < num_threads; ++i) threads[i].join();
 }

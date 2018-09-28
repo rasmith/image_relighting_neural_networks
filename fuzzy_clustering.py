@@ -36,17 +36,53 @@ def predict_thread(predict_data):
     del target
 
 def train_thread(thread_data):
-  cluster_id, start, end, models_dir, level, train_data, train_labels\
+  cluster_id, start, end, models_dir, level, train_data, train_labels,\
+  num_images, run_type\
     = thread_data
-  print("[%d] %d begin training" % (level, cluster_id))
-  return train(cluster_id, models_dir, level,\
-                    train_data[start:end],\
-                    train_labels[start:end])
+  if run_type == "train":
+    print("[%d] %d begin training" % (level, cluster_id))
+    return train(cluster_id, models_dir, level,\
+                      train_data[start:end],\
+                      train_labels[start:end])
+  else:
+    return save_train_data(cluster_id, level, train_data[start:end],
+      train_labels[start:end], num_images)
+
+def save_train_data(cluster_id, level, train_data, train_labels, num_images):
+  train_maps_dir = "render_images/train_maps"
+  cluster_dir = train_maps_dir + "/%04d" % (cluster_id)
+  if not os.path.exists(train_maps_dir):
+    os.mkdir(train_maps_dir)
+  if not os.path.exists(cluster_dir):
+    os.mkdir(cluster_dir)
+  current_image = -1
+  image = np.zeros((height, width, 3), dtype = 'float64')
+  for i in range(0, len(train_data)):
+    image_number = int(np.round(train_data[i, 2] * (num_images - 1)))
+    if current_image != image_number:
+      if current_image != -1:
+        misc.toimage(image, cmin=0.0, cmax=255.0).save(\
+          cluster_dir + "/%04d.png" % current_image)
+        # misc.imsave(cluster_dir +"/%04d.png" % (current_image), image)
+        print("Saved %s/%04d.png" % (cluster_dir, current_image))
+        image = np.zeros((height, width, 3), dtype = 'float64')
+        current_image = image_number
+      else:
+        current_image = image_number
+    x = int(np.round(train_data[i, 0] * (width - 1)))
+    y = int(np.round(train_data[i, 1] * (height - 1)))
+    image[y, x, 0] = 255.0 * train_labels[i, 0]
+    image[y, x, 1] = 255.0 * train_labels[i, 1]
+    image[y, x, 2] = 255.0 * train_labels[i, 2]
+  return (cluster_id, 0.0, 0.0)
+    
 
 def train(cluster_id, models_dir, level, train_data, train_labels):
   (checkpoint_file_name, checkpoint_file) = \
       config.get_checkpoint_file_info(models_dir, level, cluster_id)
+  print ("train")
   start = time.time()
+  print("launch train_network")
   accuracy = kmeans2d.train_network(checkpoint_file, train_data,\
       train_labels, num_hidden_nodes)
   end = time.time();
@@ -57,7 +93,10 @@ def train(cluster_id, models_dir, level, train_data, train_labels):
 def save_assignment_map(level, cluster_id, width, height, test_data,\
                         network_data):
   image_out = np.zeros((height, width, 3), dtype = np.float64)
-  image_file_name = "render_images/map_%04d_%04d.png" % (level, cluster_id)
+  if not os.path.exists("render_images/assignment_maps"):
+    os.mkdir("render_images/assignment_maps")
+  image_file_name = "render_images/assignment_maps/map_%04d_%04d.png"\
+                    % (level, cluster_id)
   level, network_id, start, count= network_data 
   values = test_data[start:start + count]
   coords = [(x[0] * (width - 1), x[1] * (height - 1)) for x in values]
@@ -65,24 +104,6 @@ def save_assignment_map(level, cluster_id, width, height, test_data,\
   for x in coords:
     image_out[x[1], x[0], :]  = [255.0, 0.0, 0.0]
   misc.imsave(image_file_name, image_out)
-
-def update_input_map(level, cluster_id, width, height, test_data,\
-                        network_data, input_map):
-  level, network_id, start, count= network_data 
-  for t in test_data[start:start + count]:
-    x = int(np.round(t[0] * (width - 1)))
-    y = int(np.round(t[1] * (height - 1)))
-    input_map[y, x, :]  = 255.0*t[3:]
-
-def update_label_map(level, cluster_id, width, height, test_data,\
-                        label_data, network_data, label_map):
-  level, network_id, start, count= network_data 
-  for i in range(start, start + count):
-    t = test_data[i]
-    l = label_data[i]
-    x = int(np.round(t[0] * (width - 1)))
-    y = int(np.round(t[1] * (height - 1)))
-    label_map[y, x, :]  = 255.0 * l
 
 def update_accuracy_map(network_data, test_data, accuracy, accuracy_map):
   level, network_id, start, count= network_data 
@@ -92,6 +113,9 @@ def update_accuracy_map(network_data, test_data, accuracy, accuracy_map):
     accuracy_map[y, x, 0] = 255.0 * accuracy
     accuracy_map[y, x, 1] = 255.0 * accuracy
     accuracy_map[y, x, 2] = 255.0 * accuracy
+
+def  save_training_debug_data(level, labels, closest, train_data, train_labels):
+  pass
 
 # width = 696
 # height = 464
@@ -122,15 +146,19 @@ def get_flagged_clusters(cluster_ids, closest, flagged):
   return flagged_ids
 
 dirname = sys.argv[1]
+run_type = "train"
+if len(sys.argv) >= 3:
+  run_type = sys.argv[2]
 
 width, height, num_images = get_parameters(dirname)
 
 print("width = %d, height = %d, num_images = %d\n" % (width, height, num_images))
+print("run_type = %s" % (run_type))
 num_levels = 1 
 max_levels = 1
 num_hidden_nodes = 15
 level = 0
-ensemble_size = 1
+ensemble_size = 5; 
 tolerance = .03
 
 max_clusters =  int(\
@@ -157,11 +185,10 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   if level >=  max_levels:
     break
   accuracy_map = np.zeros((height, width, 3), dtype = np.float64)
-  input_map = np.zeros((height, width, 3), dtype = np.float64)
-  label_map = np.zeros((height, width, 3), dtype = np.float64)
 
   print ("Compute start and end locations")
   num_samples = len(indices)
+  # print ("batch_sizes = %s" % (batch_sizes))
   starts = np.zeros(len(batch_sizes), dtype=np.int32)
   ends = np.zeros(len(batch_sizes), dtype=np.int32)
   for i in range(0, len(batch_sizes)):
@@ -173,12 +200,17 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   # get number of clusters
   num_clusters = len(centers)
   cluster_ids = get_flagged_clusters(range(0, len(centers)), closest, flagged)
-  print("cluster_ids = %s" % str(cluster_ids))
+  # print("cluster_ids = %s" % str(cluster_ids))
   clusters_to_train = [c for c in cluster_ids if not os.path.exists(
     config.get_checkpoint_file_info(models_dir, level, c)[1])]
+  print("clusters_to_train = %s" % str(clusters_to_train))
+
+  if run_type == "debug":
+    clusters_to_train = cluster_ids
 
   thread_data = \
-        [(i, starts[i],  ends[i], models_dir, level, train_data, train_labels)
+        [(i, starts[i], ends[i], models_dir, level, train_data,\
+          train_labels, num_images, run_type)
         for i in clusters_to_train]
 
   print ("Launch thread pool for training.")
@@ -186,28 +218,22 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
   results = pool.map(train_thread, thread_data)
   pool.close()
   pool.join()
-
-  # print ("Update debug data.")
+      
+  print ("Update debug data.")
   for result in results:
     (cluster_id, accuracy, execution_time) = result
     (checkpoint_file_name, checkpoint_file) = \
         config.get_checkpoint_file_info(models_dir, level, cluster_id)
     count = ends[cluster_id] - starts[cluster_id]
     network_data = np.array([level, cluster_id, starts[cluster_id], count])
-    # print ("%d save_assignment_map" % (cluster_id))
-    # save_assignment_map(level, cluster_id, width, height,\
-      # train_data, network_data)
-    # print ("%d update_input_map" % (cluster_id))
-    # update_input_map(level, cluster_id, width, height,\
-      # train_data, network_data, input_map)
-    # print ("%d update_label_map" % (cluster_id))
-    # update_label_map(level, cluster_id, width, height,\
-      # train_data, train_labels, network_data, label_map)
+    print ("%d save_assignment_map" % (cluster_id))
+    save_assignment_map(level, cluster_id, width, height,\
+      train_data, network_data)
     print ("%d update_accuracy_map" % (cluster_id))
     update_accuracy_map(network_data, train_data, accuracy, accuracy_map)
     
   # Compute all of the predicted images and error.
-  if level < max_levels -1:
+  if run_type == "train" and level < max_levels -1:
     print ("Launch thread pool for error computation.")
     pool = ThreadPool(8)
     image_order = [cxx_order[i] for i in range(0, cxx_order.size())]
@@ -219,33 +245,40 @@ for indices, cxx_order, centers, labels, closest, average, train_data, \
     pool.close()
     pool.join()
 
-  # Compute flagged pixels.
-  current_flagged = errors > tolerance
-  current_flagged= np.ones((height, width), dtype = np.float64, order='C')
-  flagged = np.logical_and(flagged, current_flagged)
-  if level == max_levels - 1:
-    flagged = np.zeros(flagged.shape)
+  if run_type == "train":
+    # Compute flagged pixels.
+    current_flagged = errors > tolerance
+    current_flagged= np.ones((height, width), dtype = np.float64, order='C')
+    flagged = np.logical_and(flagged, current_flagged)
+    if level == max_levels - 1:
+      flagged = np.zeros(flagged.shape)
 
-  # Update assignments.
-  for x in range(0, width):
-    for y in range(0, height):
-      if flagged[y, x] == 0 and not used[y,x]:
-        assignments[y, x, 0] = level
-        assignments[y, x, 1:] = closest[y, x, :]
-        used[y, x] = 1
-        
+    # Update assignments.
+    for x in range(0, width):
+      for y in range(0, height):
+        if flagged[y, x] == 0 and not used[y,x]:
+          assignments[y, x, 0] = level
+          assignments[y, x, 1:] = closest[y, x, :]
+          used[y, x] = 1
+          
   # Debug images.
+  if run_type == "train":
+    accuracy_map = np.divide(accuracy_map, float(ensemble_size))
+    accuracy_map_dir = "render_images/accuracy_maps"
+    if not os.path.exists(accuracy_map_dir):
+      os.mkdir(accuracy_map_dir)
+    misc.imsave("%s/accuracy_map_%d.png"\
+                % (accuracy_map_dir, level), accuracy_map)
+
   palette = generate_palette(len(centers))
   cluster_map = np.array(render_clusters(width, height, labels, palette))
   cluster_map = np.transpose(np.reshape(cluster_map, (width, height, 3)),
       (1, 0, 2))
   misc.imsave("render_images/cluster_map_%d.png" % (level), cluster_map)
-  misc.imsave("render_images/input_map_%d.png" % (level), input_map)
-  misc.imsave("render_images/label_map_%d.png" % (level), label_map)
-  misc.imsave("render_images/accuracy_map_%d.png" % (level), accuracy_map)
 
   # Save pixel assignments to file.
-  config.save_cfg(cfg_dir, average, indices, assignments, num_images, level)
+  if run_type == "train":
+    config.save_cfg(cfg_dir, average, indices, assignments, num_images, level)
 
   del train_data
   del train_labels
